@@ -299,6 +299,7 @@ def is_text_file(file_path):
         ".jsx",
         ".vue",
         ".go",
+        ".gd"        
     }
 
     # Security-sensitive file extensions to exclude
@@ -520,6 +521,7 @@ def scan_directory(directory_path, debug=False, scrub_data=True):
         ".gnupg",
         "release",
         "Release",
+        "package-lock.json"
     }
 
     # Helper function to check if path should be ignored
