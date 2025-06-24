@@ -22,24 +22,146 @@ A cross-platform Python utility for recursively scanning directories and creatin
 
 ## Installation
 
-1. Clone or download the script
-2. Ensure it's executable (Unix-like systems):
-   ```bash
-   chmod +x blobify.py
+### Windows Installation (Recommended Method)
+
+1. **Download the script** to a tools directory (e.g., `C:\tools\blobify\blobify.py`)
+
+2. **Create a batch wrapper** for easy command-line access:
+   - Create a file named `blobify.bat` in `C:\tools\` (or another directory in your PATH)
+   - Add this content:
+     ```batch
+     @echo off
+     python "%~dp0blobify\blobify.py" %*
+     ```
+
+3. **Add to your PATH** (if `C:\tools` isn't already there):
+   - Open System Properties → Advanced → Environment Variables
+   - Edit your `PATH` variable and add `C:\tools`
+   - Or use PowerShell as Administrator:
+     ```powershell
+     $env:PATH += ";C:\tools"
+     [Environment]::SetEnvironmentVariable("PATH", $env:PATH, "Machine")
+     ```
+
+4. **Test the installation**:
+   ```cmd
+   blobify --help
    ```
+
+### Alternative Windows Methods
+
+**Method 1: Direct Python execution**
+```cmd
+python C:\tools\blobify\blobify.py [directory] [output]
+```
+
+**Method 2: Create standalone executable** (requires pyinstaller):
+```cmd
+pip install pyinstaller
+pyinstaller --onefile blobify.py
+```
+
+### Linux/Unix Installation
+
+1. **Download the script** to a local directory:
+   ```bash
+   mkdir -p ~/bin
+   wget -O ~/bin/blobify https://raw.githubusercontent.com/yourusername/blobify/main/blobify.py
+   # or download manually to ~/bin/blobify
+   ```
+
+2. **Make it executable**:
+   ```bash
+   chmod +x ~/bin/blobify
+   ```
+
+3. **Add to your PATH** (if `~/bin` isn't already there):
+   ```bash
+   # For bash/zsh - add to ~/.bashrc or ~/.zshrc
+   echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
+   source ~/.bashrc
+   
+   # For fish shell - add to ~/.config/fish/config.fish
+   echo 'set -gx PATH $HOME/bin $PATH' >> ~/.config/fish/config.fish
+   ```
+
+4. **Test the installation**:
+   ```bash
+   blobify --help
+   ```
+
+### macOS Installation
+
+**Method 1: Using Homebrew** (if you have a Homebrew formula):
+```bash
+brew install blobify
+```
+
+**Method 2: Manual installation** (same as Linux):
+```bash
+# Download to local bin directory
+mkdir -p ~/bin
+curl -o ~/bin/blobify https://raw.githubusercontent.com/yourusername/blobify/main/blobify.py
+
+# Make executable and add shebang
+chmod +x ~/bin/blobify
+
+# Add to PATH (if needed)
+echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+**Method 3: Using /usr/local/bin** (system-wide):
+```bash
+# Requires sudo for system-wide installation
+sudo curl -o /usr/local/bin/blobify https://raw.githubusercontent.com/yourusername/blobify/main/blobify.py
+sudo chmod +x /usr/local/bin/blobify
+```
 
 ## Usage
 
-### Basic Usage
+### Windows Command Examples
 
-To scan a directory and output to stdout:
-```bash
-python blobify.py /path/to/directory
+```cmd
+# Scan current directory
+blobify .
+
+# Scan a project directory
+blobify C:\MyProject
+
+# Save output to file
+blobify C:\MyProject project_files.txt
+
+# Debug mode to see gitignore processing
+blobify C:\MyProject --debug
+
+# Scan and copy to clipboard
+blobify . | clip
 ```
 
-To scan a directory and save to a file:
+### Linux/Unix/macOS Examples
+
 ```bash
-python blobify.py /path/to/directory output.txt
+# Scan current directory
+blobify .
+
+# Scan project directory with output file
+blobify /path/to/project project_index.txt
+
+# Debug mode to see gitignore processing
+blobify /path/to/project --debug
+
+# Scan and copy to clipboard (Linux with xclip)
+blobify . | xclip -selection clipboard
+
+# Scan and copy to clipboard (macOS)
+blobify . | pbcopy
+
+# Scan with sudo for restricted directories
+sudo blobify /var/log system_logs.txt
+
+# Process output with other tools
+blobify . | grep -E "START_FILE.*\.py" | wc -l  # Count Python files
 ```
 
 ### Command-line Arguments
@@ -146,38 +268,6 @@ Blobify intelligently identifies text files using multiple methods:
 - **Invalid paths**: Clear error messages with exit codes
 - **Encoding issues**: Automatic fallback handling for file encoding
 
-## Examples
-
-### Basic Scanning
-```bash
-# Scan current directory
-python blobify.py .
-
-# Scan project directory with output file
-python blobify.py /path/to/project project_index.txt
-```
-
-### Git-Aware Scanning
-```bash
-# Scan Git repository (respects .gitignore)
-python blobify.py /path/to/git/repo
-
-# Debug mode to see gitignore processing
-python blobify.py /path/to/git/repo --debug
-```
-
-### Practical Use Cases
-```bash
-# Copy project structure to clipboard (Windows)
-python blobify.py . | clip
-
-# Create documentation of codebase
-python blobify.py ./src codebase_documentation.txt
-
-# Analyse project with sensitive files excluded
-python blobify.py . --debug > analysis.txt 2> debug.log
-```
-
 ## Debug Mode
 
 Use `--debug` flag to see detailed information about:
@@ -202,6 +292,51 @@ Example debug output:
 - **Large repositories**: Git ignore patterns provide significant performance benefits by excluding build artifacts
 - **Network drives**: May be slower due to file system latency
 - **File system permissions**: Inaccessible files are skipped gracefully
+
+## Troubleshooting
+
+### Windows-Specific Issues
+
+**"'blobify' is not recognised as an internal or external command"**
+- Ensure `C:\tools` (or your chosen directory) is in your PATH
+- Restart your command prompt after adding to PATH
+- Check that `blobify.bat` exists in the PATH directory
+
+**"Python not found"**
+- Ensure Python is installed and in your PATH
+- Try using `py` instead of `python` in the batch file:
+  ```batch
+  @echo off
+  py "%~dp0blobify\blobify.py" %*
+  ```
+
+**Unicode/encoding issues**
+- The script automatically handles UTF-8 encoding on Windows
+- If you see strange characters, ensure your terminal supports UTF-8
+
+### Linux/Unix/macOS Issues
+
+**"blobify: command not found"**
+- Ensure the script is executable: `chmod +x ~/bin/blobify`
+- Check that `~/bin` is in your PATH: `echo $PATH`
+- Restart your terminal after modifying PATH
+
+**"Permission denied"**
+- Make sure the script has execute permissions: `ls -la ~/bin/blobify`
+- For system directories, you may need `sudo`
+
+**"Python not found" or shebang issues**
+- Ensure Python 3 is installed: `python3 --version`
+- Check the shebang line points to correct Python: `which python3`
+- Alternative shebang options:
+  ```python
+  #!/usr/bin/python3
+  #!/usr/local/bin/python3
+  ```
+
+**Git integration not working**
+- Ensure Git is installed and in PATH: `git --version`
+- Check Git repository status: `git status`
 
 ## Contributing
 
