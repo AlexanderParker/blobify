@@ -12,6 +12,13 @@ import re
 import subprocess
 from typing import List, Set, Optional, Tuple
 
+try:
+    import scrubadub
+
+    SCRUBADUB_AVAILABLE = True
+except ImportError:
+    SCRUBADUB_AVAILABLE = False
+
 
 def is_git_repository(path: Path) -> Optional[Path]:
     """
@@ -32,7 +39,7 @@ def get_gitignore_patterns(git_root: Path) -> List[str]:
     This includes global, repository-level, and directory-level .gitignore files.
     """
     patterns = []
-    
+
     # Get global gitignore
     try:
         result = subprocess.run(
@@ -40,7 +47,7 @@ def get_gitignore_patterns(git_root: Path) -> List[str]:
             cwd=git_root,
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=5,
         )
         if result.returncode == 0 and result.stdout.strip():
             global_gitignore = Path(result.stdout.strip()).expanduser()
@@ -48,17 +55,17 @@ def get_gitignore_patterns(git_root: Path) -> List[str]:
                 patterns.extend(read_gitignore_file(global_gitignore))
     except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
         pass
-    
+
     # Get repository-level .gitignore
     repo_gitignore = git_root / ".gitignore"
     if repo_gitignore.exists():
         patterns.extend(read_gitignore_file(repo_gitignore))
-    
+
     # Get all .gitignore files in subdirectories
     for gitignore_file in git_root.rglob(".gitignore"):
         if gitignore_file != repo_gitignore:
             patterns.extend(read_gitignore_file(gitignore_file))
-    
+
     return patterns
 
 
@@ -68,11 +75,11 @@ def read_gitignore_file(gitignore_path: Path) -> List[str]:
     """
     patterns = []
     try:
-        with open(gitignore_path, 'r', encoding='utf-8', errors='ignore') as f:
+        with open(gitignore_path, "r", encoding="utf-8", errors="ignore") as f:
             for line in f:
                 line = line.strip()
                 # Skip empty lines and comments
-                if line and not line.startswith('#'):
+                if line and not line.startswith("#"):
                     patterns.append(line)
     except (IOError, OSError):
         pass
@@ -85,12 +92,12 @@ def compile_gitignore_patterns(patterns: List[str]) -> List[Tuple[re.Pattern, bo
     Returns list of (compiled_pattern, is_negation) tuples.
     """
     compiled_patterns = []
-    
+
     for pattern in patterns:
-        is_negation = pattern.startswith('!')
+        is_negation = pattern.startswith("!")
         if is_negation:
             pattern = pattern[1:]
-        
+
         # Convert gitignore pattern to regex
         regex_pattern = gitignore_to_regex(pattern)
         try:
@@ -99,7 +106,7 @@ def compile_gitignore_patterns(patterns: List[str]) -> List[Tuple[re.Pattern, bo
         except re.error:
             # Skip invalid regex patterns
             continue
-    
+
     return compiled_patterns
 
 
@@ -108,44 +115,55 @@ def gitignore_to_regex(pattern: str) -> str:
     Convert a gitignore pattern to a regex pattern.
     """
     # Handle directory-only patterns (ending with /)
-    is_directory_only = pattern.endswith('/')
+    is_directory_only = pattern.endswith("/")
     if is_directory_only:
         pattern = pattern[:-1]
-    
+
     # Handle patterns that start with / (root-relative)
-    is_root_relative = pattern.startswith('/')
+    is_root_relative = pattern.startswith("/")
     if is_root_relative:
         pattern = pattern[1:]
-    
+
     # Escape special regex characters except for *, ?, [, ], and /
     pattern = re.escape(pattern)
-    
+
     # Unescape the characters we want to handle specially
-    pattern = pattern.replace(r'\*', '*').replace(r'\?', '?').replace(r'\[', '[').replace(r'\]', ']').replace(r'\/', '/')
-    
+    pattern = (
+        pattern.replace(r"\*", "*")
+        .replace(r"\?", "?")
+        .replace(r"\[", "[")
+        .replace(r"\]", "]")
+        .replace(r"\/", "/")
+    )
+
     # Handle gitignore-specific patterns
     # First handle ** (must be done before single *)
-    pattern = pattern.replace('**', 'DOUBLESTAR_PLACEHOLDER')
-    
+    pattern = pattern.replace("**", "DOUBLESTAR_PLACEHOLDER")
+
     # * matches anything except /
-    pattern = pattern.replace('*', '[^/]*')
-    
+    pattern = pattern.replace("*", "[^/]*")
+
     # Replace placeholder with proper regex for **
-    pattern = pattern.replace('DOUBLESTAR_PLACEHOLDER', '.*')
-    
+    pattern = pattern.replace("DOUBLESTAR_PLACEHOLDER", ".*")
+
     # ? matches any single character except /
-    pattern = pattern.replace('?', '[^/]')
-    
+    pattern = pattern.replace("?", "[^/]")
+
     # Build the final pattern
     if is_root_relative:
-        final_pattern = '^' + pattern + '$'
+        final_pattern = "^" + pattern + "$"
     else:
-        final_pattern = '^(' + pattern + '|.*/' + pattern + ')$'
-    
+        final_pattern = "^(" + pattern + "|.*/" + pattern + ")$"
+
     return final_pattern
 
 
-def is_ignored_by_git(file_path: Path, git_root: Path, compiled_patterns: List[Tuple[re.Pattern, bool]], debug: bool = False) -> bool:
+def is_ignored_by_git(
+    file_path: Path,
+    git_root: Path,
+    compiled_patterns: List[Tuple[re.Pattern, bool]],
+    debug: bool = False,
+) -> bool:
     """
     Check if a file should be ignored based on gitignore patterns.
     """
@@ -155,39 +173,81 @@ def is_ignored_by_git(file_path: Path, git_root: Path, compiled_patterns: List[T
     except ValueError:
         # File is not within the git repository, so it can't be ignored by git
         return False
-    
+
     # Convert to forward slashes for consistent matching
-    relative_path_str = str(relative_path).replace('\\', '/')
-    
+    relative_path_str = str(relative_path).replace("\\", "/")
+
     # Check if file is ignored
     is_ignored = False
-    
+
     # Debug: For specific files, show detailed matching
-    debug_this_file = debug and (relative_path_str == 'local.settings.json' or 'settings' in relative_path_str.lower())
-    
+    debug_this_file = debug and (
+        relative_path_str == "local.settings.json"
+        or "settings" in relative_path_str.lower()
+    )
+
     if debug_this_file:
         print(f"# DEBUG: Processing {relative_path_str}", file=sys.stderr)
-        print(f"# DEBUG: Found {len(compiled_patterns)} compiled patterns", file=sys.stderr)
-    
+        print(
+            f"# DEBUG: Found {len(compiled_patterns)} compiled patterns",
+            file=sys.stderr,
+        )
+
     for i, (pattern, is_negation) in enumerate(compiled_patterns):
         matched = pattern.match(relative_path_str)
-        
-        if debug_this_file and ('settings' in pattern.pattern.lower() or i < 5):
-            print(f"# DEBUG: Pattern {i}: '{pattern.pattern}' -> matched={bool(matched)}, is_negation={is_negation}", file=sys.stderr)
-        
+
+        if debug_this_file and ("settings" in pattern.pattern.lower() or i < 5):
+            print(
+                f"# DEBUG: Pattern {i}: '{pattern.pattern}' -> matched={bool(matched)}, is_negation={is_negation}",
+                file=sys.stderr,
+            )
+
         if matched:
             if is_negation:
                 is_ignored = False  # Negation pattern un-ignores the file
             else:
-                is_ignored = True   # Normal pattern ignores the file
-            
+                is_ignored = True  # Normal pattern ignores the file
+
             if debug_this_file:
-                print(f"# DEBUG: Pattern {i} matched! Setting is_ignored={is_ignored}", file=sys.stderr)
-    
+                print(
+                    f"# DEBUG: Pattern {i} matched! Setting is_ignored={is_ignored}",
+                    file=sys.stderr,
+                )
+
     if debug_this_file:
-        print(f"# DEBUG: Final result for {relative_path_str}: is_ignored={is_ignored}", file=sys.stderr)
-    
+        print(
+            f"# DEBUG: Final result for {relative_path_str}: is_ignored={is_ignored}",
+            file=sys.stderr,
+        )
+
     return is_ignored
+
+
+def scrub_content(content: str, enabled: bool = True) -> str:
+    """
+    Attempt to detect and replace sensitive data in file content using scrubadub.
+
+    WARNING: This is a best-effort attempt at data scrubbing. The scrubadub library
+    may miss sensitive data or incorrectly identify non-sensitive data. Users must
+    review output before sharing to ensure no sensitive information remains.
+
+    Args:
+        content: The file content to process
+        enabled: Whether scrubbing is enabled (True by default)
+
+    Returns:
+        Scrubbed content if enabled and scrubadub is available, otherwise original content
+    """
+    if not enabled or not SCRUBADUB_AVAILABLE:
+        return content
+
+    try:
+        scrubber = scrubadub.Scrubber()
+        return scrubber.clean(content)
+    except Exception as e:
+        # If scrubbing fails, return original content and warn
+        print(f"# WARNING: scrubadub processing failed: {e}", file=sys.stderr)
+        return content
 
 
 def is_text_file(file_path):
@@ -334,7 +394,7 @@ def get_file_metadata(file_path):
     }
 
 
-def scan_directory(directory_path, debug=False):
+def scan_directory(directory_path, debug=False, scrub_data=True):
     """
     Recursively scan directory for text files and build index and content.
     """
@@ -346,13 +406,13 @@ def scan_directory(directory_path, debug=False):
     # Check if we're in a git repository
     git_root = is_git_repository(directory)
     compiled_patterns = []
-    
+
     if git_root:
         print(f"# Git repository detected at: {git_root}", file=sys.stderr)
         gitignore_patterns = get_gitignore_patterns(git_root)
         compiled_patterns = compile_gitignore_patterns(gitignore_patterns)
         print(f"# Loaded {len(gitignore_patterns)} gitignore patterns", file=sys.stderr)
-        
+
         # Debug: Show some patterns only if debug mode is enabled
         if debug and gitignore_patterns:
             print("# Sample patterns:", file=sys.stderr)
@@ -360,13 +420,41 @@ def scan_directory(directory_path, debug=False):
                 regex_pattern = gitignore_to_regex(pattern)
                 print(f"#   '{pattern}' -> '{regex_pattern}'", file=sys.stderr)
             if len(gitignore_patterns) > 5:
-                print(f"#   ... and {len(gitignore_patterns) - 5} more", file=sys.stderr)
+                print(
+                    f"#   ... and {len(gitignore_patterns) - 5} more", file=sys.stderr
+                )
+
+    # Check scrubadub availability and warn if needed
+    if scrub_data and not SCRUBADUB_AVAILABLE:
+        print(
+            "# WARNING: scrubadub not installed - sensitive data will NOT be processed",
+            file=sys.stderr,
+        )
+        print("# Install with: pip install scrubadub", file=sys.stderr)
+        scrub_data = False
 
     # Header explaining the file format
-    git_info = f"\n# Git repository: {git_root}" if git_root else "\n# Not in a git repository"
+    git_info = (
+        f"\n# Git repository: {git_root}" if git_root else "\n# Not in a git repository"
+    )
+    scrubbing_info = ""
+    if scrub_data and SCRUBADUB_AVAILABLE:
+        scrubbing_info = (
+            "\n# Content processed with scrubadub for sensitive data detection"
+        )
+        scrubbing_info += (
+            "\n# WARNING: Review output carefully - scrubadub may miss sensitive data"
+        )
+    elif not scrub_data:
+        scrubbing_info = "\n# Sensitive data scrubbing DISABLED (--noclean flag used)"
+    else:
+        scrubbing_info = (
+            "\n# Sensitive data scrubbing UNAVAILABLE (scrubadub not installed)"
+        )
+
     header = """# Blobify Text File Index
 # Generated: {datetime}
-# Source Directory: {directory}{git_info}
+# Source Directory: {directory}{git_info}{scrubbing_info}
 #
 # This file contains an index and contents of all text files found in the specified directory.
 # Format:
@@ -384,6 +472,7 @@ def scan_directory(directory_path, debug=False):
         datetime=datetime.datetime.now().isoformat(),
         directory=str(directory.absolute()),
         git_info=git_info,
+        scrubbing_info=scrubbing_info,
     )
 
     # Define patterns to ignore
@@ -430,7 +519,7 @@ def scan_directory(directory_path, debug=False):
         ".keyring",
         ".gnupg",
         "release",
-        "Release"
+        "Release",
     }
 
     # Helper function to check if path should be ignored
@@ -445,46 +534,58 @@ def scan_directory(directory_path, debug=False):
     files_ignored = 0
     files_checked = 0
     ignored_files = []  # Track ignored files for the index
-    
+
     for file_path in directory.rglob("*"):
-        if file_path.is_file() and not should_ignore(file_path) and is_text_file(file_path):
+        if (
+            file_path.is_file()
+            and not should_ignore(file_path)
+            and is_text_file(file_path)
+        ):
             files_checked += 1
-            
+
             # Get relative path for consistent cross-platform representation
             relative_path = file_path.relative_to(directory)
-            
+
             # Check gitignore if we're in a git repository
             is_git_ignored = False
             if git_root and compiled_patterns:
                 # Only check gitignore if the file is within the git repository
                 try:
                     git_relative_path = file_path.resolve().relative_to(git_root)
-                    git_relative_str = str(git_relative_path).replace('\\', '/')
-                    
-                    is_git_ignored = is_ignored_by_git(file_path, git_root, compiled_patterns, debug)
-                    
+                    git_relative_str = str(git_relative_path).replace("\\", "/")
+
+                    is_git_ignored = is_ignored_by_git(
+                        file_path, git_root, compiled_patterns, debug
+                    )
+
                     if is_git_ignored:
                         files_ignored += 1
                         ignored_files.append(relative_path)
                         if debug:
                             print(f"# IGNORED: {git_relative_str}", file=sys.stderr)
-                        
+
                 except ValueError as e:
                     # File is not within git repository, skip gitignore check
                     if debug:
-                        print(f"# NOT IN GIT REPO: {relative_path} (Error: {e})", file=sys.stderr)
-            
+                        print(
+                            f"# NOT IN GIT REPO: {relative_path} (Error: {e})",
+                            file=sys.stderr,
+                        )
+
             # Add to index regardless of whether it's ignored
             text_files.append((relative_path, file_path, is_git_ignored))
-            
+
             # Add to index list with appropriate marking
             if is_git_ignored:
                 index.append(f"{relative_path} [IGNORED BY GITIGNORE]")
             else:
                 index.append(str(relative_path))
-    
+
     if git_root:
-        print(f"# Ignored {files_ignored} files due to gitignore patterns", file=sys.stderr)
+        print(
+            f"# Ignored {files_ignored} files due to gitignore patterns",
+            file=sys.stderr,
+        )
 
     # Sort files by name for consistent output
     text_files.sort(key=lambda x: str(x[0]).lower())
@@ -506,10 +607,12 @@ def scan_directory(directory_path, debug=False):
         content.append(f"  Created: {metadata['created']}")
         content.append(f"  Modified: {metadata['modified']}")
         content.append(f"  Accessed: {metadata['accessed']}")
-        
+
         if is_ignored:
             content.append(f"  Status: IGNORED BY GITIGNORE")
-        
+        elif scrub_data and SCRUBADUB_AVAILABLE:
+            content.append(f"  Status: PROCESSED WITH SCRUBADUB")
+
         content.append("\nFILE_CONTENT:")
 
         if is_ignored:
@@ -518,7 +621,11 @@ def scan_directory(directory_path, debug=False):
             try:
                 with open(file_path, "r", encoding="utf-8") as f:
                     file_content = f.read()
-                content.append(file_content)
+
+                # Attempt to scrub content if enabled
+                processed_content = scrub_content(file_content, scrub_data)
+                content.append(processed_content)
+
             except Exception as e:
                 content.append(f"[Error reading file: {str(e)}]")
 
@@ -554,15 +661,26 @@ def main():
     setup_console()
 
     parser = argparse.ArgumentParser(
-        description="Recursively scan directory for text files and create index. Respects .gitignore when in a git repository."
+        description="Recursively scan directory for text files and create index. Respects .gitignore when in a git repository. Attempts to detect and replace sensitive data using scrubadub by default."
     )
     parser.add_argument("directory", help="Directory to scan")
     parser.add_argument("output", nargs="?", help="Output file (optional)")
-    parser.add_argument("--debug", action="store_true", help="Enable debug output for gitignore processing")
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug output for gitignore processing",
+    )
+    parser.add_argument(
+        "--noclean",
+        action="store_true",
+        help="Disable scrubadub processing of sensitive data (emails, names, etc.)",
+    )
     args = parser.parse_args()
 
     try:
-        result = scan_directory(args.directory, debug=args.debug)
+        result = scan_directory(
+            args.directory, debug=args.debug, scrub_data=not args.noclean
+        )
 
         # Remove BOM if present
         if result.startswith("\ufeff"):
