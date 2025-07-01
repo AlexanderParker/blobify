@@ -540,7 +540,9 @@ def get_file_metadata(file_path):
     }
 
 
-def scan_directory(directory_path, debug=False, scrub_data=True):
+def scan_directory(
+    directory_path, debug=False, scrub_data=True, include_line_numbers=True
+):
     """
     Recursively scan directory for text files and build index and content.
     """
@@ -782,6 +784,19 @@ def scan_directory(directory_path, debug=False, scrub_data=True):
 
                 # Attempt to scrub content if enabled
                 processed_content = scrub_content(file_content, scrub_data)
+
+                # Add line numbers if enabled
+                if include_line_numbers:
+                    lines = processed_content.split("\n")
+                    numbered_lines = []
+                    line_number_width = len(str(len(lines)))
+
+                    for i, line in enumerate(lines, 1):
+                        line_number = str(i).rjust(line_number_width)
+                        numbered_lines.append(f"{line_number}: {line}")
+
+                    processed_content = "\n".join(numbered_lines)
+
                 content.append(processed_content)
 
             except Exception as e:
@@ -833,11 +848,19 @@ def main():
         action="store_true",
         help="Disable scrubadub processing of sensitive data (emails, names, etc.)",
     )
+    parser.add_argument(
+        "--no-line-numbers",
+        action="store_true",
+        help="Disable line numbers in file content output",
+    )
     args = parser.parse_args()
 
     try:
         result = scan_directory(
-            args.directory, debug=args.debug, scrub_data=not args.noclean
+            args.directory,
+            debug=args.debug,
+            scrub_data=not args.noclean,
+            include_line_numbers=not args.no_line_numbers,
         )
 
         # Remove BOM if present

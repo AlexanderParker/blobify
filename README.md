@@ -1,15 +1,16 @@
 # Blobify
 
-A cross-platform Python utility for recursively scanning directories and creating comprehensive text file indexes with content extraction. Features intelligent Git integration that respects `.gitignore` patterns whilst maintaining visibility of ignored files, and **best-effort sensitive data detection** using scrubadub for safer sharing.
+A cross-platform Python utility for recursively scanning directories and creating comprehensive text file indexes with content extraction. Features intelligent Git integration that respects `.gitignore` patterns whilst maintaining visibility of ignored files, **best-effort sensitive data detection** using scrubadub for safer sharing, and **line numbers for easy reference**.
 
 ## Features
 
 - **Comprehensive Directory Scanning**: Recursively scans directories for text files
-- **Git Integration**: Automatically detects Git repositories and respects `.gitignore` patterns
+- **Git Integration**: Automatically detects Git repositories and respects `.gitignore` patterns with proper scoping
 - **Smart File Detection**: Uses MIME types, file extensions, and content analysis to identify text files
 - **Complete File Index**: Creates indexed listing of all discovered text files
 - **Content Extraction**: Includes full file contents for non-ignored files
-- **🆕 Sensitive Data Detection**: Uses Microsoft's scrubadub library to attempt detection and replacement of passwords, emails, credit cards, names, and other PII
+- **📊 Line Numbers**: Adds line numbers to file content for easy reference (can be disabled)
+- **🔒 Sensitive Data Detection**: Uses Microsoft's scrubadub library to attempt detection and replacement of passwords, emails, credit cards, names, and other PII
 - **Metadata Capture**: Records file size, creation time, modification time, and access time
 - **Security-Aware**: Automatically excludes security-sensitive files (certificates, keys, etc.)
 - **Cross-Platform**: Works on Windows, macOS, and Linux
@@ -36,6 +37,7 @@ A cross-platform Python utility for recursively scanning directories and creatin
 ### Step 1: Install Python Dependencies
 
 **Install scrubadub for sensitive data detection:**
+
 ```bash
 pip install scrubadub
 ```
@@ -49,6 +51,7 @@ pip install scrubadub
 1. **Download the script** to a tools directory (e.g., `C:\tools\blobify\blobify.py`)
 
 2. **Create a batch wrapper** for easy command-line access:
+
    - Create a file named `blobify.bat` in `C:\tools\` (or another directory in your PATH)
    - Add this content:
      ```batch
@@ -57,6 +60,7 @@ pip install scrubadub
      ```
 
 3. **Add to your PATH** (if `C:\tools` isn't already there):
+
    - Open System Properties → Advanced → Environment Variables
    - Edit your `PATH` variable and add `C:\tools`
    - Or use PowerShell as Administrator:
@@ -73,11 +77,13 @@ pip install scrubadub
 #### Alternative Windows Methods
 
 **Method 1: Direct Python execution**
+
 ```cmd
 python C:\tools\blobify\blobify.py [directory] [output]
 ```
 
 **Method 2: Create standalone executable** (requires pyinstaller):
+
 ```cmd
 pip install pyinstaller
 pyinstaller --onefile blobify.py
@@ -86,23 +92,26 @@ pyinstaller --onefile blobify.py
 #### Linux/Unix Installation
 
 1. **Download the script** to a local directory:
+
    ```bash
    mkdir -p ~/bin
-   wget -O ~/bin/blobify https://raw.githubusercontent.com/yourusername/blobify/main/blobify.py
+   wget -O ~/bin/blobify [URL]
    # or download manually to ~/bin/blobify
    ```
 
 2. **Make it executable**:
+
    ```bash
    chmod +x ~/bin/blobify
    ```
 
 3. **Add to your PATH** (if `~/bin` isn't already there):
+
    ```bash
    # For bash/zsh - add to ~/.bashrc or ~/.zshrc
    echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
    source ~/.bashrc
-   
+
    # For fish shell - add to ~/.config/fish/config.fish
    echo 'set -gx PATH $HOME/bin $PATH' >> ~/.config/fish/config.fish
    ```
@@ -115,15 +124,17 @@ pyinstaller --onefile blobify.py
 #### macOS Installation
 
 **Method 1: Using Homebrew** (if you have a Homebrew formula):
+
 ```bash
 brew install blobify
 ```
 
 **Method 2: Manual installation** (same as Linux):
+
 ```bash
 # Download to local bin directory
 mkdir -p ~/bin
-curl -o ~/bin/blobify https://raw.githubusercontent.com/yourusername/blobify/main/blobify.py
+curl -o ~/bin/blobify [URL]
 
 # Make executable and add shebang
 chmod +x ~/bin/blobify
@@ -134,9 +145,10 @@ source ~/.zshrc
 ```
 
 **Method 3: Using /usr/local/bin** (system-wide):
+
 ```bash
 # Requires sudo for system-wide installation
-sudo curl -o /usr/local/bin/blobify https://raw.githubusercontent.com/yourusername/blobify/main/blobify.py
+sudo curl -o /usr/local/bin/blobify [URL]
 sudo chmod +x /usr/local/bin/blobify
 ```
 
@@ -145,13 +157,16 @@ sudo chmod +x /usr/local/bin/blobify
 ### Basic Usage
 
 ```bash
-# Scan current directory with scrubadub processing (default)
+# Scan current directory with scrubadub processing and line numbers (default)
 blobify .
 
-# Scan project directory without scrubadub processing
+# Scan project directory without scrubadub processing, with line numbers
 blobify /path/to/project --noclean
 
-# Save output to file
+# Scan without line numbers
+blobify /path/to/project --no-line-numbers
+
+# Save output to file with all default options
 blobify /path/to/project project_files.txt
 
 # Debug mode to see gitignore processing
@@ -161,30 +176,30 @@ blobify /path/to/project --debug
 ### Windows Command Examples
 
 ```cmd
-# Scan current directory (scrubadub processing by default)
+# Scan current directory (scrubadub processing and line numbers by default)
 blobify .
 
-# Scan a project directory without scrubadub processing
-blobify C:\MyProject --noclean
+# Scan a project directory without scrubadub processing, no line numbers
+blobify C:\MyProject --noclean --no-line-numbers
 
-# Save output to file with scrubadub processing
+# Save output to file with line numbers and scrubadub processing
 blobify C:\MyProject project_files.txt
 
 # Debug mode to see gitignore processing
 blobify C:\MyProject --debug
 
-# Scan and copy to clipboard (with scrubadub processing)
+# Scan and copy to clipboard (with scrubadub processing and line numbers)
 blobify . | clip
 ```
 
 ### Linux/Unix/macOS Examples
 
 ```bash
-# Scan current directory (scrubadub processing by default)
+# Scan current directory (scrubadub processing and line numbers by default)
 blobify .
 
-# Scan project directory with output file, no scrubadub processing
-blobify /path/to/project --noclean project_index.txt
+# Scan project directory with output file, no scrubadub processing, no line numbers
+blobify /path/to/project --noclean --no-line-numbers project_index.txt
 
 # Debug mode to see gitignore processing
 blobify /path/to/project --debug
@@ -205,26 +220,80 @@ blobify . | grep -E "START_FILE.*\.py" | wc -l  # Count Python files
 ### Command-line Arguments
 
 ```
-blobify.py [-h] [--debug] [--noclean] directory [output]
+blobify.py [-h] [--debug] [--noclean] [--no-line-numbers] directory [output]
 ```
 
 - `directory`: The directory to scan (required)
 - `output`: Output file path (optional, defaults to stdout)
 - `--debug`: Enable debug output for Git ignore processing
 - `--noclean`: **Disable sensitive data anonymisation** (anonymisation is enabled by default)
+- `--no-line-numbers`: **Disable line numbers** in file content output (line numbers are enabled by default)
 - `-h`, `--help`: Show help message
 
-### 🆕 Data Anonymisation
+### 📊 Line Numbers
+
+**Blobify includes line numbers by default** to make file content easier to reference and analyse.
+
+#### Line Number Examples
+
+**Default behaviour (with line numbers):**
+
+```
+FILE_CONTENT:
+  1: #!/usr/bin/env python3
+  2:
+  3: import argparse
+  4: from pathlib import Path
+  5: import mimetypes
+  6: import datetime
+```
+
+**With `--no-line-numbers` flag:**
+
+```
+FILE_CONTENT:
+#!/usr/bin/env python3
+
+import argparse
+from pathlib import Path
+import mimetypes
+datetime
+```
+
+#### Line Number Control
+
+```bash
+# Include line numbers (default behaviour)
+blobify /path/to/project
+
+# Disable line numbers
+blobify /path/to/project --no-line-numbers
+
+# Check if line numbers are included
+blobify /path/to/project | head -20  # Look for numbered lines in output
+```
+
+#### Line Number Benefits
+
+- **Code review**: Easy reference to specific lines (`"Check line 42 in config.py"`)
+- **Debugging**: Quickly locate issues by line number
+- **AI analysis**: Helps AI tools provide more precise feedback with line references
+- **Documentation**: Reference specific parts of files in discussions
+- **Educational**: Useful for teaching and explaining code structure
+
+The line numbers automatically adjust their width based on the file size - a 10-line file uses single digits whilst a 1000-line file properly aligns with 4-digit line numbers.
+
+### 🔒 Data Anonymisation
 
 **Blobify anonymises sensitive data by default** to make file dumps safe for sharing, analysis, or debugging.
 
 #### What Gets Anonymised
 
-- **Email addresses**: `john.doe@company.com` → `{{EMAIL_ADDRESS}}`
+- **Email addresses**: `user@example.com` → `{{EMAIL_ADDRESS}}`
 - **Phone numbers**: `+1-555-123-4567` → `{{PHONE_NUMBER}}`
 - **Names**: `John Smith` → `{{PERSON}}`
 - **Credit card numbers**: `4111 1111 1111 1111` → `{{CREDIT_CARD}}`
-- **URLs with credentials**: `https://user:pass@api.com` → `https://{{USERNAME}}:{{PASSWORD}}@api.com`
+- **URLs with credentials**: `https://user:pass@example.com` → `https://{{USERNAME}}:{{PASSWORD}}@{{URL}}`
 - **Social security numbers** and other government IDs
 
 #### Anonymisation Control
@@ -243,13 +312,15 @@ blobify /path/to/project | head -20  # Look for anonymisation note in header
 #### Anonymous Output Indicators
 
 The output header will indicate anonymisation status:
+
 ```
-# Sensitive data anonymised using scrubadub    # ← Anonymisation enabled
-# Sensitive data anonymisation DISABLED        # ← --noclean used
-# Sensitive data anonymisation UNAVAILABLE     # ← scrubadub not installed
+# Sensitive data anonymised using scrubadub    # ✓ Anonymisation enabled
+# Sensitive data anonymisation DISABLED        # ✓ --noclean used
+# Sensitive data anonymisation UNAVAILABLE     # ✓ scrubadub not installed
 ```
 
 Individual files will also show status in metadata:
+
 ```
 FILE_METADATA:
   Path: config.py
@@ -257,7 +328,7 @@ FILE_METADATA:
   Created: 2025-06-16T12:34:56.123456
   Modified: 2025-06-16T12:34:56.123456
   Accessed: 2025-06-16T14:22:10.654321
-  Status: PROCESSED WITH SCRUBADUB           # ← Content processed by scrubadub
+  Status: PROCESSED WITH SCRUBADUB           # ✓ Content processed by scrubadub
 ```
 
 ### Git Integration
@@ -268,7 +339,10 @@ When scanning within a Git repository, Blobify automatically:
 - **Loads gitignore patterns** from:
   - Global gitignore file (`git config core.excludesfile`)
   - Repository-level `.gitignore`
-  - Directory-specific `.gitignore` files
+  - Directory-specific `.gitignore` files (only from non-ignored directories)
+- **Properly scopes gitignore rules**:
+  - Each `.gitignore` file only affects its containing directory and subdirectories
+  - Skips loading `.gitignore` files from already-ignored directories
 - **Respects all gitignore syntax**:
   - Wildcards (`*`, `**`, `?`)
   - Negation patterns (`!pattern`)
@@ -280,7 +354,9 @@ When scanning within a Git repository, Blobify automatically:
 The output is structured in two main sections:
 
 ### 1. File Index
+
 Lists all discovered files with clear marking of ignored files:
+
 ```
 # FILE INDEX
 ################################################################################
@@ -292,9 +368,11 @@ project.lock.json [IGNORED BY GITIGNORE]
 ```
 
 ### 2. File Contents
+
 Detailed sections for each file with metadata and content:
 
-#### Regular Files (Processed with scrubadub)
+#### Regular Files (Processed with scrubadub and line numbers)
+
 ```
 START_FILE: config.py
 
@@ -307,42 +385,18 @@ FILE_METADATA:
   Status: PROCESSED WITH SCRUBADUB
 
 FILE_CONTENT:
-DATABASE_URL = "{{URL}}"
-API_KEY = "{{API_KEY}}"
-CONTACT_EMAIL = "{{EMAIL_ADDRESS}}"
+ 1: DATABASE_URL = "{{URL}}"
+ 2: API_KEY = "{{API_KEY}}"
+ 3: CONTACT_EMAIL = "{{EMAIL_ADDRESS}}"
+ 4:
+ 5: def connect_database():
+ 6:     return connect(DATABASE_URL)
 
 END_FILE: config.py
 ```
 
-#### Package/Technical Files (Skipped scrubbing)
-```
-START_FILE: package-lock.json
+#### Regular Files (Not Processed, --noclean and --no-line-numbers used)
 
-FILE_METADATA:
-  Path: package-lock.json
-  Size: 18095 bytes
-  Created: 2025-06-19T19:40:11.803170
-  Modified: 2025-06-19T19:40:11.804168
-  Accessed: 2025-06-24T23:56:08.264306
-  Status: SKIPPED SCRUBBING (file type)
-
-FILE_CONTENT:
-{
-  "name": "myproject",
-  "lockfileVersion": 3,
-  "packages": {
-    "node_modules/@yargs/cliui": {
-      "version": "8.0.2",
-      "resolved": "https://registry.npmjs.org/@yargs/cliui/-/cliui-8.0.2.tgz",
-      "integrity": "sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA=="
-    }
-  }
-}
-
-END_FILE: package-lock.json
-```
-
-#### Regular Files (Not Processed, --noclean used)
 ```
 START_FILE: Program.cs
 
@@ -354,12 +408,24 @@ FILE_METADATA:
   Accessed: 2025-06-16T14:22:10.654321
 
 FILE_CONTENT:
-[actual file contents here - no scrubbing attempted]
+using System;
+
+namespace MyApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Console.WriteLine("Hello World!");
+        }
+    }
+}
 
 END_FILE: Program.cs
 ```
 
 #### Ignored Files
+
 ```
 START_FILE: local.settings.json
 
@@ -382,6 +448,7 @@ END_FILE: local.settings.json
 Blobify intelligently identifies text files using multiple methods:
 
 ### Supported Text File Extensions
+
 - Source code: `.py`, `.js`, `.ts`, `.java`, `.c`, `.cpp`, `.cs`, `.rb`, `.php`, `.go`, etc.
 - Web files: `.html`, `.css`, `.xml`, `.json`, `.yaml`
 - Documentation: `.md`, `.txt`, `.rst`, `.tex`
@@ -389,6 +456,7 @@ Blobify intelligently identifies text files using multiple methods:
 - Data files: `.csv`, `.log`, `.sql`
 
 ### Automatically Excluded Files
+
 - **Binary files**: Detected by content analysis and file signatures
 - **Security files**: Certificates (`.crt`, `.pem`), keys (`.key`, `.ppk`), keystores (`.jks`, `.p12`)
 - **System directories**: `.git`, `.svn`, `node_modules`, `__pycache__`, etc.
@@ -406,37 +474,46 @@ Blobify intelligently identifies text files using multiple methods:
 ## Debug Mode
 
 Use `--debug` flag to see detailed information about:
+
 - Git repository detection
-- Gitignore pattern loading and conversion
+- Gitignore pattern loading and conversion (including which .gitignore files are skipped)
 - File processing decisions
 - Pattern matching details
 - Anonymisation status
 
 Example debug output:
+
 ```
 # Git repository detected at: C:\Dev\Code\MyProject
-# Loaded 147 gitignore patterns
-# Sample patterns:
-#   'local.settings.json' -> '^(local\.settings\.json|.*/local\.settings\.json)
-#   '*.suo' -> '^([^/]*\.suo|.*/[^/]*\.suo)
+# Loaded 147 gitignore patterns from 8 locations
+# Gitignore locations and sample patterns:
+#   .: 25 patterns
+#     'local.settings.json' -> '^(local\.settings\.json|.*/local\.settings\.json)$'
+#     '*.suo' -> '^([^/]*\.suo|.*/[^/]*\.suo)$'
+#   src: 12 patterns
+# SKIPPING .gitignore in ignored directory: node_modules/some-package
 # Ignored 5 files due to gitignore patterns
 ```
 
 ## Security and Privacy Considerations
 
 ### Data Anonymisation Benefits
+
 - **Safe sharing**: Anonymised outputs can be shared without exposing sensitive data
 - **Debugging assistance**: Send anonymised code dumps to support teams
 - **Documentation**: Create sanitised examples for documentation
 - **Code analysis**: Use with AI tools without privacy concerns
 
 ### What Is NOT Anonymised
+
 - **File names and paths**: Directory structure remains intact
 - **Code structure**: Function names, class names, and logic flow preserved
 - **Comments**: Most code comments remain (unless they contain detected PII)
 - **Gitignored files**: These are excluded entirely, not anonymised
+- **Line numbers**: These are added after anonymisation and remain intact
 
 ### Recommendations
+
 - **Review output**: Always review anonymised output before sharing externally
 - **Use --noclean judiciously**: Only disable anonymisation when you're certain no sensitive data is present
 - **Test anonymisation**: Run on sample data to understand what gets anonymised
@@ -445,6 +522,7 @@ Example debug output:
 ## Performance Considerations
 
 - **Memory usage**: Proportional to total text content size
+- **Line numbering overhead**: Adds minimal processing time (~1-2%)
 - **Anonymisation overhead**: Adds ~10-20% processing time for text content
 - **Large repositories**: Git ignore patterns provide significant performance benefits by excluding build artifacts
 - **Network drives**: May be slower due to file system latency
@@ -452,19 +530,34 @@ Example debug output:
 
 ## Troubleshooting
 
+### Line Number Issues
+
+**Line numbers not appearing**
+
+- Check you haven't used the `--no-line-numbers` flag
+- Verify the file content section shows numbered lines
+
+**Line number alignment issues**
+
+- This is handled automatically - line numbers are right-aligned based on total lines in each file
+- Large files (1000+ lines) will have appropriately padded line numbers
+
 ### Anonymisation Issues
 
 **"scrubadub not installed" warning**
+
 ```bash
 pip install scrubadub
 ```
 
 **Anonymisation not working as expected**
+
 - Check the output header for anonymisation status
 - Use `--debug` to see processing details
 - Test with known sensitive data to verify detection
 
 **False positives in anonymisation**
+
 - scrubadub may over-anonymise some content
 - Use `--noclean` if you need exact original content
 - Consider this when sharing anonymised output
@@ -472,11 +565,13 @@ pip install scrubadub
 ### Windows-Specific Issues
 
 **"'blobify' is not recognised as an internal or external command"**
+
 - Ensure `C:\tools` (or your chosen directory) is in your PATH
 - Restart your command prompt after adding to PATH
 - Check that `blobify.bat` exists in the PATH directory
 
 **"Python not found"**
+
 - Ensure Python is installed and in your PATH
 - Try using `py` instead of `python` in the batch file:
   ```batch
@@ -485,21 +580,25 @@ pip install scrubadub
   ```
 
 **Unicode/encoding issues**
+
 - The script automatically handles UTF-8 encoding on Windows
 - If you see strange characters, ensure your terminal supports UTF-8
 
 ### Linux/Unix/macOS Issues
 
 **"blobify: command not found"**
+
 - Ensure the script is executable: `chmod +x ~/bin/blobify`
 - Check that `~/bin` is in your PATH: `echo $PATH`
 - Restart your terminal after modifying PATH
 
 **"Permission denied"**
+
 - Make sure the script has execute permissions: `ls -la ~/bin/blobify`
 - For system directories, you may need `sudo`
 
 **"Python not found" or shebang issues**
+
 - Ensure Python 3 is installed: `python3 --version`
 - Check the shebang line points to correct Python: `which python3`
 - Alternative shebang options:
@@ -509,18 +608,21 @@ pip install scrubadub
   ```
 
 **Git integration not working**
+
 - Ensure Git is installed and in PATH: `git --version`
 - Check Git repository status: `git status`
 
 **scrubadub installation issues**
+
 - Some systems may need additional dependencies:
+
   ```bash
   # On Ubuntu/Debian
   sudo apt-get install python3-dev
-  
+
   # On CentOS/RHEL
   sudo yum install python3-devel
-  
+
   # Then install scrubadub
   pip3 install scrubadub
   ```
@@ -528,48 +630,57 @@ pip install scrubadub
 ## Use Cases
 
 ### Development and Debugging
+
 ```bash
-# Create anonymised dump for bug reports
+# Create anonymised dump for bug reports with line numbers
 blobify /path/to/buggy-project bug-report.txt
 
-# Share code structure without sensitive data
-blobify . | mail -s "Code review" teammate@company.com
+# Share code structure without sensitive data, with line references
+blobify . | mail -s "Code review" team@company.com
 ```
 
 ### Documentation and Training
+
 ```bash
-# Create sanitised examples for documentation
+# Create sanitised examples for documentation with line numbers
 blobify /path/to/example-project --noclean examples.txt
 
-# Generate training materials
-blobify /learning/projects training-code-dump.txt
+# Generate training materials without line numbers for cleaner reading
+blobify /learning/projects --no-line-numbers training-code-dump.txt
 ```
 
 ### Code Analysis and AI Assistance
+
 ```bash
-# Safe input for AI code analysis tools
+# Safe input for AI code analysis tools (with line numbers for precise feedback)
 blobify . | your-ai-analysis-tool
 
-# Create datasets for code analysis (anonymised)
+# Create datasets for code analysis (anonymised, with line numbers)
 blobify /opensource/projects dataset.txt
+
+# Clean input for AI without line number noise
+blobify . --no-line-numbers | ai-code-processor
 ```
 
 ### Security Auditing
+
 ```bash
-# Audit what would be exposed (with anonymisation)
+# Audit what would be exposed (with anonymisation and line numbers)
 blobify /production/code security-review.txt
 
-# Check what sensitive data exists (disable anonymisation)
+# Check what sensitive data exists (disable anonymisation, keep line numbers)
 blobify /production/code --noclean internal-audit.txt
 ```
 
 ## Contributing
 
 Feel free to open issues or submit pull requests for:
+
 - Bug fixes and performance improvements
 - Additional file type support
 - Enhanced Git integration features
 - Improved anonymisation patterns
+- Line numbering enhancements
 - Documentation improvements
 - Cross-platform compatibility enhancements
 
@@ -579,6 +690,7 @@ This project is open source and available under the MIT License.
 
 ## Version History
 
+- **v4.0**: Added line numbers with optional disable, improved gitignore scoping and directory exclusion
 - **v3.0**: Added automatic sensitive data anonymisation with scrubadub integration
 - **v2.0**: Added Git integration with `.gitignore` support
 - **v1.0**: Initial release with basic directory scanning and text file detection
