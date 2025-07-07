@@ -4,8 +4,8 @@ Blobify - Package your entire codebase into a single text file for AI consumptio
 
 from .main import main
 
-__version__ = "5.0.0"
-__author__ = "Your Name"
-__email__ = "your.email@example.com"
+__version__ = "0.1.0"
+__author__ = "Alexander Parker"
+__email__ = "alexofparker@gmail.com"
 
 __all__ = ["main"]
