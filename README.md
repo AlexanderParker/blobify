@@ -7,6 +7,7 @@ A Python utility that packages your entire codebase into a single text file for 
 **Primary use case:** Get AI help with your entire codebase by sharing a single comprehensive file.
 
 **What it does:**
+
 - Scans your project directory recursively
 - Combines all text files into one structured document
 - Respects `.gitignore` patterns automatically
@@ -15,6 +16,7 @@ A Python utility that packages your entire codebase into a single text file for 
 - Allows custom file filtering with `.blobify` configuration
 
 **Perfect for:**
+
 - "Help me refactor this entire Flask app"
 - "Review my project structure and suggest improvements"
 - "Find bugs across my codebase"
@@ -30,7 +32,11 @@ A Python utility that packages your entire codebase into a single text file for 
 pip install git+https://github.com/AlexanderParker/blobify.git
 
 # With data scrubbing support
-pip install "git+https://github.com/AlexanderParker/blobify.git[scrubbing]"
+pip install "blobify[scrubbing] @ git+https://github.com/AlexanderParker/blobify.git"
+
+# Alternative (install scrubbing separately)
+pip install git+https://github.com/AlexanderParker/blobify.git
+pip install scrubadub
 ```
 
 ### Install from Source
@@ -99,6 +105,7 @@ If you find the default exclusions don't go far enough, or exclude files you'd l
 ```
 
 **Pattern syntax:**
+
 - `+pattern` - Include files matching pattern (overrides gitignore and default exclusions)
 - `-pattern` - Exclude files matching pattern
 - Use `*` for wildcards, `**` for recursive directories
@@ -122,6 +129,7 @@ To disable scrubbing and preserve original content, use the `--noclean` flag.
 The tool generates a structured text file with two sections:
 
 ### File Index
+
 ```
 # FILE INDEX
 ################################################################################
@@ -132,6 +140,7 @@ debug.log [EXCLUDED BY .blobify]
 ```
 
 ### File Contents
+
 ```
 START_FILE: src/main.py
 
@@ -145,9 +154,9 @@ FILE_METADATA:
 FILE_CONTENT:
   1: #!/usr/bin/env python3
   2: import os
-  3: 
+  3:
   4: API_KEY = "{{API_KEY}}"  # Scrubbed sensitive data
-  5: 
+  5:
   6: def main():
   7:     print("Hello World")
 
@@ -157,36 +166,27 @@ END_FILE: src/main.py
 ## Advanced Features
 
 ### Git Integration
+
 - Automatically detects git repositories
 - Respects all `.gitignore` files and patterns
 - Supports global gitignore configuration
 - Shows ignored files in index but excludes content
 
 ### File Type Detection
+
 - Intelligently identifies text files using extensions, MIME types, and content analysis
 - Automatically excludes binary files and security files (certificates, keys, etc.)
 - Skips large directories like `node_modules`, `venv`, `__pycache__` for performance
 
 ### Line Numbers
+
 Line numbers are included by default to make it easier to reference specific code:
+
 - **With AI tools**: "Check line 42 in config.py"
 - **Code reviews**: Easy line-by-line discussions
 - **Debugging**: Quickly locate issues
 
 Disable with `--no-line-numbers` if you prefer cleaner output.
-
-## Use Cases
-
-### Getting AI Help with Your Project
-```bash
-# Package entire codebase for AI analysis
-blobify . my-project.txt
-
-# Then paste the contents into Claude/ChatGPT with prompts like:
-# "Review this code and suggest improvements"
-# "Help me add user authentication to this app"
-# "Find potential security issues in this codebase"
-```
 
 ## License
 
