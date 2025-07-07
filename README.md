@@ -7,7 +7,6 @@ A Python utility that packages your entire codebase into a single text file for 
 **Primary use case:** Get AI help with your entire codebase by sharing a single comprehensive file.
 
 **What it does:**
-
 - Scans your project directory recursively
 - Combines all text files into one structured document
 - Respects `.gitignore` patterns automatically
@@ -16,7 +15,6 @@ A Python utility that packages your entire codebase into a single text file for 
 - Allows custom file filtering with `.blobify` configuration
 
 **Perfect for:**
-
 - "Help me refactor this entire Flask app"
 - "Review my project structure and suggest improvements"
 - "Find bugs across my codebase"
@@ -25,31 +23,31 @@ A Python utility that packages your entire codebase into a single text file for 
 
 ## Installation
 
-### Install Python Dependencies
+### Install directly from GitHub
 
 ```bash
-pip install scrubadub  # Optional but recommended for data scrubbing
+# Basic installation
+pip install git+https://github.com/AlexanderParker/blobify.git
+
+# With data scrubbing support
+pip install "git+https://github.com/AlexanderParker/blobify.git[scrubbing]"
 ```
 
-### Install Blobify
-
-**Windows:**
-
-1. Download `blobify.py` to `C:\tools\blobify\`
-2. Create `C:\tools\blobify.bat` with:
-   ```batch
-   @echo off
-   python "%~dp0blobify\blobify.py" %*
-   ```
-3. Add `C:\tools` to your PATH
-
-**Linux/macOS:**
+### Install from Source
 
 ```bash
-# Download to ~/bin/blobify and make executable
-chmod +x ~/bin/blobify
-# Ensure ~/bin is in your PATH
+# Clone the repository
+git clone https://github.com/AlexanderParker/blobify.git
+cd blobify
+
+# Install in development mode
+pip install -e .
+
+# Or install with scrubbing support
+pip install -e .[scrubbing]
 ```
+
+**Note:** The `scrubbing` extra installs `scrubadub` for automatic sensitive data detection and replacement.
 
 ## Basic Usage
 
@@ -101,7 +99,6 @@ If you find the default exclusions don't go far enough, or exclude files you'd l
 ```
 
 **Pattern syntax:**
-
 - `+pattern` - Include files matching pattern (overrides gitignore and default exclusions)
 - `-pattern` - Exclude files matching pattern
 - Use `*` for wildcards, `**` for recursive directories
@@ -125,7 +122,6 @@ To disable scrubbing and preserve original content, use the `--noclean` flag.
 The tool generates a structured text file with two sections:
 
 ### File Index
-
 ```
 # FILE INDEX
 ################################################################################
@@ -136,7 +132,6 @@ debug.log [EXCLUDED BY .blobify]
 ```
 
 ### File Contents
-
 ```
 START_FILE: src/main.py
 
@@ -150,9 +145,9 @@ FILE_METADATA:
 FILE_CONTENT:
   1: #!/usr/bin/env python3
   2: import os
-  3:
+  3: 
   4: API_KEY = "{{API_KEY}}"  # Scrubbed sensitive data
-  5:
+  5: 
   6: def main():
   7:     print("Hello World")
 
@@ -162,22 +157,18 @@ END_FILE: src/main.py
 ## Advanced Features
 
 ### Git Integration
-
 - Automatically detects git repositories
 - Respects all `.gitignore` files and patterns
 - Supports global gitignore configuration
 - Shows ignored files in index but excludes content
 
 ### File Type Detection
-
 - Intelligently identifies text files using extensions, MIME types, and content analysis
 - Automatically excludes binary files and security files (certificates, keys, etc.)
 - Skips large directories like `node_modules`, `venv`, `__pycache__` for performance
 
 ### Line Numbers
-
 Line numbers are included by default to make it easier to reference specific code:
-
 - **With AI tools**: "Check line 42 in config.py"
 - **Code reviews**: Easy line-by-line discussions
 - **Debugging**: Quickly locate issues
@@ -187,7 +178,6 @@ Disable with `--no-line-numbers` if you prefer cleaner output.
 ## Use Cases
 
 ### Getting AI Help with Your Project
-
 ```bash
 # Package entire codebase for AI analysis
 blobify . my-project.txt
