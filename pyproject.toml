@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "blobify"
+version = "5.0.0"
+authors = [{ name = "Your Name", email = "your.email@example.com" }]
+description = "Package your entire codebase into a single text file for AI consumption"
+readme = "README.md"
+requires-python = ">=3.6"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Text Processing :: General",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
+]
+keywords = [
+    "ai",
+    "code",
+    "analysis",
+    "codebase",
+    "text",
+    "file",
+    "extraction",
+    "git",
+]
+
+[project.optional-dependencies]
+scrubbing = ["scrubadub>=1.2.0"]
+
+[project.scripts]
+blobify = "blobify.main:main"
+
+[project.urls]
+Homepage = "https://github.com/yourusername/blobify"
+"Bug Reports" = "https://github.com/yourusername/blobify/issues"
+"Source" = "https://github.com/yourusername/blobify"
+
+[tool.setuptools.packages.find]
+# Automatically find packages
