@@ -27,35 +27,13 @@ blobify . | clip
 
 ## Installation
 
-### Install directly from GitHub
-
 ```bash
 # Basic installation
 pip install git+https://github.com/AlexanderParker/blobify.git
 
 # With data scrubbing support
 pip install "blobify[scrubbing] @ git+https://github.com/AlexanderParker/blobify.git"
-
-# Alternative (install scrubbing separately)
-pip install git+https://github.com/AlexanderParker/blobify.git
-pip install scrubadub
 ```
-
-### Install from Source
-
-```bash
-# Clone the repository
-git clone https://github.com/AlexanderParker/blobify.git
-cd blobify
-
-# Install in development mode
-pip install -e .
-
-# Or install with scrubbing support
-pip install -e .[scrubbing]
-```
-
-**Note:** The `scrubbing` extra installs `scrubadub` for automatic sensitive data detection and replacement.
 
 ## Basic Usage
 
@@ -140,31 +118,6 @@ src/main.py
 config/settings.json [IGNORED BY GITIGNORE]
 debug.log [EXCLUDED BY .blobify]
 ```
-
-### File Contents
-
-```
-START_FILE: src/main.py
-
-FILE_METADATA:
-  Path: src/main.py
-  Size: 1234 bytes
-  Created: 2025-01-15T10:30:45.123456
-  Modified: 2025-01-15T10:30:45.123456
-  Status: PROCESSED WITH SCRUBADUB
-
-FILE_CONTENT:
-  1: #!/usr/bin/env python3
-  2: import os
-  3:
-  4: API_KEY = "{{API_KEY}}"  # Scrubbed sensitive data
-  5:
-  6: def main():
-  7:     print("Hello World")
-
-END_FILE: src/main.py
-```
-
 ## Advanced Features
 
 ### Git Integration
