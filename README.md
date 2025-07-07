@@ -4,7 +4,17 @@ A Python utility that packages your entire codebase into a single text file for 
 
 ## Why Use Blobify?
 
-**Primary use case:** Get AI help with your entire codebase by sharing a single comprehensive file.
+**Primary use case:** Get AI help with your entire codebase by sharing a single comprehensive file, e.g.
+
+```bash
+# Package entire codebase for AI analysis and copy to clipboard (windows)
+blobify . | clip
+
+# Then paste the contents into Claude/ChatGPT with prompts like:
+# "Review this code and suggest improvements"
+# "Add oauth user authentication to this app"
+# "Find potential security issues in this codebase"
+```
 
 **What it does:**
 
@@ -14,14 +24,6 @@ A Python utility that packages your entire codebase into a single text file for 
 - Scrubs sensitive data (emails, API keys, etc.) by default
 - Includes line numbers for precise AI feedback
 - Allows custom file filtering with `.blobify` configuration
-
-**Perfect for:**
-
-- "Help me refactor this entire Flask app"
-- "Review my project structure and suggest improvements"
-- "Find bugs across my codebase"
-- "Generate documentation for this project"
-- "Help me add a new feature that touches multiple files"
 
 ## Installation
 
