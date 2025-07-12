@@ -402,23 +402,27 @@ def gitignore_to_regex(pattern: str) -> str:
     pattern = pattern.replace("?", "[^/]")
 
     # Build the final pattern
-    if is_root_relative:
-        if is_directory_only:
-            # For directory-only patterns like "/build/", match the directory and everything inside it
-            final_pattern = "^(" + pattern + "|" + pattern + "/.*)$"
+    if is_directory_only:
+        # For directory patterns like "*.egg-info/" or "build/":
+        # Match the directory name itself AND anything inside it
+        if is_root_relative:
+            # Root-relative directory pattern like "/build/"
+            final_pattern = f"^({pattern}|{pattern}/.*)$"
         else:
-            final_pattern = "^" + pattern + "$"
+            # Non-root-relative directory pattern like "*.egg-info/" or "node_modules/"
+            # This should match:
+            # 1. The directory at root: "some.egg-info"
+            # 2. Contents of directory at root: "some.egg-info/file.txt"  
+            # 3. The directory in subdirs: "path/some.egg-info"
+            # 4. Contents in subdirs: "path/some.egg-info/file.txt"
+            final_pattern = f"^({pattern}|{pattern}/.*|.*/{pattern}|.*/{pattern}/.*)$"
     else:
-        if is_directory_only:
-            # For directory patterns like "*.egg-info/", match:
-            # 1. The directory itself: *.egg-info
-            # 2. Anything in the directory: *.egg-info/*
-            # 3. Any subdirectory with the same pattern: some/path/*.egg-info
-            # 4. Anything in those subdirectories: some/path/*.egg-info/*
-            final_pattern = "^(" + pattern + "|" + pattern + "/.*|.*/" + pattern + "|.*/" + pattern + "/.*)$"
+        # Regular file patterns
+        if is_root_relative:
+            final_pattern = f"^{pattern}$"
         else:
-            final_pattern = "^(" + pattern + "|.*/" + pattern + ")$"
-
+            final_pattern = f"^({pattern}|.*/{pattern})$"
+    
     return final_pattern
 
 
@@ -430,109 +434,51 @@ def is_ignored_by_git(
 ) -> bool:
     """
     Check if a file should be ignored based on gitignore patterns.
-    Only considers patterns from gitignore files in parent directories.
     """
-    # Get relative path from git root - use resolved paths for consistency
+    # Get relative path from git root
     try:
         relative_path = file_path.resolve().relative_to(git_root)
     except ValueError:
-        # File is not within the git repository, so it can't be ignored by git
         return False
 
-    # Convert to forward slashes for consistent matching
     relative_path_str = str(relative_path).replace("\\", "/")
 
-    # Check if file is ignored by walking up the directory tree
+    # Check each gitignore file's patterns
     is_ignored = False
-    current_path = relative_path
-
-    # Debug: For specific files, show detailed matching
-    debug_this_file = debug and (
-        relative_path_str == "local.settings.json"
-        or "settings" in relative_path_str.lower()
-        or "egg-info" in relative_path_str.lower()  # Add debugging for egg-info files
-    )
-
-    if debug_this_file:
-        print(f"# DEBUG: Processing {relative_path_str}", file=sys.stderr)
-
-    # Also check if any parent directory is ignored (for files inside ignored directories)
-    parts = relative_path.parts
-    for i in range(len(parts)):
-        # Check each parent path
-        parent_path = "/".join(parts[:i+1])
-        
-        # Walk up the directory tree, checking gitignore patterns at each level
-        test_current_path = Path(*parts[:i+1]) if i > 0 else relative_path
-        
-        while True:
-            current_dir = (
-                git_root / test_current_path.parent
-                if test_current_path.parent != Path(".")
-                else git_root
-            )
-
-            # Check if this directory has gitignore patterns
-            if current_dir in patterns_by_dir:
-                # Calculate the path relative to this gitignore file
-                if test_current_path.parent == Path("."):
-                    # File is at git root level
-                    test_path = parent_path
+    
+    # We need to check patterns from git root and all parent directories
+    # Start from the git root and work our way down
+    for gitignore_dir, patterns in patterns_by_dir.items():
+        if not patterns:
+            continue
+            
+        # Calculate the path relative to this gitignore's directory
+        try:
+            if gitignore_dir == git_root:
+                test_path = relative_path_str
+            else:
+                # This gitignore is in a subdirectory
+                gitignore_relative = gitignore_dir.relative_to(git_root)
+                if relative_path.is_relative_to(gitignore_relative):
+                    # File is in or under this gitignore's directory
+                    test_path = str(relative_path.relative_to(gitignore_relative)).replace("\\", "/")
                 else:
-                    # Calculate path relative to the current directory
-                    try:
-                        test_relative_path = Path(*parts[:i+1]).relative_to(test_current_path.parent)
-                        test_path = str(test_relative_path).replace("\\", "/")
-                    except ValueError:
-                        test_path = parent_path
+                    # File is not under this gitignore's influence
+                    continue
+        except ValueError:
+            continue
 
-                # Compile patterns for this directory
-                compiled_patterns = compile_gitignore_patterns(patterns_by_dir[current_dir])
+        # Compile and test patterns
+        compiled_patterns = compile_gitignore_patterns(patterns)
 
-                if debug_this_file:
-                    print(
-                        f"# DEBUG: Checking patterns from {current_dir.relative_to(git_root) if current_dir != git_root else '.'} for path: {test_path}",
-                        file=sys.stderr,
-                    )
+        for pattern, is_negation in compiled_patterns:
+            matched = pattern.match(test_path)
 
-                # Check patterns from this directory
-                for j, (pattern, is_negation) in enumerate(compiled_patterns):
-                    matched = pattern.match(test_path)
-
-                    if debug_this_file and ("egg-info" in pattern.pattern.lower() or "settings" in pattern.pattern.lower() or j < 3):
-                        print(
-                            f"# DEBUG: Pattern {j}: '{pattern.pattern}' -> matched={bool(matched)}, is_negation={is_negation}",
-                            file=sys.stderr,
-                        )
-
-                    if matched:
-                        if is_negation:
-                            is_ignored = False  # Negation pattern un-ignores the file
-                        else:
-                            is_ignored = True  # Normal pattern ignores the file
-
-                        if debug_this_file:
-                            print(
-                                f"# DEBUG: Pattern {j} matched! Setting is_ignored={is_ignored}",
-                                file=sys.stderr,
-                            )
-                        
-                        # If we found a match for a parent directory, the file should be ignored
-                        if is_ignored and i < len(parts) - 1:
-                            if debug_this_file:
-                                print(f"# DEBUG: Parent directory {parent_path} is ignored, so file is ignored", file=sys.stderr)
-                            return True
-
-            # Move up one directory level
-            if test_current_path.parent == Path("."):
-                break
-            test_current_path = test_current_path.parent
-
-    if debug_this_file:
-        print(
-            f"# DEBUG: Final result for {relative_path_str}: is_ignored={is_ignored}",
-            file=sys.stderr,
-        )
+            if matched:
+                if is_negation:
+                    is_ignored = False
+                else:
+                    is_ignored = True
 
     return is_ignored
 
@@ -863,16 +809,49 @@ def scan_directory(
     }
 
     # Helper function to check if a directory should be skipped entirely
-    def should_skip_directory(dir_path):
+    def should_skip_directory(dir_path, directory, git_root, patterns_by_dir, blobify_include_patterns, blobify_exclude_patterns, debug):
         """Check if a directory should be skipped entirely for performance."""
         dir_name = dir_path.name
-        # Skip if directory name is in ignored patterns
-        if dir_name in IGNORED_PATTERNS:
-            return True
-        # Skip if directory starts with . (unless we have .blobify overrides)
-        if dir_name.startswith(".") and not blobify_include_patterns:
-            return True
-        return False
+        
+        # First check hardcoded patterns (but allow .blobify overrides)
+        IGNORED_PATTERNS = {
+            ".git", ".svn", ".hg", ".idea", ".vscode", ".vs",
+            "node_modules", "bower_components", "vendor", "packages",
+            "venv", "env", ".env", ".venv", "__pycache__", ".pytest_cache", ".mypy_cache",
+            "dist", "build", "target", "out", "obj", "Debug",
+            ".npm", ".yarn", "pip-wheel-metadata",
+            "certs", "certificates", "keys", "private", "ssl", ".ssh", "tls",
+            ".gpg", ".keyring", ".gnupg", "release", "Release", "package-lock.json"
+        }
+        
+        is_hardcoded_ignored = dir_name in IGNORED_PATTERNS or (dir_name.startswith(".") and not blobify_include_patterns)
+        
+        # Check gitignore patterns if we're in a git repo
+        is_git_ignored = False
+        if git_root and patterns_by_dir:
+            try:
+                is_git_ignored = is_ignored_by_git(dir_path, git_root, patterns_by_dir, debug)
+            except Exception:
+                pass
+        
+        # If the directory would normally be ignored, check if .blobify overrides include it
+        if (is_hardcoded_ignored or is_git_ignored) and git_root and blobify_include_patterns:
+            # Check if any .blobify include pattern would match this directory or files within it
+            should_include_final = apply_blobify_overrides(
+                dir_path, 
+                git_root, 
+                not (is_git_ignored or is_hardcoded_ignored),  # Current inclusion status
+                blobify_include_patterns,
+                blobify_exclude_patterns,
+                debug
+            )
+            
+            if should_include_final:
+                # .blobify wants to include this directory, so don't skip it
+                return False
+        
+        # Skip if ignored by hardcoded patterns or gitignore (and not overridden by .blobify)
+        return is_hardcoded_ignored or is_git_ignored
 
     # Helper function to check if individual files should be ignored by default patterns
     def should_ignore_by_default(file_path):
@@ -896,11 +875,8 @@ def scan_directory(
             dirs_to_remove = []
             for dir_name in dirs:
                 dir_path = root_path / dir_name
-                if should_skip_directory(dir_path):
+                if should_skip_directory(dir_path, directory, git_root, patterns_by_dir, blobify_include_patterns, blobify_exclude_patterns, debug):
                     dirs_to_remove.append(dir_name)
-                    if debug:
-                        rel_dir = dir_path.relative_to(directory)
-                        print(f"# SKIPPING directory: {rel_dir}", file=sys.stderr)
             
             # Remove skipped directories from dirs list (modifies os.walk behavior)
             for dir_name in dirs_to_remove:
