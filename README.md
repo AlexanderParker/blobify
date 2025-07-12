@@ -65,6 +65,23 @@ blobify . --debug
 - `--no-line-numbers` - Disable line numbers in output
 - `--debug` - Show detailed processing information
 
+**Default exclusions:** `.git`, `.svn`, `node_modules`, `venv`, `env`, `__pycache__`, `dist`, `build`, `target`, `.idea`, `.vscode`, and other common build/cache directories.
+
+The tool processes files in this order: default exclusions → gitignore → .blobify excludes → .blobify includes
+
+## Git Integration
+
+- Automatically detects git repositories
+- Respects all `.gitignore` files and patterns
+- Shows ignored files in index but excludes content
+
+## File Type Detection
+
+- Attempts to identify text files using extensions, MIME types, and content analysis
+- Automatically excludes binary files and security files (certificates, keys, etc.)
+- Skips large directories like `node_modules`, `venv`, `__pycache__` for performance
+- Specific files and directories can be included / excluded with a .blobify file
+
 ## .blobify Configuration
 
 Blobify automatically excludes common directories like `node_modules`, `venv`, `__pycache__`, `.git`, build folders, and files starting with `.` for performance and relevance.
@@ -87,39 +104,13 @@ If you find the default exclusions don't go far enough, or exclude files you'd l
 -backup/
 ```
 
-**Pattern syntax:**
+**Blobify file Pattern syntax:**
 
-- `+pattern` - Include files matching pattern (overrides gitignore and default exclusions)
-- `-pattern` - Exclude files matching pattern
+- `+pattern` - Include files matching pattern with `+` (overrides gitignore and default exclusions)
+- `-pattern` - Exclude files matching pattern with `-`
 - Use `*` for wildcards, `**` for recursive directories
-- Patterns are relative to git root
-
-**Default exclusions:** `.git`, `.svn`, `node_modules`, `venv`, `env`, `__pycache__`, `dist`, `build`, `target`, `.idea`, `.vscode`, and other common build/cache directories.
-
-The tool processes files in this order: default exclusions → gitignore → .blobify excludes → .blobify includes
-
-## Data Scrubbing
-
-Blobify uses the `scrubadub` library to automatically detect and replace sensitive data like emails, names, phone numbers, and API keys with placeholder text (e.g., `{{EMAIL_ADDRESS}}`).
-
-**⚠️ Important Security Notice:**
-This is a best-effort attempt at data scrubbing. scrubadub may miss sensitive data or incorrectly identify non-sensitive data. **Always review output before sharing externally.**
-
-To disable scrubbing and preserve original content, use the `--noclean` flag.
-
-## Git Integration
-
-- Automatically detects git repositories
-- Respects all `.gitignore` files and patterns
-- Supports global gitignore configuration
-- Shows ignored files in index but excludes content
-
-## File Type Detection
-
-- Attempts to identify text files using extensions, MIME types, and content analysis
-- Automatically excludes binary files and security files (certificates, keys, etc.)
-- Skips large directories like `node_modules`, `venv`, `__pycache__` for performance
-- Specific files and directories can be included / excluded with a .blobify file
+- Patterns are relative to git root, so assumes you are operating in a git repo directory structure.
+- Patterns are parsed sequentially
 
 ## Line Numbers
 
@@ -130,6 +121,15 @@ Line numbers are included by default to make it easier to reference specific cod
 - **Debugging**: Quickly locate issues
 
 Disable with `--no-line-numbers` if you prefer cleaner output.
+
+## Data Scrubbing
+
+Blobify uses the `scrubadub` library to automatically detect and replace sensitive data like emails, names, phone numbers, and API keys with placeholder text (e.g., `{{EMAIL_ADDRESS}}`).
+
+**⚠️ Important Security Notice:**
+This is a best-effort attempt at data scrubbing. scrubadub may miss sensitive data or incorrectly identify non-sensitive data. **Always review output before sharing externally.**
+
+To disable scrubbing and preserve original content, use the `--noclean` flag.
 
 ## License
 
