@@ -750,9 +750,31 @@ def scan_directory(
             dir_path = root_path / dir_name
             
             # Check built-in patterns
-            if dir_name in IGNORED_PATTERNS or dir_name.startswith("."):
+            if dir_name in IGNORED_PATTERNS:
                 dirs_to_remove.append(dir_name)
                 continue
+            
+            # Check if directory starts with . but allow if .blobify might include files from it
+            if dir_name.startswith("."):
+                # Check if any .blobify include patterns might match files in this directory
+                should_skip_dot_dir = True
+                if blobify_include_patterns:
+                    dir_relative = dir_path.relative_to(git_root) if git_root else dir_path.relative_to(directory)
+                    dir_relative_str = str(dir_relative).replace("\\", "/")
+                    
+                    for pattern in blobify_include_patterns:
+                        # Check if pattern could match files in this directory
+                        if (pattern.startswith(dir_relative_str + "/") or 
+                            pattern.startswith(dir_name + "/") or
+                            fnmatch.fnmatch(dir_relative_str, pattern.split('/')[0] if '/' in pattern else pattern)):
+                            should_skip_dot_dir = False
+                            if debug:
+                                print(f"# NOT SKIPPING dot directory '{dir_relative}' due to .blobify pattern '{pattern}'", file=sys.stderr)
+                            break
+                
+                if should_skip_dot_dir:
+                    dirs_to_remove.append(dir_name)
+                    continue
             
             # Check if directory is gitignored
             if git_root and patterns_by_dir:
