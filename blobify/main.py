@@ -122,60 +122,6 @@ def matches_pattern(file_path: Path, base_path: Path, pattern: str) -> bool:
         return False
 
 
-def apply_blobify_overrides(
-    file_path: Path, 
-    git_root: Path, 
-    is_currently_included: bool,
-    include_patterns: List[str],
-    exclude_patterns: List[str],
-    debug: bool = False
-) -> bool:
-    """
-    Apply .blobify file overrides to determine if file should be included.
-    
-    Args:
-        file_path: Path to the file being checked
-        git_root: Git repository root
-        is_currently_included: Current inclusion status based on gitignore
-        include_patterns: Patterns from .blobify file starting with +
-        exclude_patterns: Patterns from .blobify file starting with -
-        debug: Enable debug output
-    
-    Returns:
-        Final inclusion status after applying overrides
-    """
-    try:
-        relative_path = file_path.resolve().relative_to(git_root)
-        relative_path_str = str(relative_path).replace("\\", "/")
-    except ValueError:
-        # File not within git repository, return current status
-        return is_currently_included
-    
-    final_status = is_currently_included
-    
-    # Apply exclude patterns first (- patterns)
-    for pattern in exclude_patterns:
-        if matches_pattern(file_path, git_root, pattern):
-            final_status = False
-            if debug:
-                print(f"# .blobify EXCLUDE: '{relative_path_str}' matches exclude pattern '{pattern}'", file=sys.stderr)
-            break
-    
-    # Apply include patterns (+ patterns) - these override excludes
-    for pattern in include_patterns:
-        if matches_pattern(file_path, git_root, pattern):
-            final_status = True
-            if debug:
-                print(f"# .blobify INCLUDE: '{relative_path_str}' matches include pattern '{pattern}'", file=sys.stderr)
-            break
-    
-    if debug and final_status != is_currently_included:
-        action = "INCLUDED" if final_status else "EXCLUDED"
-        print(f"# .blobify OVERRIDE: '{relative_path_str}' {action} by .blobify patterns", file=sys.stderr)
-    
-    return final_status
-
-
 def get_gitignore_patterns(
     git_root: Path, debug: bool = False
 ) -> Dict[Path, List[str]]:
@@ -660,11 +606,11 @@ def scan_directory(
 ):
     """
     Recursively scan directory for text files and build index and content.
+    Uses a two-sweep approach:
+    1. First sweep: Apply gitignore and built-in exclusions
+    2. Second sweep: Apply .blobify overrides
     """
     directory = Path(directory_path)
-    text_files = []
-    index = []
-    content = []
 
     # Check if we're in a git repository
     git_root = is_git_repository(directory)
@@ -683,25 +629,6 @@ def scan_directory(
 
         # Load .blobify configuration
         blobify_include_patterns, blobify_exclude_patterns = read_blobify_config(git_root, debug)
-        
-        # Debug: Show some patterns only if debug mode is enabled
-        if debug and patterns_by_dir:
-            print("# Gitignore locations and sample patterns:", file=sys.stderr)
-            for gitignore_dir, patterns in list(patterns_by_dir.items())[:3]:
-                rel_dir = (
-                    gitignore_dir.relative_to(git_root)
-                    if gitignore_dir != git_root
-                    else "."
-                )
-                print(f"#   {rel_dir}: {len(patterns)} patterns", file=sys.stderr)
-                for pattern in patterns[:2]:
-                    regex_pattern = gitignore_to_regex(pattern)
-                    print(f"#     '{pattern}' -> '{regex_pattern}'", file=sys.stderr)
-            if len(patterns_by_dir) > 3:
-                print(
-                    f"#   ... and {len(patterns_by_dir) - 3} more locations",
-                    file=sys.stderr,
-                )
 
     # Check scrubadub availability and warn if needed
     if scrub_data and not SCRUBADUB_AVAILABLE:
@@ -760,7 +687,7 @@ def scan_directory(
         scrubbing_info=scrubbing_info,
     )
 
-    # Define patterns to ignore
+    # Define patterns to ignore (built-in exclusions)
     IGNORED_PATTERNS = {
         # Dot folders
         ".git",
@@ -808,197 +735,245 @@ def scan_directory(
         "package-lock.json",
     }
 
-    # Helper function to check if a directory should be skipped entirely
-    def should_skip_directory(dir_path, directory, git_root, patterns_by_dir, blobify_include_patterns, blobify_exclude_patterns, debug):
-        """Check if a directory should be skipped entirely for performance."""
-        dir_name = dir_path.name
+    # FIRST SWEEP: Apply gitignore and built-in exclusions
+    print("# First sweep: applying gitignore and built-in exclusions", file=sys.stderr)
+    
+    all_files = []
+    gitignored_directories = []  # Track gitignored directories to show in index
+    
+    for root, dirs, files in os.walk(directory):
+        root_path = Path(root)
         
-        # First check hardcoded patterns (but allow .blobify overrides)
-        IGNORED_PATTERNS = {
-            ".git", ".svn", ".hg", ".idea", ".vscode", ".vs",
-            "node_modules", "bower_components", "vendor", "packages",
-            "venv", "env", ".env", ".venv", "__pycache__", ".pytest_cache", ".mypy_cache",
-            "dist", "build", "target", "out", "obj", "Debug",
-            ".npm", ".yarn", "pip-wheel-metadata",
-            "certs", "certificates", "keys", "private", "ssl", ".ssh", "tls",
-            ".gpg", ".keyring", ".gnupg", "release", "Release", "package-lock.json"
-        }
-        
-        is_hardcoded_ignored = dir_name in IGNORED_PATTERNS or (dir_name.startswith(".") and not blobify_include_patterns)
-        
-        # Check gitignore patterns if we're in a git repo
-        is_git_ignored = False
-        if git_root and patterns_by_dir:
-            try:
-                is_git_ignored = is_ignored_by_git(dir_path, git_root, patterns_by_dir, debug)
-            except Exception:
-                pass
-        
-        # If the directory would normally be ignored, check if .blobify overrides include it
-        if (is_hardcoded_ignored or is_git_ignored) and git_root and blobify_include_patterns:
-            # Check if any .blobify include pattern would match this directory or files within it
-            should_include_final = apply_blobify_overrides(
-                dir_path, 
-                git_root, 
-                not (is_git_ignored or is_hardcoded_ignored),  # Current inclusion status
-                blobify_include_patterns,
-                blobify_exclude_patterns,
-                debug
-            )
+        # Skip directories based on built-in patterns
+        dirs_to_remove = []
+        for dir_name in dirs:
+            dir_path = root_path / dir_name
             
-            if should_include_final:
-                # .blobify wants to include this directory, so don't skip it
-                return False
+            # Check built-in patterns
+            if dir_name in IGNORED_PATTERNS or dir_name.startswith("."):
+                dirs_to_remove.append(dir_name)
+                continue
+            
+            # Check if directory is gitignored
+            if git_root and patterns_by_dir:
+                try:
+                    is_dir_ignored = is_ignored_by_git(dir_path, git_root, patterns_by_dir, debug)
+                    if is_dir_ignored:
+                        # Add directory to gitignored list but don't walk into it
+                        relative_dir = dir_path.relative_to(directory)
+                        gitignored_directories.append(relative_dir)
+                        dirs_to_remove.append(dir_name)
+                        if debug:
+                            print(f"# SKIPPING gitignored directory: {relative_dir}", file=sys.stderr)
+                        continue
+                except Exception:
+                    pass
         
-        # Skip if ignored by hardcoded patterns or gitignore (and not overridden by .blobify)
-        return is_hardcoded_ignored or is_git_ignored
+        for dir_name in dirs_to_remove:
+            dirs.remove(dir_name)
+        
+        # Collect all text files that pass sweep 1
+        for file_name in files:
+            file_path = root_path / file_name
+            if is_text_file(file_path):
+                # Skip files with built-in ignored names
+                if file_name in IGNORED_PATTERNS or file_name.startswith("."):
+                    continue
+                
+                # Check gitignore if we're in a git repo
+                is_git_ignored = False
+                if git_root and patterns_by_dir:
+                    try:
+                        is_git_ignored = is_ignored_by_git(file_path, git_root, patterns_by_dir, debug)
+                    except Exception:
+                        pass
+                
+                # Add all files to the list (including gitignored ones for the index)
+                relative_path = file_path.relative_to(directory)
+                all_files.append({
+                    'path': file_path,
+                    'relative_path': relative_path,
+                    'is_git_ignored': is_git_ignored,
+                    'is_blobify_excluded': False,
+                    'is_blobify_included': False,  # Track if included by .blobify
+                    'include_in_output': not is_git_ignored  # Include if not git ignored
+                })
 
-    # Helper function to check if individual files should be ignored by default patterns
-    def should_ignore_by_default(file_path):
-        """Check if a file should be ignored by default patterns (for individual files)."""
-        file_name = file_path.name
-        # Check if filename is in ignored patterns
-        if file_name in IGNORED_PATTERNS:
-            return True
-        # Check if file starts with . (unless we have .blobify overrides that might include it)
-        if file_name.startswith(".") and not blobify_include_patterns:
-            return True
-        return False
+    print(f"# First sweep result: {len(all_files)} files", file=sys.stderr)
 
-    # Helper function to walk directory tree efficiently, skipping ignored directories
-    def walk_directory_efficiently(start_path):
-        """Generator that yields files while skipping ignored directories."""
-        for root, dirs, files in os.walk(start_path):
+    # SECOND SWEEP: Apply .blobify rules to build additions and removals
+    files_to_add = []
+    files_to_remove = []
+    
+    if git_root and (blobify_include_patterns or blobify_exclude_patterns):
+        print("# Second sweep: applying .blobify patterns", file=sys.stderr)
+        
+        # Find ALL files again (including gitignored ones) for pattern matching
+        all_possible_files = []
+        for root, dirs, files in os.walk(directory):
             root_path = Path(root)
             
-            # Filter out directories that should be skipped entirely
+            # Only skip built-in patterns, not gitignore
             dirs_to_remove = []
             for dir_name in dirs:
-                dir_path = root_path / dir_name
-                if should_skip_directory(dir_path, directory, git_root, patterns_by_dir, blobify_include_patterns, blobify_exclude_patterns, debug):
+                if dir_name in IGNORED_PATTERNS or dir_name.startswith("."):
                     dirs_to_remove.append(dir_name)
             
-            # Remove skipped directories from dirs list (modifies os.walk behavior)
             for dir_name in dirs_to_remove:
                 dirs.remove(dir_name)
             
-            # Yield files from current directory
             for file_name in files:
                 file_path = root_path / file_name
-                if is_text_file(file_path):
-                    yield file_path
-
-    # Recursively find all files using efficient directory walking
-    files_ignored = 0
-    files_checked = 0
-    files_blobify_excluded = 0
-    ignored_files = []  # Track ignored files for the index
-    blobify_excluded_files = []  # Track .blobify excluded files
-
-    for file_path in walk_directory_efficiently(directory):
-        # Check if file should be ignored by default patterns (for individual files)
-        is_default_ignored = should_ignore_by_default(file_path)
+                if file_name in IGNORED_PATTERNS or file_name.startswith("."):
+                    continue
+                all_possible_files.append(file_path)
         
-        files_checked += 1
-
-        # Get relative path for consistent cross-platform representation
-        relative_path = file_path.relative_to(directory)
+        # Apply .blobify patterns in order (both + and - patterns)
+        all_blobify_patterns = []
+        for pattern in blobify_exclude_patterns:
+            all_blobify_patterns.append(('-', pattern))
+        for pattern in blobify_include_patterns:
+            all_blobify_patterns.append(('+', pattern))
         
-        # Check gitignore if we're in a git repository
-        is_git_ignored = False
-        is_blobify_excluded = False
+        # Sort patterns to maintain the order they appeared in the .blobify file
+        # We need to reconstruct the original order from the file
+        original_patterns = []
+        if git_root:
+            blobify_file = git_root / ".blobify"
+            if blobify_file.exists():
+                try:
+                    with open(blobify_file, "r", encoding="utf-8", errors="ignore") as f:
+                        for line in f:
+                            line = line.strip()
+                            if line and not line.startswith("#"):
+                                if line.startswith("+"):
+                                    pattern = line[1:].strip()
+                                    if pattern:
+                                        original_patterns.append(('+', pattern))
+                                elif line.startswith("-"):
+                                    pattern = line[1:].strip()
+                                    if pattern:
+                                        original_patterns.append(('-', pattern))
+                except (IOError, OSError):
+                    pass
         
-        if git_root and patterns_by_dir:
-            # Only check gitignore if the file is within the git repository
-            try:
-                git_relative_path = file_path.resolve().relative_to(git_root)
-                git_relative_str = str(git_relative_path).replace("\\", "/")
+        # If we couldn't read the original order, fall back to exclude-then-include
+        if not original_patterns:
+            original_patterns = all_blobify_patterns
+        
+        # Apply patterns in original file order
+        for op, pattern in original_patterns:
+            for file_path in all_possible_files:
+                if matches_pattern(file_path, git_root, pattern):
+                    relative_path = file_path.relative_to(directory)
+                    
+                    if op == '+':  # Include pattern
+                        # Check if this pattern matches the exact file path (no wildcards in the match)
+                        relative_path_str = str(relative_path).replace("\\", "/")
+                        is_exact_file_match = (
+                            relative_path_str == pattern or
+                            (not ("*" in pattern or "?" in pattern) and not pattern.endswith("/"))
+                        )
+                        
+                        # If it's not an exact file match, check if it's a text file
+                        if not is_exact_file_match and not is_text_file(file_path):
+                            continue
+                        
+                        # Check if this file is already in our all_files list
+                        found_existing = False
+                        for file_info in all_files:
+                            if file_info['relative_path'] == relative_path:
+                                # File exists, if it was gitignored or excluded, include it
+                                file_info['is_git_ignored'] = False
+                                file_info['is_blobify_excluded'] = False
+                                file_info['is_blobify_included'] = True
+                                file_info['include_in_output'] = True
+                                found_existing = True
+                                if debug:
+                                    print(f"# .blobify INCLUDE: '{relative_path}' by pattern '{pattern}'", file=sys.stderr)
+                                break
+                        
+                        # If not in list at all, add it (but check files_to_add for duplicates)
+                        if not found_existing:
+                            # Check if already in files_to_add
+                            already_in_to_add = False
+                            for existing_file in files_to_add:
+                                if existing_file['relative_path'] == relative_path:
+                                    already_in_to_add = True
+                                    break
+                            
+                            if not already_in_to_add:
+                                files_to_add.append({
+                                    'path': file_path,
+                                    'relative_path': relative_path,
+                                    'is_git_ignored': False,
+                                    'is_blobify_excluded': False,
+                                    'is_blobify_included': True,
+                                    'include_in_output': True
+                                })
+                                bypass_msg = " (bypassing text file check)" if is_exact_file_match else ""
+                                if debug:
+                                    print(f"# .blobify ADD: '{relative_path}' matches pattern '{pattern}'{bypass_msg}", file=sys.stderr)
+                            elif debug:
+                                print(f"# .blobify ALREADY ADDED: '{relative_path}' matches pattern '{pattern}' but already in list", file=sys.stderr)
+                    
+                    else:  # Exclude pattern (op == '-')
+                        # Check if this file is in our all_files list or files_to_add
+                        relative_path = file_path.relative_to(directory)
+                        
+                        # Remove from all_files if present
+                        for file_info in all_files:
+                            if file_info['relative_path'] == relative_path:
+                                file_info['include_in_output'] = False
+                                file_info['is_blobify_excluded'] = True
+                                file_info['is_blobify_included'] = False
+                                if debug:
+                                    print(f"# .blobify EXCLUDE: '{relative_path}' by pattern '{pattern}'", file=sys.stderr)
+                                break
+                        
+                        # Remove from files_to_add if present
+                        files_to_add = [f for f in files_to_add if f['relative_path'] != relative_path]
+        
+        print(f"# Second sweep: {len(files_to_add)} files to add, {len(files_to_remove)} files to remove", file=sys.stderr)
+    
+    # Apply sweep 2 results to sweep 1
+    # Remove files marked for removal (this is now handled in the pattern processing above)
+    for file_to_remove in files_to_remove:
+        file_to_remove['include_in_output'] = False
+        file_to_remove['is_blobify_excluded'] = True
+    
+    # Add files marked for addition
+    all_files.extend(files_to_add)
 
-                is_git_ignored = is_ignored_by_git(
-                    file_path, git_root, patterns_by_dir, debug
-                )
+    # Count final results
+    included_files = [f for f in all_files if f['include_in_output']]
+    git_ignored_files = [f for f in all_files if f['is_git_ignored']]
+    blobify_excluded_files = [f for f in all_files if f['is_blobify_excluded']]
+    
+    print(f"# Final results: {len(included_files)} included, {len(git_ignored_files)} git ignored, {len(blobify_excluded_files)} blobify excluded", file=sys.stderr)
 
-                # Apply .blobify overrides
-                # Start with the assumption that files are included unless gitignored or default ignored
-                should_include_after_gitignore = not (is_git_ignored or is_default_ignored)
-                should_include_final = apply_blobify_overrides(
-                    file_path, 
-                    git_root, 
-                    should_include_after_gitignore,
-                    blobify_include_patterns,
-                    blobify_exclude_patterns,
-                    debug
-                )
-                
-                # Determine final status
-                if (is_git_ignored or is_default_ignored) and should_include_final:
-                    # File was ignored but .blobify included it
-                    is_git_ignored = False
-                    is_default_ignored = False
-                    if debug:
-                        print(f"# .blobify OVERRIDE: '{git_relative_str}' INCLUDED by .blobify patterns", file=sys.stderr)
-                elif not (is_git_ignored or is_default_ignored) and not should_include_final:
-                    # File was not ignored but .blobify excluded it
-                    is_blobify_excluded = True
-
-                if is_git_ignored:
-                    files_ignored += 1
-                    ignored_files.append(relative_path)
-                    if debug:
-                        print(f"# IGNORED: {git_relative_str}", file=sys.stderr)
-                elif is_blobify_excluded:
-                    files_blobify_excluded += 1
-                    blobify_excluded_files.append(relative_path)
-                    if debug:
-                        print(f"# .blobify EXCLUDED: {git_relative_str}", file=sys.stderr)
-
-            except ValueError as e:
-                # File is not within git repository, skip gitignore check
-                if debug:
-                    print(
-                        f"# NOT IN GIT REPO: {relative_path} (Error: {e})",
-                        file=sys.stderr,
-                    )
-        else:
-            # No git repository - just apply default ignoring and .blobify overrides
-            if is_default_ignored and blobify_include_patterns:
-                # Check if .blobify patterns would include this file
-                for pattern in blobify_include_patterns:
-                    if matches_pattern(file_path, directory, pattern):
-                        is_default_ignored = False
-                        if debug:
-                            print(f"# .blobify INCLUDE (no git): '{relative_path}' matches include pattern '{pattern}'", file=sys.stderr)
-                        break
-
-        # Skip files that are still marked as default ignored (unless overridden by .blobify)
-        if is_default_ignored:
-            continue
-
-        # Add to index regardless of whether it's ignored or excluded
-        text_files.append((relative_path, file_path, is_git_ignored, is_blobify_excluded))
-
-        # Add to index list with appropriate marking
-        if is_git_ignored:
+    # Build index and content
+    index = []
+    content = []
+    
+    # Sort all files for consistent output
+    all_files.sort(key=lambda x: str(x['relative_path']).lower())
+    
+    # Add gitignored directories to the index
+    for dir_path in sorted(gitignored_directories, key=lambda x: str(x).lower()):
+        index.append(f"{dir_path} [IGNORED BY GITIGNORE]")
+    
+    # Build index for files
+    for file_info in all_files:
+        relative_path = file_info['relative_path']
+        if file_info.get('is_blobify_included', False):
+            index.append(f"{relative_path} [INCLUDED BY .blobify]")
+        elif file_info['is_git_ignored']:
             index.append(f"{relative_path} [IGNORED BY GITIGNORE]")
-        elif is_blobify_excluded:
+        elif file_info['is_blobify_excluded']:
             index.append(f"{relative_path} [EXCLUDED BY .blobify]")
         else:
             index.append(str(relative_path))
-
-    if git_root:
-        print(
-            f"# Ignored {files_ignored} files due to gitignore patterns",
-            file=sys.stderr,
-        )
-        if files_blobify_excluded > 0:
-            print(
-                f"# Excluded {files_blobify_excluded} files due to .blobify patterns",
-                file=sys.stderr,
-            )
-
-    # Sort files by name for consistent output
-    text_files.sort(key=lambda x: str(x[0]).lower())
-    index.sort(key=str.lower)
 
     # Build index section
     index_section = "# FILE INDEX\n" + "#" * 80 + "\n"
@@ -1006,7 +981,13 @@ def scan_directory(
     index_section += "\n\n# FILE CONTENTS\n" + "#" * 80 + "\n"
 
     # Build content section
-    for relative_path, file_path, is_ignored, is_blobify_excluded in text_files:
+    for file_info in all_files:
+        file_path = file_info['path']
+        relative_path = file_info['relative_path']
+        is_git_ignored = file_info['is_git_ignored']
+        is_blobify_excluded = file_info['is_blobify_excluded']
+        is_blobify_included = file_info.get('is_blobify_included', False)
+        
         metadata = get_file_metadata(file_path)
 
         content.append("\nSTART_FILE: {}\n".format(relative_path))
@@ -1017,7 +998,9 @@ def scan_directory(
         content.append(f"  Modified: {metadata['modified']}")
         content.append(f"  Accessed: {metadata['accessed']}")
 
-        if is_ignored:
+        if is_blobify_included:
+            content.append(f"  Status: INCLUDED BY .blobify")
+        elif is_git_ignored:
             content.append(f"  Status: IGNORED BY GITIGNORE")
         elif is_blobify_excluded:
             content.append(f"  Status: EXCLUDED BY .blobify")
@@ -1026,7 +1009,7 @@ def scan_directory(
 
         content.append("\nFILE_CONTENT:")
 
-        if is_ignored:
+        if is_git_ignored:
             content.append("[Content excluded - file ignored by .gitignore]")
         elif is_blobify_excluded:
             content.append("[Content excluded - file excluded by .blobify]")
