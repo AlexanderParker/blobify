@@ -403,9 +403,21 @@ def gitignore_to_regex(pattern: str) -> str:
 
     # Build the final pattern
     if is_root_relative:
-        final_pattern = "^" + pattern + "$"
+        if is_directory_only:
+            # For directory-only patterns like "/build/", match the directory and everything inside it
+            final_pattern = "^(" + pattern + "|" + pattern + "/.*)$"
+        else:
+            final_pattern = "^" + pattern + "$"
     else:
-        final_pattern = "^(" + pattern + "|.*/" + pattern + ")$"
+        if is_directory_only:
+            # For directory patterns like "*.egg-info/", match:
+            # 1. The directory itself: *.egg-info
+            # 2. Anything in the directory: *.egg-info/*
+            # 3. Any subdirectory with the same pattern: some/path/*.egg-info
+            # 4. Anything in those subdirectories: some/path/*.egg-info/*
+            final_pattern = "^(" + pattern + "|" + pattern + "/.*|.*/" + pattern + "|.*/" + pattern + "/.*)$"
+        else:
+            final_pattern = "^(" + pattern + "|.*/" + pattern + ")$"
 
     return final_pattern
 
@@ -438,69 +450,83 @@ def is_ignored_by_git(
     debug_this_file = debug and (
         relative_path_str == "local.settings.json"
         or "settings" in relative_path_str.lower()
+        or "egg-info" in relative_path_str.lower()  # Add debugging for egg-info files
     )
 
     if debug_this_file:
         print(f"# DEBUG: Processing {relative_path_str}", file=sys.stderr)
 
-    # Walk up the directory tree, checking gitignore patterns at each level
-    while True:
-        current_dir = (
-            git_root / current_path.parent
-            if current_path.parent != Path(".")
-            else git_root
-        )
+    # Also check if any parent directory is ignored (for files inside ignored directories)
+    parts = relative_path.parts
+    for i in range(len(parts)):
+        # Check each parent path
+        parent_path = "/".join(parts[:i+1])
+        
+        # Walk up the directory tree, checking gitignore patterns at each level
+        test_current_path = Path(*parts[:i+1]) if i > 0 else relative_path
+        
+        while True:
+            current_dir = (
+                git_root / test_current_path.parent
+                if test_current_path.parent != Path(".")
+                else git_root
+            )
 
-        # Check if this directory has gitignore patterns
-        if current_dir in patterns_by_dir:
-            # Calculate the path relative to this gitignore file
-            if current_path.parent == Path("."):
-                # File is at git root level
-                test_path = relative_path_str
-            else:
-                # Calculate path relative to the current directory
-                try:
-                    test_relative_path = relative_path.relative_to(current_path.parent)
-                    test_path = str(test_relative_path).replace("\\", "/")
-                except ValueError:
-                    test_path = relative_path_str
+            # Check if this directory has gitignore patterns
+            if current_dir in patterns_by_dir:
+                # Calculate the path relative to this gitignore file
+                if test_current_path.parent == Path("."):
+                    # File is at git root level
+                    test_path = parent_path
+                else:
+                    # Calculate path relative to the current directory
+                    try:
+                        test_relative_path = Path(*parts[:i+1]).relative_to(test_current_path.parent)
+                        test_path = str(test_relative_path).replace("\\", "/")
+                    except ValueError:
+                        test_path = parent_path
 
-            # Compile patterns for this directory
-            compiled_patterns = compile_gitignore_patterns(patterns_by_dir[current_dir])
+                # Compile patterns for this directory
+                compiled_patterns = compile_gitignore_patterns(patterns_by_dir[current_dir])
 
-            if debug_this_file:
-                print(
-                    f"# DEBUG: Checking patterns from {current_dir.relative_to(git_root) if current_dir != git_root else '.'}",
-                    file=sys.stderr,
-                )
-                print(f"# DEBUG: Test path: {test_path}", file=sys.stderr)
-
-            # Check patterns from this directory
-            for i, (pattern, is_negation) in enumerate(compiled_patterns):
-                matched = pattern.match(test_path)
-
-                if debug_this_file and ("settings" in pattern.pattern.lower() or i < 3):
+                if debug_this_file:
                     print(
-                        f"# DEBUG: Pattern {i}: '{pattern.pattern}' -> matched={bool(matched)}, is_negation={is_negation}",
+                        f"# DEBUG: Checking patterns from {current_dir.relative_to(git_root) if current_dir != git_root else '.'} for path: {test_path}",
                         file=sys.stderr,
                     )
 
-                if matched:
-                    if is_negation:
-                        is_ignored = False  # Negation pattern un-ignores the file
-                    else:
-                        is_ignored = True  # Normal pattern ignores the file
+                # Check patterns from this directory
+                for j, (pattern, is_negation) in enumerate(compiled_patterns):
+                    matched = pattern.match(test_path)
 
-                    if debug_this_file:
+                    if debug_this_file and ("egg-info" in pattern.pattern.lower() or "settings" in pattern.pattern.lower() or j < 3):
                         print(
-                            f"# DEBUG: Pattern {i} matched! Setting is_ignored={is_ignored}",
+                            f"# DEBUG: Pattern {j}: '{pattern.pattern}' -> matched={bool(matched)}, is_negation={is_negation}",
                             file=sys.stderr,
                         )
 
-        # Move up one directory level
-        if current_path.parent == Path("."):
-            break
-        current_path = current_path.parent
+                    if matched:
+                        if is_negation:
+                            is_ignored = False  # Negation pattern un-ignores the file
+                        else:
+                            is_ignored = True  # Normal pattern ignores the file
+
+                        if debug_this_file:
+                            print(
+                                f"# DEBUG: Pattern {j} matched! Setting is_ignored={is_ignored}",
+                                file=sys.stderr,
+                            )
+                        
+                        # If we found a match for a parent directory, the file should be ignored
+                        if is_ignored and i < len(parts) - 1:
+                            if debug_this_file:
+                                print(f"# DEBUG: Parent directory {parent_path} is ignored, so file is ignored", file=sys.stderr)
+                            return True
+
+            # Move up one directory level
+            if test_current_path.parent == Path("."):
+                break
+            test_current_path = test_current_path.parent
 
     if debug_this_file:
         print(
