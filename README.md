@@ -41,6 +41,9 @@ pip install "blobify[scrubbing] @ git+https://github.com/AlexanderParker/blobify
 # Scan current directory
 blobify .
 
+# Scan current directory to clipboard (windows)
+blobify . | clip
+
 # Save to file
 blobify /path/to/project output.txt
 
@@ -104,36 +107,21 @@ This is a best-effort attempt at data scrubbing. scrubadub may miss sensitive da
 
 To disable scrubbing and preserve original content, use the `--noclean` flag.
 
-## Output Format
-
-The tool generates a structured text file with two sections:
-
-### File Index
-
-```
-# FILE INDEX
-################################################################################
-.pre-commit-config.yaml
-src/main.py
-config/settings.json [IGNORED BY GITIGNORE]
-debug.log [EXCLUDED BY .blobify]
-```
-## Advanced Features
-
-### Git Integration
+## Git Integration
 
 - Automatically detects git repositories
 - Respects all `.gitignore` files and patterns
 - Supports global gitignore configuration
 - Shows ignored files in index but excludes content
 
-### File Type Detection
+## File Type Detection
 
-- Intelligently identifies text files using extensions, MIME types, and content analysis
+- Attempts to identify text files using extensions, MIME types, and content analysis
 - Automatically excludes binary files and security files (certificates, keys, etc.)
 - Skips large directories like `node_modules`, `venv`, `__pycache__` for performance
+- Specific files and directories can be included / excluded with a .blobify file
 
-### Line Numbers
+## Line Numbers
 
 Line numbers are included by default to make it easier to reference specific code:
 
