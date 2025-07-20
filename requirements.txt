@@ -1,2 +1,0 @@
-# Optional dependencies for enhanced functionality
-scrubadub>=1.2.0  # For sensitive data detection and replacement

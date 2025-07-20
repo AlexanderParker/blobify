@@ -1042,7 +1042,7 @@ def scan_directory(
             content.append("[Content excluded - file excluded by .blobify]")
         else:
             try:
-                with open(file_path, "r", encoding="utf-8") as f:
+                with open(file_path, "r", encoding="utf-8", errors="strict") as f:
                     file_content = f.read()
 
                 # Attempt to scrub content if enabled
@@ -1060,7 +1060,19 @@ def scan_directory(
 
                     processed_content = "\n".join(numbered_lines)
 
-                content.append(processed_content)
+                    # Add line numbers if enabled
+                    if include_line_numbers:
+                        lines = processed_content.split("\n")
+                        numbered_lines = []
+                        line_number_width = len(str(len(lines)))
+
+                        for i, line in enumerate(lines, 1):
+                            line_number = str(i).rjust(line_number_width)
+                            numbered_lines.append(f"{line_number}: {line}")
+
+                        processed_content = "\n".join(numbered_lines)
+
+                    content.append(processed_content)
 
             except Exception as e:
                 content.append(f"[Error reading file: {str(e)}]")
@@ -1070,31 +1082,15 @@ def scan_directory(
     return header + index_section + "".join(content)
 
 
-def setup_console():
-    """
-    Set up console for proper UTF-8 output on Windows
-    """
-    if sys.platform == "win32":
-        # Configure stdout
-        if sys.stdout.isatty():
-            # Terminal output
-            sys.stdout.reconfigure(encoding="utf-8")
-        else:
-            # Piped output
-            sys.stdout = io.TextIOWrapper(
-                sys.stdout.buffer,
-                encoding="utf-8",
-                errors="replace",
-                line_buffering=True,
-            )
-
-        # Configure stderr
-        sys.stderr.reconfigure(encoding="utf-8")
-
-
 def main():
-    # Set up proper console encoding
-    setup_console()
+    # Fix Windows Unicode output by replacing stdout with UTF-8 wrapper
+    if sys.platform == "win32":
+        sys.stdout = io.TextIOWrapper(
+            sys.stdout.buffer, 
+            encoding='utf-8', 
+            errors='surrogateescape',
+            newline='\n'
+        )
 
     parser = argparse.ArgumentParser(
         description="Recursively scan directory for text files and create index. Respects .gitignore when in a git repository. Supports .blobify configuration files for pattern-based overrides. Attempts to detect and replace sensitive data using scrubadub by default."
@@ -1116,6 +1112,11 @@ def main():
         action="store_true",
         help="Disable line numbers in file content output",
     )
+    parser.add_argument(
+        "--clip",
+        action="store_true",
+        help="Copy output to clipboard",
+    )
     args = parser.parse_args()
 
     try:
@@ -1133,6 +1134,38 @@ def main():
         if args.output:
             with open(args.output, "w", encoding="utf-8") as f:
                 f.write(result)
+        elif args.clip:
+            try:
+                if sys.platform == "win32":
+                    # Simple file-based approach that preserves UTF-8
+                    import tempfile
+                    import subprocess
+                    with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', delete=False, suffix='.txt') as f:
+                        f.write(result)
+                        temp_file = f.name
+                    
+                    # Use type command to read file and pipe to clip
+                    subprocess.run(f'type "{temp_file}" | clip', shell=True, check=True)
+                    
+                    # Clean up
+                    import os
+                    os.unlink(temp_file)
+                    
+                elif sys.platform == "darwin":  # macOS
+                    import subprocess
+                    proc = subprocess.Popen(['pbcopy'], stdin=subprocess.PIPE, text=True, encoding='utf-8')
+                    proc.communicate(result)
+                else:  # Linux
+                    import subprocess
+                    proc = subprocess.Popen(['xclip', '-selection', 'clipboard'], 
+                                          stdin=subprocess.PIPE, text=True, encoding='utf-8')
+                    proc.communicate(result)
+                    
+                print("# Output copied to clipboard", file=sys.stderr)
+                
+            except Exception as e:
+                print(f"# Clipboard failed: {e}. Use: blobify . --noclean > file.txt", file=sys.stderr)
+                return  # Don't output to stdout if clipboard was requested
         else:
             sys.stdout.write(result)
             sys.stdout.flush()

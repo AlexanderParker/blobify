@@ -7,7 +7,10 @@ A Python utility that packages your entire codebase into a single text file for 
 **Primary use case:** Get AI help with your entire codebase by sharing a single comprehensive file, e.g.
 
 ```bash
-# Package entire codebase for AI analysis and copy to clipboard (windows)
+# Package entire codebase for AI analysis and copy to clipboard
+blobify . --clip
+
+# Or pipe to clipboard manually (may have Unicode issues on Windows)
 blobify . | clip
 
 # Then paste the contents into Claude/ChatGPT with prompts like:
@@ -24,6 +27,7 @@ blobify . | clip
 - Scrubs sensitive data (emails, API keys, etc.) by default
 - Includes line numbers for precise AI feedback
 - Allows custom file filtering with `.blobify` configuration
+- Built-in clipboard support with proper Unicode handling
 
 ## Installation
 
@@ -41,8 +45,8 @@ pip install "blobify[scrubbing] @ git+https://github.com/AlexanderParker/blobify
 # Scan current directory
 blobify .
 
-# Scan current directory to clipboard (windows)
-blobify . | clip
+# Copy to clipboard (recommended - handles Unicode properly)
+blobify . --clip
 
 # Save to file
 blobify /path/to/project output.txt
@@ -61,6 +65,7 @@ blobify . --debug
 
 - `directory` - Directory to scan (required)
 - `output` - Output file path (optional, defaults to stdout)
+- `--clip` - Copy output to clipboard with proper Unicode support
 - `--noclean` - Disable sensitive data scrubbing
 - `--no-line-numbers` - Disable line numbers in output
 - `--debug` - Show detailed processing information
@@ -68,6 +73,16 @@ blobify . --debug
 **Default exclusions:** `.git`, `.svn`, `node_modules`, `venv`, `env`, `__pycache__`, `dist`, `build`, `target`, `.idea`, `.vscode`, and other common build/cache directories.
 
 The tool processes files in this order: default exclusions → gitignore → .blobify excludes → .blobify includes
+
+## Clipboard Support
+
+The `--clip` option provides cross-platform clipboard support with proper Unicode handling:
+
+- **Windows**: Uses temp file approach to preserve Unicode characters
+- **macOS**: Uses `pbcopy`
+- **Linux**: Uses `xclip` (install with `sudo apt install xclip`)
+
+This is much more reliable than piping to `clip` on Windows, which often corrupts Unicode characters like emoji.
 
 ## Git Integration
 
@@ -86,7 +101,7 @@ The tool processes files in this order: default exclusions → gitignore → .bl
 
 Blobify automatically excludes common directories like `node_modules`, `venv`, `__pycache__`, `.git`, build folders, and files starting with `.` for performance and relevance.
 
-If you find the default exclusions don't go far enough, or exclude files you'd like to include, you may create a `.blobify` file in your git root to customize which files are included:
+If you find the default exclusions don't go far enough, or exclude files you'd like to include, you may create a `.blobify` file in your git root to customise which files are included:
 
 ```
 # Include configuration files that might be gitignored
