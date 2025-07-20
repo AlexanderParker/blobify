@@ -1060,19 +1060,7 @@ def scan_directory(
 
                     processed_content = "\n".join(numbered_lines)
 
-                    # Add line numbers if enabled
-                    if include_line_numbers:
-                        lines = processed_content.split("\n")
-                        numbered_lines = []
-                        line_number_width = len(str(len(lines)))
-
-                        for i, line in enumerate(lines, 1):
-                            line_number = str(i).rjust(line_number_width)
-                            numbered_lines.append(f"{line_number}: {line}")
-
-                        processed_content = "\n".join(numbered_lines)
-
-                    content.append(processed_content)
+                content.append(processed_content)
 
             except Exception as e:
                 content.append(f"[Error reading file: {str(e)}]")
