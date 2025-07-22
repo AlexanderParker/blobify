@@ -78,13 +78,13 @@ def read_blobify_config(git_root: Path, context: Optional[str] = None, debug: bo
                     continue
                 
                 if line.startswith("@"):
-                    # Default switch pattern
-                    switch = line[1:].strip()
-                    if switch:
-                        default_switches.append(switch)
+                    # Default switch pattern - can be boolean or key=value
+                    switch_line = line[1:].strip()
+                    if switch_line:
+                        default_switches.append(switch_line)
                         context_info = f" (context: {current_context})" if current_context else " (default)"
                         if debug:
-                            print(f"# .blobify line {line_num}: Default switch '{switch}'{context_info}", file=sys.stderr)
+                            print(f"# .blobify line {line_num}: Default switch '{switch_line}'{context_info}", file=sys.stderr)
                 elif line.startswith("+"):
                     # Include pattern
                     pattern = line[1:].strip()
@@ -127,55 +127,73 @@ def apply_default_switches(args: argparse.Namespace, default_switches: List[str]
     # Convert args to dict for easier manipulation
     args_dict = vars(args)
     
-    for switch in default_switches:
+    for switch_line in default_switches:
         if debug:
-            print(f"# Processing default switch: '{switch}'", file=sys.stderr)
+            print(f"# Processing default switch: '{switch_line}'", file=sys.stderr)
         
-        # Handle different switch formats
-        if switch == "debug":
-            if not args_dict.get("debug", False):
-                args_dict["debug"] = True
-                if debug:
-                    print(f"# Applied default: --debug", file=sys.stderr)
-        elif switch == "noclean":
-            if not args_dict.get("noclean", False):
-                args_dict["noclean"] = True
-                if debug:
-                    print(f"# Applied default: --noclean", file=sys.stderr)
-        elif switch == "no-line-numbers":
-            if not args_dict.get("no_line_numbers", False):
-                args_dict["no_line_numbers"] = True
-                if debug:
-                    print(f"# Applied default: --no-line-numbers", file=sys.stderr)
-        elif switch == "no-index":
-            if not args_dict.get("no_index", False):
-                args_dict["no_index"] = True
-                if debug:
-                    print(f"# Applied default: --no-index", file=sys.stderr)
-        elif switch == "clip":
-            if not args_dict.get("clip", False):
-                args_dict["clip"] = True
-                if debug:
-                    print(f"# Applied default: --clip", file=sys.stderr)
-        else:
-            # Handle switches with dashes converted to underscores
-            switch_variants = [
-                switch,
-                switch.replace("-", "_"),
-                switch.replace("_", "-")
-            ]
+        # Check if this is a key=value switch or boolean switch
+        if "=" in switch_line:
+            # Handle key=value switches like "output=filename.txt"
+            key, value = switch_line.split("=", 1)
+            key = key.strip()
+            value = value.strip()
             
-            applied = False
-            for variant in switch_variants:
-                if variant in args_dict and not args_dict.get(variant, False):
-                    args_dict[variant] = True
-                    applied = True
+            if key == "output":
+                if not args_dict.get("output"):  # Only apply if not set via command line
+                    args_dict["output"] = value
                     if debug:
-                        print(f"# Applied default: --{variant}", file=sys.stderr)
-                    break
+                        print(f"# Applied default: --output={value}", file=sys.stderr)
+            else:
+                if debug:
+                    print(f"# Unknown key=value switch ignored: '{key}={value}'", file=sys.stderr)
+        else:
+            # Handle boolean switches
+            switch = switch_line.strip()
             
-            if not applied and debug:
-                print(f"# Unknown default switch ignored: '{switch}'", file=sys.stderr)
+            if switch == "debug":
+                if not args_dict.get("debug", False):
+                    args_dict["debug"] = True
+                    if debug:
+                        print(f"# Applied default: --debug", file=sys.stderr)
+            elif switch == "noclean":
+                if not args_dict.get("noclean", False):
+                    args_dict["noclean"] = True
+                    if debug:
+                        print(f"# Applied default: --noclean", file=sys.stderr)
+            elif switch == "no-line-numbers":
+                if not args_dict.get("no_line_numbers", False):
+                    args_dict["no_line_numbers"] = True
+                    if debug:
+                        print(f"# Applied default: --no-line-numbers", file=sys.stderr)
+            elif switch == "no-index":
+                if not args_dict.get("no_index", False):
+                    args_dict["no_index"] = True
+                    if debug:
+                        print(f"# Applied default: --no-index", file=sys.stderr)
+            elif switch == "clip":
+                if not args_dict.get("clip", False):
+                    args_dict["clip"] = True
+                    if debug:
+                        print(f"# Applied default: --clip", file=sys.stderr)
+            else:
+                # Handle switches with dashes converted to underscores
+                switch_variants = [
+                    switch,
+                    switch.replace("-", "_"),
+                    switch.replace("_", "-")
+                ]
+                
+                applied = False
+                for variant in switch_variants:
+                    if variant in args_dict and not args_dict.get(variant, False):
+                        args_dict[variant] = True
+                        applied = True
+                        if debug:
+                            print(f"# Applied default: --{variant}", file=sys.stderr)
+                        break
+                
+                if not applied and debug:
+                    print(f"# Unknown default switch ignored: '{switch}'", file=sys.stderr)
     
     # Convert back to namespace
     return argparse.Namespace(**args_dict)
@@ -1209,7 +1227,10 @@ def main():
         description="Recursively scan directory for text files and create index. Respects .gitignore when in a git repository. Supports .blobify configuration files for pattern-based overrides and default command-line switches. Attempts to detect and replace sensitive data using scrubadub by default."
     )
     parser.add_argument("directory", help="Directory to scan")
-    parser.add_argument("output", nargs="?", help="Output file (optional)")
+    parser.add_argument(
+        "-o", "--output", 
+        help="Output file (optional, defaults to stdout)"
+    )
     parser.add_argument(
         "-x", "--context",
         help="Use specific context from .blobify file (default uses patterns outside any context section)"
