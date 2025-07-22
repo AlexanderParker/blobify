@@ -1,5 +1,6 @@
 """Tests for main.py module."""
 
+import pathlib
 import sys
 import tempfile
 import unittest
@@ -18,10 +19,22 @@ class TestMain(unittest.TestCase):
         """Set up test fixtures."""
         self.temp_dir = Path(tempfile.mkdtemp())
         self.original_argv = sys.argv.copy()
+        self.original_cwd = Path.cwd()
+        # Change to temp directory for all tests
+        import os
+
+        os.chdir(self.temp_dir)
+        # Output temp directory for visibility (using stderr so it doesn't conflict with stdout mocks)
+        print(f"\nTest temp directory: {self.temp_dir}", file=sys.stderr)
 
     def tearDown(self):
         """Clean up test fixtures."""
+        import os
+
+        # Change back to original directory
+        os.chdir(self.original_cwd)
         sys.argv = self.original_argv
+        # Clean up temp directory
         for file in self.temp_dir.rglob("*"):
             if file.is_file():
                 file.unlink()
@@ -29,6 +42,7 @@ class TestMain(unittest.TestCase):
             if dir.is_dir():
                 dir.rmdir()
         self.temp_dir.rmdir()
+        print(f"Cleaned up temp directory: {self.temp_dir}", file=sys.stderr)
 
     @patch("blobify.main.scan_files")
     @patch("blobify.main.format_output")
@@ -190,27 +204,22 @@ class TestMain(unittest.TestCase):
         self, mock_read_config, mock_is_git, mock_format, mock_scan
     ):
         """Test main function with no directory but .blobify file exists."""
-        # Create .blobify file in current directory
-        blobify_file = Path.cwd() / ".blobify"
+        # Create .blobify file in current temp directory (safe)
+        blobify_file = Path(".blobify")
         blobify_file.write_text("+*.py")
 
-        try:
-            sys.argv = ["bfy"]
+        sys.argv = ["bfy"]
 
-            mock_is_git.return_value = None
-            mock_read_config.return_value = ([], [], [])
-            mock_scan.return_value = {"included_files": []}
-            mock_format.return_value = ("Test output", 0, 1)
+        mock_is_git.return_value = None
+        mock_read_config.return_value = ([], [], [])
+        mock_scan.return_value = {"included_files": []}
+        mock_format.return_value = ("Test output", 0, 1)
 
-            with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
-                main()
+        with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
+            main()
 
-            output = mock_stdout.getvalue()
-            self.assertEqual(output, "Test output")
-
-        finally:
-            if blobify_file.exists():
-                blobify_file.unlink()
+        output = mock_stdout.getvalue()
+        self.assertEqual(output, "Test output")
 
     @patch("blobify.main.scan_files")
     @patch("blobify.main.format_output")
