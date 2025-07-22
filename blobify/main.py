@@ -735,24 +735,23 @@ def scan_directory(
     default_switches = []
 
     if git_root:
-        print(f"# Git repository detected at: {git_root}", file=sys.stderr)
+        if debug:
+            print(f"# Git repository detected at: {git_root}", file=sys.stderr)
         patterns_by_dir = get_gitignore_patterns(git_root, debug)
         total_patterns = sum(len(patterns) for patterns in patterns_by_dir.values())
-        print(
-            f"# Loaded {total_patterns} gitignore patterns from {len(patterns_by_dir)} locations",
-            file=sys.stderr,
-        )
+        if debug:
+            print(
+                f"# Loaded {total_patterns} gitignore patterns from {len(patterns_by_dir)} locations",
+                file=sys.stderr,
+            )
 
         # Load .blobify configuration with context support
         blobify_include_patterns, blobify_exclude_patterns, default_switches = read_blobify_config(git_root, context, debug)
 
-    # Check scrubadub availability and warn if needed
+    # Check scrubadub availability
     if scrub_data and not SCRUBADUB_AVAILABLE:
-        print(
-            "# WARNING: scrubadub not installed - sensitive data will NOT be processed",
-            file=sys.stderr,
-        )
-        print("# Install with: pip install scrubadub", file=sys.stderr)
+        if debug:
+            print("# scrubadub not installed - sensitive data will NOT be processed", file=sys.stderr)
         scrub_data = False
 
     # Header explaining the file format
@@ -855,7 +854,8 @@ def scan_directory(
     }
 
     # FIRST SWEEP: Apply gitignore and built-in exclusions
-    print("# First sweep: applying gitignore and built-in exclusions", file=sys.stderr)
+    if debug:
+        print("# First sweep: applying gitignore and built-in exclusions", file=sys.stderr)
     
     all_files = []
     gitignored_directories = []  # Track gitignored directories to show in index
@@ -945,14 +945,16 @@ def scan_directory(
                     'include_in_output': not is_git_ignored  # Include if not git ignored
                 })
 
-    print(f"# First sweep result: {len(all_files)} files", file=sys.stderr)
+    if debug:
+        print(f"# First sweep result: {len(all_files)} files", file=sys.stderr)
 
     # SECOND SWEEP: Apply .blobify rules to build additions and removals
     files_to_add = []
     files_to_remove = []
     
     if git_root and (blobify_include_patterns or blobify_exclude_patterns):
-        print("# Second sweep: applying .blobify patterns", file=sys.stderr)
+        if debug:
+            print("# Second sweep: applying .blobify patterns", file=sys.stderr)
         
         # Find ALL files again (including gitignored ones) for pattern matching
         all_possible_files = []
@@ -1098,7 +1100,8 @@ def scan_directory(
                         # Remove from files_to_add if present
                         files_to_add = [f for f in files_to_add if f['relative_path'] != relative_path]
         
-        print(f"# Second sweep: {len(files_to_add)} files to add, {len(files_to_remove)} files to remove", file=sys.stderr)
+        if debug:
+            print(f"# Second sweep: {len(files_to_add)} files to add, {len(files_to_remove)} files to remove", file=sys.stderr)
     
     # Apply sweep 2 results to sweep 1
     # Remove files marked for removal (this is now handled in the pattern processing above)
@@ -1114,7 +1117,13 @@ def scan_directory(
     git_ignored_files = [f for f in all_files if f['is_git_ignored']]
     blobify_excluded_files = [f for f in all_files if f['is_blobify_excluded']]
     
-    print(f"# Final results: {len(included_files)} included, {len(git_ignored_files)} git ignored, {len(blobify_excluded_files)} blobify excluded", file=sys.stderr)
+    if not debug:
+        # Show a single summary line
+        file_count = len(included_files)
+        context_info = f" (context: {context})" if context else ""
+        print(f"# Processed {file_count} files{context_info}", file=sys.stderr)
+    else:
+        print(f"# Final results: {len(included_files)} included, {len(git_ignored_files)} git ignored, {len(blobify_excluded_files)} blobify excluded", file=sys.stderr)
 
     # Build index and content
     index = []
