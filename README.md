@@ -32,7 +32,7 @@ Then paste into AI with prompts like "Review this code and suggest improvements"
 
 **Key features:** Respects `.gitignore`, optional sensitive data scrubbing (see important notice below), includes line numbers, supports custom filtering via `.blobify` configuration, cross-platform clipboard support. Automatically excludes common build/cache directories (`.git`, `node_modules`, `__pycache__`, etc.) and binary files.
 
-**⚠️ Important Notice:** The scrubbing feature is not guaranteed to work at all, it may not detect some sensitive data and it may find false positives; it is a best-effort helper feature only. It can be disabled with --noclean or not installed at all if you do not use the [scrubbing] option when installing. You should review the output of this utility to check for and clean up sensitive data before you use it anywhere.
+**⚠️ Important Notice:** The optional scrubbing feature is not guaranteed to work; it may not detect some sensitive data, it may find false positives. Consider it to be a best-effort helper feature only. Scrubbing, if installed, can be disabled with --noclean. You can opt not to install it upfront if you do not use the [scrubbing] option when installing. *This project makes no claims or guarantees of data security - you should always review the output of any tool to check for and clean up sensitive data before you use such data anywhere.*
 
 ## Command Line Options
 
@@ -41,13 +41,13 @@ bfy [directory] [options]
 ```
 
 - `directory` - Directory to scan (optional, defaults to current directory if .blobify file exists)
-- `-o, --output <file>` - Output file path (optional, defaults to stdout)
-- `-x, --context <name>` - Use specific context from .blobify file
-- `--clip` - Copy to clipboard (Windows/macOS/Linux support)
-- `--noclean` - Disable sensitive data scrubbing
-- `--no-line-numbers` - Disable line numbers in output
-- `--no-index` - Disable file index section
-- `--debug` - Show detailed processing information
+- `-o,`, `--output <file>` - Output file path (optional, defaults to stdout)
+- `-x,`, `--context <name>` - Use specific context from .blobify file
+- `-d,`, `--debug` - Enable debug output for gitignore and .blobify processing
+- `-n,`, `--noclean` - Disable scrubadub processing of sensitive data
+- `-l,`, `--no-line-numbers` - Disable line numbers in file content output
+- `-i,`, `--no-index` - Disable file index section at start of output
+- `-c,`, `--clip` - Copy output to clipboard
 
 ## Examples
 
@@ -162,7 +162,7 @@ The file index and line numbers significantly improve AI response quality and ac
 # Minimal tokens for general analysis only
 ```
 
-Use with: `bfy -x compact --clip` or `bfy -x minimal --clip`
+You could add these example contexts to .blobify and use with: `bfy -x compact --clip` or `bfy -x minimal --clip`
 
 ---
 
