@@ -1226,7 +1226,12 @@ def main():
     parser = argparse.ArgumentParser(
         description="Recursively scan directory for text files and create index. Respects .gitignore when in a git repository. Supports .blobify configuration files for pattern-based overrides and default command-line switches. Attempts to detect and replace sensitive data using scrubadub by default."
     )
-    parser.add_argument("directory", help="Directory to scan")
+    parser.add_argument(
+        "directory", 
+        nargs='?',  # Make directory optional
+        default=None,
+        help="Directory to scan (defaults to current directory if .blobify file exists)"
+    )
     parser.add_argument(
         "-o", "--output", 
         help="Output file (optional, defaults to stdout)"
@@ -1261,6 +1266,18 @@ def main():
         help="Copy output to clipboard",
     )
     args = parser.parse_args()
+
+    # Handle default directory logic
+    if args.directory is None:
+        current_dir = Path.cwd()
+        blobify_file = current_dir / ".blobify"
+        
+        if blobify_file.exists():
+            args.directory = "."
+            if args.debug:
+                print("# No directory specified, but .blobify file found - using current directory", file=sys.stderr)
+        else:
+            parser.error("directory argument is required when no .blobify file exists in current directory")
 
     # Check if we're in a git repository and apply default switches from .blobify
     directory = Path(args.directory)

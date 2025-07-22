@@ -22,6 +22,12 @@ Run (packages current directory and copies to clipboard):
 blobify . --clip
 ```
 
+Or simply run without arguments if you have a `.blobify` configuration file:
+
+```bash
+blobify --clip
+```
+
 Then paste into AI with prompts like "Review this code and suggest improvements" or "Add oauth authentication to this app".
 
 **Key features:** Respects `.gitignore`, optional sensitive data scrubbing (see important notice below), includes line numbers, supports custom filtering via `.blobify` configuration, cross-platform clipboard support. Automatically excludes common build/cache directories (`.git`, `node_modules`, `__pycache__`, etc.) and binary files.
@@ -31,12 +37,12 @@ Then paste into AI with prompts like "Review this code and suggest improvements"
 ## Command Line Options
 
 ```
-blobify <directory> [options]
+blobify [directory] [options]
 ```
 
-- `directory` - Directory to scan (required)
+- `directory` - Directory to scan (optional, defaults to current directory if .blobify file exists)
 - `-o, --output <file>` - Output file path (optional, defaults to stdout)
-- `-x, --context <n>` - Use specific context from .blobify file
+- `-x, --context <name>` - Use specific context from .blobify file
 - `--clip` - Copy to clipboard (Windows/macOS/Linux support)
 - `--noclean` - Disable sensitive data scrubbing
 - `--no-line-numbers` - Disable line numbers in output
@@ -45,7 +51,13 @@ blobify <directory> [options]
 
 ## Examples
 
-Output to stdout:
+Output current directory to stdout (requires .blobify file):
+
+```bash
+blobify
+```
+
+Output specific directory to stdout:
 
 ```bash
 blobify .
@@ -55,6 +67,12 @@ Copy to clipboard:
 
 ```bash
 blobify . --clip
+```
+
+Copy to clipboard using .blobify defaults:
+
+```bash
+blobify --clip
 ```
 
 Save to file:
@@ -67,6 +85,12 @@ Use context (if configured in .blobify):
 
 ```bash
 blobify . -x docs-only --clip
+```
+
+Use context with .blobify defaults:
+
+```bash
+blobify -x docs-only --clip
 ```
 
 ## .blobify Configuration
@@ -107,6 +131,8 @@ Create a `.blobify` file in your git root:
 
 **Contexts:** Use `-x context-name` to apply different file filtering rules. Contexts are independent - they don't inherit patterns from the default section. Useful for documentation-only reviews (`docs-only`), code-only analysis (`code-only`), or security audits.
 
+**Default Directory Behaviour:** When you have a `.blobify` file in your current directory, you can run `blobify` without specifying a directory argument - it will automatically use the current directory. This makes it easy to set up project-specific configurations and run blobify with just `blobify --clip` or `blobify -x context-name`.
+
 ## Efficient Usage
 
 The file index and line numbers significantly improve AI response quality and accuracy, but they also increase token usage. For large projects approaching input limits, you can create contexts to reduce tokens:
@@ -136,7 +162,7 @@ The file index and line numbers significantly improve AI response quality and ac
 # Minimal tokens for general analysis only
 ```
 
-Use with: `blobify . -x compact --clip` or `blobify . -x minimal --clip`
+Use with: `blobify -x compact --clip` or `blobify -x minimal --clip`
 
 ## License
 
