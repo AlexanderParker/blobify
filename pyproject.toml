@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "blobify"
-version = "0.1.3"
-authors = [{ name = "Alexander Parker", email = "blobify@parker.im" }]
+version = "1.0.0"
+authors = [{ name = "Alexander Parker", email = "pypi@parker.im" }]
 description = "Package your entire codebase into a single text file for AI consumption"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -38,7 +38,7 @@ keywords = [
 scrubbing = ["scrubadub>=2.0.1"]
 
 [project.scripts]
-blobify = "blobify.main:main"
+bfy = "blobify.main:main"
 
 [project.urls]
 Homepage = "https://github.com/AlexanderParker/blobify"

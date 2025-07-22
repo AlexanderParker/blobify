@@ -19,13 +19,13 @@ pip install "blobify[scrubbing] @ git+https://github.com/AlexanderParker/blobify
 Run (packages current directory and copies to clipboard):
 
 ```bash
-blobify . --clip
+bfy . --clip
 ```
 
 Or simply run without arguments if you have a `.blobify` configuration file:
 
 ```bash
-blobify --clip
+bfy --clip
 ```
 
 Then paste into AI with prompts like "Review this code and suggest improvements" or "Add oauth authentication to this app".
@@ -37,7 +37,7 @@ Then paste into AI with prompts like "Review this code and suggest improvements"
 ## Command Line Options
 
 ```
-blobify [directory] [options]
+bfy [directory] [options]
 ```
 
 - `directory` - Directory to scan (optional, defaults to current directory if .blobify file exists)
@@ -54,48 +54,48 @@ blobify [directory] [options]
 Output current directory to stdout (requires .blobify file):
 
 ```bash
-blobify
+bfy
 ```
 
 Output specific directory to stdout:
 
 ```bash
-blobify .
+bfy .
 ```
 
 Copy to clipboard:
 
 ```bash
-blobify . --clip
+bfy . --clip
 ```
 
 Copy to clipboard using .blobify defaults:
 
 ```bash
-blobify --clip
+bfy --clip
 ```
 
 Save to file:
 
 ```bash
-blobify /path/to/project -o output.txt
+bfy /path/to/project -o output.txt
 ```
 
 Use context (if configured in .blobify):
 
 ```bash
-blobify . -x docs-only --clip
+bfy . -x docs-only --clip
 ```
 
 Use context with .blobify defaults:
 
 ```bash
-blobify -x docs-only --clip
+bfy -x docs-only --clip
 ```
 
 ## .blobify Configuration
 
-The `.blobify` file lets you customize which files are included and set default command-line options. Blobify applies filters in this order: default exclusions → gitignore → .blobify excludes → .blobify includes. This means you can override gitignore rules when needed.
+The `.blobify` file lets you customise which files are included and set default command-line options. Blobify applies filters in this order: default exclusions → gitignore → .blobify excludes → .blobify includes. This means you can override gitignore rules when needed.
 
 Create a `.blobify` file in your git root:
 
@@ -131,7 +131,7 @@ Create a `.blobify` file in your git root:
 
 **Contexts:** Use `-x context-name` to apply different file filtering rules. Contexts are independent - they don't inherit patterns from the default section. Useful for documentation-only reviews (`docs-only`), code-only analysis (`code-only`), or security audits.
 
-**Default Directory Behaviour:** When you have a `.blobify` file in your current directory, you can run `blobify` without specifying a directory argument - it will automatically use the current directory. This makes it easy to set up project-specific configurations and run blobify with just `blobify --clip` or `blobify -x context-name`.
+**Default Directory Behaviour:** When you have a `.blobify` file in your current directory, you can run `bfy` without specifying a directory argument - it will automatically use the current directory. This makes it easy to set up project-specific configurations and run blobify with just `bfy --clip` or `bfy -x context-name`.
 
 ## Efficient Usage
 
@@ -162,7 +162,7 @@ The file index and line numbers significantly improve AI response quality and ac
 # Minimal tokens for general analysis only
 ```
 
-Use with: `blobify -x compact --clip` or `blobify -x minimal --clip`
+Use with: `bfy -x compact --clip` or `bfy -x minimal --clip`
 
 ## License
 
