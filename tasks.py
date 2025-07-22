@@ -6,6 +6,27 @@ import shutil
 
 
 @task
+def test_to_clip(c):
+    """Run tests and copy output to clipboard."""
+    import subprocess
+    import sys
+
+    # Capture both stdout and stderr
+    result = c.run("python test_runner.py", hide=True, warn=True)
+    output = result.stdout + result.stderr
+
+    # Copy to clipboard
+    if sys.platform == "win32":
+        subprocess.run("clip", input=output, text=True, shell=True)
+    elif sys.platform == "darwin":
+        subprocess.run("pbcopy", input=output, text=True)
+    else:
+        subprocess.run(["xclip", "-selection", "clipboard"], input=output, text=True)
+
+    print("Test output copied to clipboard")
+
+
+@task
 def install_dev(c):
     """Install development dependencies."""
     c.run("pip install -e .[scrubbing]")
