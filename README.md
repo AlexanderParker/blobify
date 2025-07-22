@@ -213,8 +213,15 @@ You could add these example contexts to .blobify and use with: `bfy -x compact -
 
 * Run tests
 
+    With normal CLI output:
     ```bash
     invoke test
+    ```
+
+    Redirect to clipboard (test on windows only at this stage)
+
+    ```bash
+    invoke test-to-clip
     ```
 * Run with coverage
 

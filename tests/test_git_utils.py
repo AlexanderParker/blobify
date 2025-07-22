@@ -1,5 +1,6 @@
 """Tests for git_utils.py module."""
 
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -80,7 +81,7 @@ build/
     def test_gitignore_to_regex_simple(self):
         """Test gitignore pattern to regex conversion."""
         regex = gitignore_to_regex("*.log")
-        self.assertEqual(regex, "^([^/]*\\.log|.*[^/]*\\.log)$")
+        self.assertEqual(regex, "^([^/]*\\.log|.*/[^/]*\\.log)$")
 
     def test_gitignore_to_regex_directory(self):
         """Test gitignore directory pattern to regex conversion."""
@@ -169,8 +170,7 @@ build/
         patterns = patterns_by_dir[self.temp_dir]
         self.assertEqual(patterns, ["*.log"])
 
-    @patch("blobify.git_utils.subprocess.run", side_effect=Exception("Git error"))
-    def test_get_gitignore_patterns_git_error(self, mock_run):
+    def test_get_gitignore_patterns_git_error(self):
         """Test getting gitignore patterns when git command fails."""
         # Setup git directory
         git_dir = self.temp_dir / ".git"
@@ -180,7 +180,17 @@ build/
         repo_gitignore = self.temp_dir / ".gitignore"
         repo_gitignore.write_text("*.log\n")
 
-        patterns_by_dir = get_gitignore_patterns(self.temp_dir)
+        # Test that function handles subprocess errors gracefully
+        # by patching subprocess to raise various exceptions
+        with patch("blobify.git_utils.subprocess.run") as mock_run:
+            mock_run.side_effect = [
+                subprocess.TimeoutExpired("git", 5),  # First call times out
+                subprocess.SubprocessError("Git error"),  # Second call fails
+                FileNotFoundError("git command not found"),  # Third call can't find git
+            ]
+
+            # Should still work despite git errors
+            patterns_by_dir = get_gitignore_patterns(self.temp_dir)
 
         # Should still get repo patterns despite git error
         self.assertIn(self.temp_dir, patterns_by_dir)

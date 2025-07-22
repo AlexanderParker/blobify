@@ -10,6 +10,7 @@ from unittest.mock import Mock, patch
 from blobify.main import main
 
 
+@patch("sys.platform", "linux")  # Avoid Windows Unicode wrapper in all tests
 class TestMain(unittest.TestCase):
     """Test cases for main function."""
 
@@ -173,8 +174,13 @@ class TestMain(unittest.TestCase):
         sys.argv = ["bfy"]
 
         with patch("sys.exit") as mock_exit:
-            main()
-            mock_exit.assert_called_once_with(1)
+            with patch("argparse.ArgumentParser.error") as mock_error:
+                mock_error.side_effect = SystemExit(2)
+                try:
+                    main()
+                except SystemExit:
+                    pass
+                mock_error.assert_called_once()
 
     @patch("blobify.main.scan_files")
     @patch("blobify.main.format_output")
@@ -231,8 +237,7 @@ class TestMain(unittest.TestCase):
         mock_apply_switches.side_effect = mock_apply
 
         with patch("blobify.main.subprocess.run"):  # Mock clipboard
-            with patch("sys.platform", "win32"):
-                main()
+            main()
 
         mock_apply_switches.assert_called_once()
 

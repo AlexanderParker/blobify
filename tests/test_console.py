@@ -66,7 +66,7 @@ class TestConsoleOutput(unittest.TestCase):
     def test_print_phase_with_rich(self, mock_console):
         """Test print_phase with rich console."""
         print_phase("test phase")
-        expected = "\n[bold magenta]ΓöÇΓöÇΓöÇΓöÇ TEST PHASE ΓöÇΓöÇΓöÇΓöÇ[/bold magenta]"
+        expected = "\n[bold magenta]──── TEST PHASE ────[/bold magenta]"
         mock_console.print.assert_called_once_with(expected)
 
     @patch("blobify.console.console", None)
