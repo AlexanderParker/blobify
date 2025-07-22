@@ -1,6 +1,5 @@
 """Tests for main.py module."""
 
-import pathlib
 import sys
 import tempfile
 import unittest
@@ -49,9 +48,7 @@ class TestMain(unittest.TestCase):
     @patch("blobify.main.is_git_repository")
     @patch("blobify.main.read_blobify_config")
     @patch("sys.stdout", new_callable=StringIO)
-    def test_main_basic_usage(
-        self, mock_stdout, mock_read_config, mock_is_git, mock_format, mock_scan
-    ):
+    def test_main_basic_usage(self, mock_stdout, mock_read_config, mock_is_git, mock_format, mock_scan):
         """Test basic main function usage."""
         sys.argv = ["bfy", str(self.temp_dir)]
 
@@ -69,9 +66,7 @@ class TestMain(unittest.TestCase):
     @patch("blobify.main.format_output")
     @patch("blobify.main.is_git_repository")
     @patch("blobify.main.read_blobify_config")
-    def test_main_output_file(
-        self, mock_read_config, mock_is_git, mock_format, mock_scan
-    ):
+    def test_main_output_file(self, mock_read_config, mock_is_git, mock_format, mock_scan):
         """Test main function with output file."""
         output_file = self.temp_dir / "output.txt"
         sys.argv = ["bfy", str(self.temp_dir), "-o", str(output_file)]
@@ -91,9 +86,7 @@ class TestMain(unittest.TestCase):
     @patch("blobify.main.is_git_repository")
     @patch("blobify.main.read_blobify_config")
     @patch("blobify.main.subprocess.run")
-    def test_main_clipboard_windows(
-        self, mock_subprocess, mock_read_config, mock_is_git, mock_format, mock_scan
-    ):
+    def test_main_clipboard_windows(self, mock_subprocess, mock_read_config, mock_is_git, mock_format, mock_scan):
         """Test main function with clipboard on Windows."""
         sys.argv = ["bfy", str(self.temp_dir), "--clip"]
 
@@ -112,9 +105,7 @@ class TestMain(unittest.TestCase):
     @patch("blobify.main.is_git_repository")
     @patch("blobify.main.read_blobify_config")
     @patch("blobify.main.subprocess.Popen")
-    def test_main_clipboard_macos(
-        self, mock_popen, mock_read_config, mock_is_git, mock_format, mock_scan
-    ):
+    def test_main_clipboard_macos(self, mock_popen, mock_read_config, mock_is_git, mock_format, mock_scan):
         """Test main function with clipboard on macOS."""
         sys.argv = ["bfy", str(self.temp_dir), "--clip"]
 
@@ -129,9 +120,7 @@ class TestMain(unittest.TestCase):
         with patch("sys.platform", "darwin"):
             main()
 
-        mock_popen.assert_called_once_with(
-            ["pbcopy"], stdin=unittest.mock.ANY, text=True, encoding="utf-8"
-        )
+        mock_popen.assert_called_once_with(["pbcopy"], stdin=unittest.mock.ANY, text=True, encoding="utf-8")
         mock_proc.communicate.assert_called_once_with("Test output")
 
     @patch("blobify.main.scan_files")
@@ -139,9 +128,7 @@ class TestMain(unittest.TestCase):
     @patch("blobify.main.is_git_repository")
     @patch("blobify.main.read_blobify_config")
     @patch("blobify.main.subprocess.Popen")
-    def test_main_clipboard_linux(
-        self, mock_popen, mock_read_config, mock_is_git, mock_format, mock_scan
-    ):
+    def test_main_clipboard_linux(self, mock_popen, mock_read_config, mock_is_git, mock_format, mock_scan):
         """Test main function with clipboard on Linux."""
         sys.argv = ["bfy", str(self.temp_dir), "--clip"]
 
@@ -169,9 +156,7 @@ class TestMain(unittest.TestCase):
     @patch("blobify.main.is_git_repository")
     @patch("blobify.main.read_blobify_config")
     @patch("blobify.main.subprocess.run", side_effect=Exception("Clipboard error"))
-    def test_main_clipboard_error(
-        self, mock_subprocess, mock_read_config, mock_is_git, mock_format, mock_scan
-    ):
+    def test_main_clipboard_error(self, mock_subprocess, mock_read_config, mock_is_git, mock_format, mock_scan):
         """Test main function with clipboard error."""
         sys.argv = ["bfy", str(self.temp_dir), "--clip"]
 
@@ -200,9 +185,7 @@ class TestMain(unittest.TestCase):
     @patch("blobify.main.format_output")
     @patch("blobify.main.is_git_repository")
     @patch("blobify.main.read_blobify_config")
-    def test_main_no_directory_with_blobify(
-        self, mock_read_config, mock_is_git, mock_format, mock_scan
-    ):
+    def test_main_no_directory_with_blobify(self, mock_read_config, mock_is_git, mock_format, mock_scan):
         """Test main function with no directory but .blobify file exists."""
         # Create .blobify file in current temp directory (safe)
         blobify_file = Path(".blobify")
@@ -254,9 +237,7 @@ class TestMain(unittest.TestCase):
     @patch("blobify.main.format_output")
     @patch("blobify.main.is_git_repository")
     @patch("blobify.main.read_blobify_config")
-    def test_main_with_context(
-        self, mock_read_config, mock_is_git, mock_format, mock_scan
-    ):
+    def test_main_with_context(self, mock_read_config, mock_is_git, mock_format, mock_scan):
         """Test main function with context parameter."""
         sys.argv = ["bfy", str(self.temp_dir), "-x", "test-context"]
 
@@ -269,17 +250,13 @@ class TestMain(unittest.TestCase):
             main()
 
         # Check that scan_files was called with context
-        mock_scan.assert_called_once_with(
-            unittest.mock.ANY, context="test-context", debug=False
-        )
+        mock_scan.assert_called_once_with(unittest.mock.ANY, context="test-context", debug=False)
 
     @patch("blobify.main.scan_files")
     @patch("blobify.main.format_output")
     @patch("blobify.main.is_git_repository")
     @patch("blobify.main.read_blobify_config")
-    def test_main_debug_mode(
-        self, mock_read_config, mock_is_git, mock_format, mock_scan
-    ):
+    def test_main_debug_mode(self, mock_read_config, mock_is_git, mock_format, mock_scan):
         """Test main function with debug mode."""
         sys.argv = ["bfy", str(self.temp_dir), "--debug"]
 
@@ -298,9 +275,7 @@ class TestMain(unittest.TestCase):
     @patch("blobify.main.format_output")
     @patch("blobify.main.is_git_repository")
     @patch("blobify.main.read_blobify_config")
-    def test_main_no_line_numbers(
-        self, mock_read_config, mock_is_git, mock_format, mock_scan
-    ):
+    def test_main_no_line_numbers(self, mock_read_config, mock_is_git, mock_format, mock_scan):
         """Test main function with no line numbers option."""
         sys.argv = ["bfy", str(self.temp_dir), "--no-line-numbers"]
 
@@ -373,9 +348,7 @@ class TestMain(unittest.TestCase):
     @patch("blobify.main.format_output")
     @patch("blobify.main.is_git_repository")
     @patch("blobify.main.read_blobify_config")
-    def test_main_bom_removal(
-        self, mock_read_config, mock_is_git, mock_format, mock_scan
-    ):
+    def test_main_bom_removal(self, mock_read_config, mock_is_git, mock_format, mock_scan):
         """Test main function removes BOM from output."""
         sys.argv = ["bfy", str(self.temp_dir)]
 
