@@ -27,6 +27,7 @@ blobify . | clip
 - Scrubs sensitive data (emails, API keys, etc.) by default
 - Includes line numbers for precise AI feedback
 - Allows custom file filtering with `.blobify` configuration
+- Supports default command-line switches via `.blobify` file
 - Built-in clipboard support with proper Unicode handling
 
 ## Installation
@@ -104,6 +105,11 @@ Blobify automatically excludes common directories like `node_modules`, `venv`, `
 If you find the default exclusions don't go far enough, or exclude files you'd like to include, you may create a `.blobify` file in your git root to customise which files are included:
 
 ```
+# Default command-line switches (always applied unless overridden)
+@debug
+@clip
+@noclean
+
 # Include configuration files that might be gitignored
 +.pre-commit-config.yaml
 +.editorconfig
@@ -121,11 +127,25 @@ If you find the default exclusions don't go far enough, or exclude files you'd l
 
 **Blobify file Pattern syntax:**
 
+- `@switch` - Set default command-line switch (e.g., `@debug`, `@clip`, `@noclean`, `@no-line-numbers`)
 - `+pattern` - Include files matching pattern with `+` (overrides gitignore and default exclusions)
 - `-pattern` - Exclude files matching pattern with `-`
 - Use `*` for wildcards, `**` for recursive directories
-- Patterns are relative to git root, so assumes you are operating in a git repo directory structure.
-- Patterns are parsed sequentially
+- Patterns are relative to git root, so assumes you are operating in a git repo directory structure
+- Patterns and switches are parsed sequentially
+
+### Default Switches
+
+The `@` prefix allows you to set default command-line options that will be applied automatically whenever blobify runs from that repository. This is particularly useful for consistent behaviour across team members or CI/CD pipelines.
+
+**Available default switches:**
+
+- `@debug` - Enable debug output
+- `@noclean` - Disable sensitive data scrubbing
+- `@no-line-numbers` - Disable line numbers in output
+- `@clip` - Copy output to clipboard
+
+**Priority:** Command-line arguments override default switches from `.blobify`. This means you can always override project defaults when needed.
 
 ## Line Numbers
 

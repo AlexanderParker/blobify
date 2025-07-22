@@ -34,19 +34,20 @@ def is_git_repository(path: Path) -> Optional[Path]:
     return None
 
 
-def read_blobify_config(git_root: Path, debug: bool = False) -> Tuple[List[str], List[str]]:
+def read_blobify_config(git_root: Path, debug: bool = False) -> Tuple[List[str], List[str], List[str]]:
     """
     Read .blobify configuration file from git root.
-    Returns tuple of (include_patterns, exclude_patterns).
+    Returns tuple of (include_patterns, exclude_patterns, default_switches).
     """
     blobify_file = git_root / ".blobify"
     include_patterns = []
     exclude_patterns = []
+    default_switches = []
     
     if not blobify_file.exists():
         if debug:
             print("# No .blobify file found", file=sys.stderr)
-        return include_patterns, exclude_patterns
+        return include_patterns, exclude_patterns, default_switches
     
     try:
         with open(blobify_file, "r", encoding="utf-8", errors="ignore") as f:
@@ -56,7 +57,14 @@ def read_blobify_config(git_root: Path, debug: bool = False) -> Tuple[List[str],
                 if not line or line.startswith("#"):
                     continue
                 
-                if line.startswith("+"):
+                if line.startswith("@"):
+                    # Default switch pattern
+                    switch = line[1:].strip()
+                    if switch:
+                        default_switches.append(switch)
+                        if debug:
+                            print(f"# .blobify line {line_num}: Default switch '{switch}'", file=sys.stderr)
+                elif line.startswith("+"):
                     # Include pattern
                     pattern = line[1:].strip()
                     if pattern:
@@ -72,16 +80,76 @@ def read_blobify_config(git_root: Path, debug: bool = False) -> Tuple[List[str],
                             print(f"# .blobify line {line_num}: Exclude pattern '{pattern}'", file=sys.stderr)
                 else:
                     if debug:
-                        print(f"# .blobify line {line_num}: Ignoring invalid pattern '{line}' (must start with + or -)", file=sys.stderr)
+                        print(f"# .blobify line {line_num}: Ignoring invalid pattern '{line}' (must start with +, -, or @)", file=sys.stderr)
         
         if debug:
-            print(f"# Loaded .blobify config: {len(include_patterns)} include patterns, {len(exclude_patterns)} exclude patterns", file=sys.stderr)
+            print(f"# Loaded .blobify config: {len(include_patterns)} include patterns, {len(exclude_patterns)} exclude patterns, {len(default_switches)} default switches", file=sys.stderr)
     
     except (IOError, OSError) as e:
         if debug:
             print(f"# Error reading .blobify file: {e}", file=sys.stderr)
     
-    return include_patterns, exclude_patterns
+    return include_patterns, exclude_patterns, default_switches
+
+
+def apply_default_switches(args: argparse.Namespace, default_switches: List[str], debug: bool = False) -> argparse.Namespace:
+    """
+    Apply default switches from .blobify file to command line arguments.
+    Command line arguments take precedence over defaults.
+    """
+    if not default_switches:
+        return args
+    
+    # Convert args to dict for easier manipulation
+    args_dict = vars(args)
+    
+    for switch in default_switches:
+        if debug:
+            print(f"# Processing default switch: '{switch}'", file=sys.stderr)
+        
+        # Handle different switch formats
+        if switch == "debug":
+            if not args_dict.get("debug", False):
+                args_dict["debug"] = True
+                if debug:
+                    print(f"# Applied default: --debug", file=sys.stderr)
+        elif switch == "noclean":
+            if not args_dict.get("noclean", False):
+                args_dict["noclean"] = True
+                if debug:
+                    print(f"# Applied default: --noclean", file=sys.stderr)
+        elif switch == "no-line-numbers":
+            if not args_dict.get("no_line_numbers", False):
+                args_dict["no_line_numbers"] = True
+                if debug:
+                    print(f"# Applied default: --no-line-numbers", file=sys.stderr)
+        elif switch == "clip":
+            if not args_dict.get("clip", False):
+                args_dict["clip"] = True
+                if debug:
+                    print(f"# Applied default: --clip", file=sys.stderr)
+        else:
+            # Handle switches with dashes converted to underscores
+            switch_variants = [
+                switch,
+                switch.replace("-", "_"),
+                switch.replace("_", "-")
+            ]
+            
+            applied = False
+            for variant in switch_variants:
+                if variant in args_dict and not args_dict.get(variant, False):
+                    args_dict[variant] = True
+                    applied = True
+                    if debug:
+                        print(f"# Applied default: --{variant}", file=sys.stderr)
+                    break
+            
+            if not applied and debug:
+                print(f"# Unknown default switch ignored: '{switch}'", file=sys.stderr)
+    
+    # Convert back to namespace
+    return argparse.Namespace(**args_dict)
 
 
 def matches_pattern(file_path: Path, base_path: Path, pattern: str) -> bool:
@@ -617,6 +685,7 @@ def scan_directory(
     patterns_by_dir = {}
     blobify_include_patterns = []
     blobify_exclude_patterns = []
+    default_switches = []
 
     if git_root:
         print(f"# Git repository detected at: {git_root}", file=sys.stderr)
@@ -628,7 +697,7 @@ def scan_directory(
         )
 
         # Load .blobify configuration
-        blobify_include_patterns, blobify_exclude_patterns = read_blobify_config(git_root, debug)
+        blobify_include_patterns, blobify_exclude_patterns, default_switches = read_blobify_config(git_root, debug)
 
     # Check scrubadub availability and warn if needed
     if scrub_data and not SCRUBADUB_AVAILABLE:
@@ -646,6 +715,8 @@ def scan_directory(
     blobify_info = ""
     if git_root and (blobify_include_patterns or blobify_exclude_patterns):
         blobify_info = f"\n# .blobify configuration: {len(blobify_include_patterns)} include patterns, {len(blobify_exclude_patterns)} exclude patterns"
+    if git_root and default_switches:
+        blobify_info += f", {len(default_switches)} default switches"
     
     scrubbing_info = ""
     if scrub_data and SCRUBADUB_AVAILABLE:
@@ -872,7 +943,7 @@ def scan_directory(
                     with open(blobify_file, "r", encoding="utf-8", errors="ignore") as f:
                         for line in f:
                             line = line.strip()
-                            if line and not line.startswith("#"):
+                            if line and not line.startswith("#") and not line.startswith("@"):
                                 if line.startswith("+"):
                                     pattern = line[1:].strip()
                                     if pattern:
@@ -1081,7 +1152,7 @@ def main():
         )
 
     parser = argparse.ArgumentParser(
-        description="Recursively scan directory for text files and create index. Respects .gitignore when in a git repository. Supports .blobify configuration files for pattern-based overrides. Attempts to detect and replace sensitive data using scrubadub by default."
+        description="Recursively scan directory for text files and create index. Respects .gitignore when in a git repository. Supports .blobify configuration files for pattern-based overrides and default command-line switches. Attempts to detect and replace sensitive data using scrubadub by default."
     )
     parser.add_argument("directory", help="Directory to scan")
     parser.add_argument("output", nargs="?", help="Output file (optional)")
@@ -1106,6 +1177,16 @@ def main():
         help="Copy output to clipboard",
     )
     args = parser.parse_args()
+
+    # Check if we're in a git repository and apply default switches from .blobify
+    directory = Path(args.directory)
+    git_root = is_git_repository(directory)
+    if git_root:
+        _, _, default_switches = read_blobify_config(git_root, args.debug)
+        if default_switches:
+            if args.debug:
+                print(f"# Found {len(default_switches)} default switches in .blobify", file=sys.stderr)
+            args = apply_default_switches(args, default_switches, args.debug)
 
     try:
         result = scan_directory(
