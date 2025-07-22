@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "blobify"
 version = "1.0.0"
-authors = [{ name = "Alexander Parker", email = "blobify@parker.im" }]
+authors = [{ name = "Alexander Parker", email = "pypi@parker.im" }]
 description = "Package your entire codebase into a single text file for AI consumption"
 readme = "README.md"
 requires-python = ">=3.10"

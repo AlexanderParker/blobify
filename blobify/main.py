@@ -44,27 +44,27 @@ def main():
         help="Use specific context from .blobify file (default uses patterns outside any context section)"
     )
     parser.add_argument(
-        "--debug",
+        "-d", "--debug",
         action="store_true",
         help="Enable debug output for gitignore and .blobify processing",
     )
     parser.add_argument(
-        "--noclean",
+        "-n", "--noclean",
         action="store_true",
         help="Disable scrubadub processing of sensitive data (emails, names, etc.)",
     )
     parser.add_argument(
-        "--no-line-numbers",
+        "-l", "--no-line-numbers",
         action="store_true",
         help="Disable line numbers in file content output",
     )
     parser.add_argument(
-        "--no-index",
+        "-i", "--no-index",
         action="store_true",
         help="Disable file index section at start of output",
     )
     parser.add_argument(
-        "--clip",
+        "-c", "--clip",
         action="store_true",
         help="Copy output to clipboard",
     )
