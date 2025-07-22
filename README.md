@@ -166,191 +166,23 @@ Use with: `bfy -x compact --clip` or `bfy -x minimal --clip`
 
 ---
 
-## Development & Maintenance
+## Development
 
-### For Contributors
-
-#### Setup Development Environment
+### Setup
 
 ```bash
-# Clone the repository
-git clone https://github.com/AlexanderParker/blobify.git
-cd blobify
-
-# Install development dependencies
 pip install -e ".[dev,scrubbing]"
-
-# Install pre-commit hooks
 pre-commit install
 ```
 
-#### Available Development Tasks
-
-Use `invoke` for development tasks:
+### Run Tests
 
 ```bash
-# Run tests
-invoke test
-
-# Run tests with coverage
-invoke coverage
-
-# Format code (black + isort)
-invoke format
-
-# Run linting checks
-invoke lint
-
-# Clean build artifacts
-invoke clean
-
-# Run all checks (format + lint + test)
-invoke all-checks
-
-# List all available tasks
-invoke --list
+invoke test           # Run tests
+invoke coverage       # Run with coverage
+invoke format         # Format code
+invoke lint          # Check code quality
 ```
-
-#### Running Tests
-
-```bash
-# Basic test run
-invoke test
-
-# Verbose test output
-invoke test-verbose
-
-# With coverage report
-invoke coverage
-
-# Direct test runner (alternative)
-python test_runner.py
-```
-
-#### Code Quality
-
-The project uses:
-
-- **black** for code formatting
-- **isort** for import sorting
-- **flake8** for linting
-- **pre-commit** for automated checks
-
-Pre-commit hooks run automatically on every commit and will:
-
-- Format your code with black
-- Check for common issues with flake8
-- Run the test suite
-- Clean up whitespace and line endings
-
-You can run these manually with `invoke format` and `invoke lint`.
-
-#### Project Structure
-
-```
-blobify/
-├── blobify/                # Main package
-│   ├── __init__.py
-│   ├── main.py            # CLI entry point
-│   ├── config.py          # .blobify configuration handling
-│   ├── console.py         # Console output utilities
-│   ├── content_processor.py  # File content processing
-│   ├── file_scanner.py    # File discovery and filtering
-│   ├── git_utils.py       # Git repository utilities
-│   └── output_formatter.py   # Output generation
-├── tests/                 # Test suite
-│   ├── test_*.py         # Individual test modules
-│   └── conftest.py       # Test configuration
-├── tasks.py              # Development task definitions (invoke)
-├── test_runner.py        # Test runner with xunit support
-├── pyproject.toml        # Project configuration
-├── .pre-commit-config.yaml   # Pre-commit hook configuration
-└── .github/workflows/    # GitHub Actions CI/CD
-```
-
-### For Maintainers
-
-#### Updating Dependencies
-
-```bash
-# Update pre-commit hook versions
-pre-commit autoupdate
-
-# Update Python dependencies
-pip install --upgrade pip
-pip install -e ".[dev,scrubbing]" --upgrade
-
-# Check for outdated packages
-pip list --outdated
-```
-
-#### Version Alignment
-
-Keep these aligned across all configuration files:
-
-- **pyproject.toml** `[project.optional-dependencies.dev]`
-- **.pre-commit-config.yaml** `rev:` values
-- **.github/workflows/test.yml** tool versions
-- **tasks.py** tool commands
-
-Current versions in use:
-
-- pre-commit-hooks: `v4.5.0`
-- black: `25.1.0`
-- flake8: `7.0.0`
-- Python: `3.10+`
-
-#### Release Process
-
-1. **Update version** in `pyproject.toml` and `blobify/__init__.py`
-2. **Run full test suite**: `invoke coverage`
-3. **Update CHANGELOG** (if maintained)
-4. **Tag release**: `git tag v1.x.x`
-5. **Push**: `git push origin main --tags`
-
-#### CI/CD Pipeline
-
-GitHub Actions automatically:
-
-- Runs tests on Python 3.10, 3.11, 3.12
-- Generates test reports with xunit format
-- Publishes test results
-- Handles optional dependencies gracefully
-
-Check `.github/workflows/test.yml` for full pipeline configuration.
-
-#### Common Maintenance Tasks
-
-```bash
-# Check code coverage
-invoke coverage
-
-# Update pre-commit hooks to latest versions
-pre-commit autoupdate
-
-# Run pre-commit on all files
-pre-commit run --all-files
-
-# Clean up development artifacts
-invoke clean
-
-# Check for security issues (if using additional tools)
-# pip install safety bandit
-# safety check
-# bandit -r blobify/
-```
-
-#### Testing Strategy
-
-The test suite provides high coverage with minimal test cases:
-
-- **Unit tests** for each module in `tests/`
-- **Integration tests** via `test_main.py`
-- **Mock external dependencies** (git, file system, scrubadub)
-- **Cross-platform testing** in CI
-- **Coverage reporting** via GitHub Actions
-
-Tests are designed to be fast, reliable, and comprehensive without being brittle.
 
 ## License
 
