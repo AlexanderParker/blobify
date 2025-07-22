@@ -9,6 +9,7 @@ authors = [{ name = "Alexander Parker", email = "blobify@parker.im" }]
 description = "Package your entire codebase into a single text file for AI consumption"
 readme = "README.md"
 requires-python = ">=3.10"
+dependencies = ["rich>=14.0.0"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -34,7 +35,7 @@ keywords = [
 ]
 
 [project.optional-dependencies]
-scrubbing = ["scrubadub>=1.2.0"]
+scrubbing = ["scrubadub>=2.0.1"]
 
 [project.scripts]
 blobify = "blobify.main:main"

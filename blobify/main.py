@@ -20,6 +20,75 @@ try:
 except ImportError:
     SCRUBADUB_AVAILABLE = False
 
+try:
+    from rich.console import Console
+    from rich.text import Text
+    RICH_AVAILABLE = True
+except ImportError:
+    RICH_AVAILABLE = False
+
+# Initialize console for rich output
+if RICH_AVAILABLE and sys.stderr.isatty():
+    console = Console(stderr=True, force_terminal=True)
+else:
+    console = None
+
+
+def print_status(message: str, style: Optional[str] = None):
+    """Print status message with optional rich styling, fallback to plain print."""
+    if console:
+        console.print(message, style=style)
+    else:
+        print(message, file=sys.stderr)
+
+
+def print_debug(message: str):
+    """Print debug message with debug styling."""
+    if console:
+        console.print(message, style="dim cyan")
+    else:
+        print(message, file=sys.stderr)
+
+
+def print_phase(phase_name: str):
+    """Print phase header with distinct styling."""
+    if console:
+        console.print(f"\n[bold magenta]═══ {phase_name.upper()} ═══[/bold magenta]")
+    else:
+        print(f"\n=== {phase_name.upper()} ===", file=sys.stderr)
+
+
+def print_warning(message: str):
+    """Print warning message with warning styling."""
+    if console:
+        console.print(message, style="yellow")
+    else:
+        print(message, file=sys.stderr)
+
+
+def print_error(message: str):
+    """Print error message with error styling."""
+    if console:
+        console.print(message, style="bold red")
+    else:
+        print(message, file=sys.stderr)
+
+
+def print_success(message: str):
+    """Print success message with success styling."""
+    if console:
+        console.print(message, style="green")
+    else:
+        print(message, file=sys.stderr)
+
+
+def print_file_processing(message: str):
+    """Print file processing message with distinct styling."""
+    if console:
+        console.print(message, style="bold yellow")
+    else:
+        print(message, file=sys.stderr)
+
 
 def is_git_repository(path: Path) -> Optional[Path]:
     """
@@ -47,7 +116,7 @@ def read_blobify_config(git_root: Path, context: Optional[str] = None, debug: bo
     
     if not blobify_file.exists():
         if debug:
-            print("# No .blobify file found", file=sys.stderr)
+            print_debug("No .blobify file found")
         return include_patterns, exclude_patterns, default_switches
     
     try:
@@ -68,9 +137,9 @@ def read_blobify_config(git_root: Path, context: Optional[str] = None, debug: bo
                     in_target_section = (target_context == current_context)
                     if debug:
                         if in_target_section:
-                            print(f"# .blobify line {line_num}: Entering context '{current_context}'", file=sys.stderr)
+                            print_debug(f".blobify line {line_num}: Entering context '{current_context}'")
                         else:
-                            print(f"# .blobify line {line_num}: Skipping context '{current_context}'", file=sys.stderr)
+                            print_debug(f".blobify line {line_num}: Skipping context '{current_context}'")
                     continue
                 
                 # Only process lines if we're in the target context section
@@ -84,7 +153,7 @@ def read_blobify_config(git_root: Path, context: Optional[str] = None, debug: bo
                         default_switches.append(switch_line)
                         context_info = f" (context: {current_context})" if current_context else " (default)"
                         if debug:
-                            print(f"# .blobify line {line_num}: Default switch '{switch_line}'{context_info}", file=sys.stderr)
+                            print_debug(f".blobify line {line_num}: Default switch '{switch_line}'{context_info}")
                 elif line.startswith("+"):
                     # Include pattern
                     pattern = line[1:].strip()
@@ -92,7 +161,7 @@ def read_blobify_config(git_root: Path, context: Optional[str] = None, debug: bo
                         include_patterns.append(pattern)
                         context_info = f" (context: {current_context})" if current_context else " (default)"
                         if debug:
-                            print(f"# .blobify line {line_num}: Include pattern '{pattern}'{context_info}", file=sys.stderr)
+                            print_debug(f".blobify line {line_num}: Include pattern '{pattern}'{context_info}")
                 elif line.startswith("-"):
                     # Exclude pattern
                     pattern = line[1:].strip()
@@ -100,18 +169,18 @@ def read_blobify_config(git_root: Path, context: Optional[str] = None, debug: bo
                         exclude_patterns.append(pattern)
                         context_info = f" (context: {current_context})" if current_context else " (default)"
                         if debug:
-                            print(f"# .blobify line {line_num}: Exclude pattern '{pattern}'{context_info}", file=sys.stderr)
+                            print_debug(f".blobify line {line_num}: Exclude pattern '{pattern}'{context_info}")
                 else:
                     if debug:
-                        print(f"# .blobify line {line_num}: Ignoring invalid pattern '{line}' (must start with +, -, or @)", file=sys.stderr)
+                        print_debug(f".blobify line {line_num}: Ignoring invalid pattern '{line}' (must start with +, -, or @)")
         
         context_info = f" for context '{context}'" if context else " (default context)"
         if debug:
-            print(f"# Loaded .blobify config{context_info}: {len(include_patterns)} include patterns, {len(exclude_patterns)} exclude patterns, {len(default_switches)} default switches", file=sys.stderr)
+            print_debug(f"Loaded .blobify config{context_info}: {len(include_patterns)} include patterns, {len(exclude_patterns)} exclude patterns, {len(default_switches)} default switches")
     
     except (IOError, OSError) as e:
         if debug:
-            print(f"# Error reading .blobify file: {e}", file=sys.stderr)
+            print_error(f"Error reading .blobify file: {e}")
     
     return include_patterns, exclude_patterns, default_switches
 
@@ -129,7 +198,7 @@ def apply_default_switches(args: argparse.Namespace, default_switches: List[str]
     
     for switch_line in default_switches:
         if debug:
-            print(f"# Processing default switch: '{switch_line}'", file=sys.stderr)
+            print_debug(f"Processing default switch: '{switch_line}'")
         
         # Check if this is a key=value switch or boolean switch
         if "=" in switch_line:
@@ -142,10 +211,10 @@ def apply_default_switches(args: argparse.Namespace, default_switches: List[str]
                 if not args_dict.get("output"):  # Only apply if not set via command line
                     args_dict["output"] = value
                     if debug:
-                        print(f"# Applied default: --output={value}", file=sys.stderr)
+                        print_debug(f"Applied default: --output={value}")
             else:
                 if debug:
-                    print(f"# Unknown key=value switch ignored: '{key}={value}'", file=sys.stderr)
+                    print_warning(f"Unknown key=value switch ignored: '{key}={value}'")
         else:
             # Handle boolean switches
             switch = switch_line.strip()
@@ -154,27 +223,27 @@ def apply_default_switches(args: argparse.Namespace, default_switches: List[str]
                 if not args_dict.get("debug", False):
                     args_dict["debug"] = True
                     if debug:
-                        print(f"# Applied default: --debug", file=sys.stderr)
+                        print_debug("Applied default: --debug")
             elif switch == "noclean":
                 if not args_dict.get("noclean", False):
                     args_dict["noclean"] = True
                     if debug:
-                        print(f"# Applied default: --noclean", file=sys.stderr)
+                        print_debug("Applied default: --noclean")
             elif switch == "no-line-numbers":
                 if not args_dict.get("no_line_numbers", False):
                     args_dict["no_line_numbers"] = True
                     if debug:
-                        print(f"# Applied default: --no-line-numbers", file=sys.stderr)
+                        print_debug("Applied default: --no-line-numbers")
             elif switch == "no-index":
                 if not args_dict.get("no_index", False):
                     args_dict["no_index"] = True
                     if debug:
-                        print(f"# Applied default: --no-index", file=sys.stderr)
+                        print_debug("Applied default: --no-index")
             elif switch == "clip":
                 if not args_dict.get("clip", False):
                     args_dict["clip"] = True
                     if debug:
-                        print(f"# Applied default: --clip", file=sys.stderr)
+                        print_debug("Applied default: --clip")
             else:
                 # Handle switches with dashes converted to underscores
                 switch_variants = [
@@ -189,11 +258,11 @@ def apply_default_switches(args: argparse.Namespace, default_switches: List[str]
                         args_dict[variant] = True
                         applied = True
                         if debug:
-                            print(f"# Applied default: --{variant}", file=sys.stderr)
+                            print_debug(f"Applied default: --{variant}")
                         break
                 
                 if not applied and debug:
-                    print(f"# Unknown default switch ignored: '{switch}'", file=sys.stderr)
+                    print_warning(f"Unknown default switch ignored: '{switch}'")
     
     # Convert back to namespace
     return argparse.Namespace(**args_dict)
@@ -294,10 +363,7 @@ def get_gitignore_patterns(
         if is_directory_ignored(gitignore_dir, git_root, patterns_by_dir, debug):
             if debug:
                 rel_dir = gitignore_dir.relative_to(git_root)
-                print(
-                    f"# SKIPPING .gitignore in ignored directory: {rel_dir}",
-                    file=sys.stderr,
-                )
+                print_debug(f"SKIPPING .gitignore in ignored directory: {rel_dir}")
             continue
 
         # This .gitignore is in a non-ignored directory, so include its patterns
@@ -306,10 +372,7 @@ def get_gitignore_patterns(
             patterns_by_dir[gitignore_dir] = patterns
             if debug:
                 rel_dir = gitignore_dir.relative_to(git_root)
-                print(
-                    f"# LOADED .gitignore from: {rel_dir} ({len(patterns)} patterns)",
-                    file=sys.stderr,
-                )
+                print_debug(f"LOADED .gitignore from: {rel_dir} ({len(patterns)} patterns)")
 
     return patterns_by_dir
 
@@ -544,7 +607,7 @@ def is_ignored_by_git(
     return is_ignored
 
 
-def scrub_content(content: str, enabled: bool = True) -> str:
+def scrub_content(content: str, enabled: bool = True, debug: bool = False) -> Tuple[str, int]:
     """
     Attempt to detect and replace sensitive data in file content using scrubadub.
 
@@ -555,20 +618,37 @@ def scrub_content(content: str, enabled: bool = True) -> str:
     Args:
         content: The file content to process
         enabled: Whether scrubbing is enabled (True by default)
+        debug: Whether to show debug output for replacements
 
     Returns:
-        Scrubbed content if enabled and scrubadub is available, otherwise original content
+        Tuple of (scrubbed content, number of substitutions made)
     """
     if not enabled or not SCRUBADUB_AVAILABLE:
-        return content
+        return content, 0
 
     try:
         scrubber = scrubadub.Scrubber()
-        return scrubber.clean(content)
+        
+        # Disable the twitter detector which has too many false positives
+        scrubber.remove_detector('twitter')
+        
+        # Get filth items for counting and debug output
+        filth_items = list(scrubber.iter_filth(content))
+        
+        if debug and filth_items:
+            print_debug(f"scrubadub found {len(filth_items)} items:")
+            for filth in filth_items:
+                original_text = content[filth.beg:filth.end]
+                print_debug(f"  {filth.type.upper()}: '{original_text}' -> '{filth.replacement_string}' (pos {filth.beg}-{filth.end})")
+        elif debug:
+            print_debug("scrubadub found no sensitive data")
+        
+        cleaned_content = scrubber.clean(content)
+        return cleaned_content, len(filth_items)
     except Exception as e:
         # If scrubbing fails, return original content and warn
-        print(f"# WARNING: scrubadub processing failed: {e}", file=sys.stderr)
-        return content
+        print_warning(f"scrubadub processing failed: {e}")
+        return content, 0
 
 
 def is_text_file(file_path):
@@ -726,6 +806,7 @@ def scan_directory(
     2. Second sweep: Apply .blobify overrides
     """
     directory = Path(directory_path)
+    total_substitutions = 0
 
     # Check if we're in a git repository
     git_root = is_git_repository(directory)
@@ -736,22 +817,22 @@ def scan_directory(
 
     if git_root:
         if debug:
-            print(f"# Git repository detected at: {git_root}", file=sys.stderr)
+            print_phase("Git Repository Detection")
+            print_debug(f"Git repository detected at: {git_root}")
         patterns_by_dir = get_gitignore_patterns(git_root, debug)
         total_patterns = sum(len(patterns) for patterns in patterns_by_dir.values())
         if debug:
-            print(
-                f"# Loaded {total_patterns} gitignore patterns from {len(patterns_by_dir)} locations",
-                file=sys.stderr,
-            )
+            print_debug(f"Loaded {total_patterns} gitignore patterns from {len(patterns_by_dir)} locations")
 
         # Load .blobify configuration with context support
+        if debug:
+            print_phase("Blobify Configuration")
         blobify_include_patterns, blobify_exclude_patterns, default_switches = read_blobify_config(git_root, context, debug)
 
     # Check scrubadub availability
     if scrub_data and not SCRUBADUB_AVAILABLE:
         if debug:
-            print("# scrubadub not installed - sensitive data will NOT be processed", file=sys.stderr)
+            print_warning("scrubadub not installed - sensitive data will NOT be processed")
         scrub_data = False
 
     # Header explaining the file format
@@ -855,7 +936,8 @@ def scan_directory(
 
     # FIRST SWEEP: Apply gitignore and built-in exclusions
     if debug:
-        print("# First sweep: applying gitignore and built-in exclusions", file=sys.stderr)
+        print_phase("First Sweep: Gitignore & Built-in Exclusions")
+        print_debug("First sweep: applying gitignore and built-in exclusions")
     
     all_files = []
     gitignored_directories = []  # Track gitignored directories to show in index
@@ -890,7 +972,7 @@ def scan_directory(
                                 fnmatch.fnmatch(dir_relative_str, pattern.split('/')[0] if '/' in pattern else pattern)):
                                 should_skip_dot_dir = False
                                 if debug:
-                                    print(f"# NOT SKIPPING dot directory '{dir_relative}' due to .blobify pattern '{pattern}'", file=sys.stderr)
+                                    print_debug(f"NOT SKIPPING dot directory '{dir_relative}' due to .blobify pattern '{pattern}'")
                                 break
                     except ValueError:
                         # If we can't get relative path, be safe and don't skip
@@ -910,7 +992,7 @@ def scan_directory(
                         gitignored_directories.append(relative_dir)
                         dirs_to_remove.append(dir_name)
                         if debug:
-                            print(f"# SKIPPING gitignored directory: {relative_dir}", file=sys.stderr)
+                            print_debug(f"SKIPPING gitignored directory: {relative_dir}")
                         continue
                 except Exception:
                     pass
@@ -946,7 +1028,7 @@ def scan_directory(
                 })
 
     if debug:
-        print(f"# First sweep result: {len(all_files)} files", file=sys.stderr)
+        print_debug(f"First sweep result: {len(all_files)} files")
 
     # SECOND SWEEP: Apply .blobify rules to build additions and removals
     files_to_add = []
@@ -954,7 +1036,8 @@ def scan_directory(
     
     if git_root and (blobify_include_patterns or blobify_exclude_patterns):
         if debug:
-            print("# Second sweep: applying .blobify patterns", file=sys.stderr)
+            print_phase("Second Sweep: Blobify Pattern Application")
+            print_debug("Second sweep: applying .blobify patterns")
         
         # Find ALL files again (including gitignored ones) for pattern matching
         all_possible_files = []
@@ -1056,7 +1139,7 @@ def scan_directory(
                                 file_info['include_in_output'] = True
                                 found_existing = True
                                 if debug:
-                                    print(f"# .blobify INCLUDE: '{relative_path}' by pattern '{pattern}'", file=sys.stderr)
+                                    print_debug(f".blobify INCLUDE: '{relative_path}' by pattern '{pattern}'")
                                 break
                         
                         # If not in list at all, add it (but check files_to_add for duplicates)
@@ -1079,9 +1162,9 @@ def scan_directory(
                                 })
                                 bypass_msg = " (bypassing text file check)" if is_exact_file_match else ""
                                 if debug:
-                                    print(f"# .blobify ADD: '{relative_path}' matches pattern '{pattern}'{bypass_msg}", file=sys.stderr)
+                                    print_debug(f".blobify ADD: '{relative_path}' matches pattern '{pattern}'{bypass_msg}")
                             elif debug:
-                                print(f"# .blobify ALREADY ADDED: '{relative_path}' matches pattern '{pattern}' but already in list", file=sys.stderr)
+                                print_debug(f".blobify ALREADY ADDED: '{relative_path}' matches pattern '{pattern}' but already in list")
                     
                     else:  # Exclude pattern (op == '-')
                         # Check if this file is in our all_files list or files_to_add
@@ -1094,14 +1177,14 @@ def scan_directory(
                                 file_info['is_blobify_excluded'] = True
                                 file_info['is_blobify_included'] = False
                                 if debug:
-                                    print(f"# .blobify EXCLUDE: '{relative_path}' by pattern '{pattern}'", file=sys.stderr)
+                                    print_debug(f".blobify EXCLUDE: '{relative_path}' by pattern '{pattern}'")
                                 break
                         
                         # Remove from files_to_add if present
                         files_to_add = [f for f in files_to_add if f['relative_path'] != relative_path]
         
         if debug:
-            print(f"# Second sweep: {len(files_to_add)} files to add, {len(files_to_remove)} files to remove", file=sys.stderr)
+            print_debug(f"Second sweep: {len(files_to_add)} files to add, {len(files_to_remove)} files to remove")
     
     # Apply sweep 2 results to sweep 1
     # Remove files marked for removal (this is now handled in the pattern processing above)
@@ -1112,18 +1195,14 @@ def scan_directory(
     # Add files marked for addition
     all_files.extend(files_to_add)
 
-    # Count final results
+    # Count final results (but don't show summary yet)
     included_files = [f for f in all_files if f['include_in_output']]
     git_ignored_files = [f for f in all_files if f['is_git_ignored']]
     blobify_excluded_files = [f for f in all_files if f['is_blobify_excluded']]
     
-    if not debug:
-        # Show a single summary line
-        file_count = len(included_files)
-        context_info = f" (context: {context})" if context else ""
-        print(f"# Processed {file_count} files{context_info}", file=sys.stderr)
-    else:
-        print(f"# Final results: {len(included_files)} included, {len(git_ignored_files)} git ignored, {len(blobify_excluded_files)} blobify excluded", file=sys.stderr)
+    if debug:
+        print_phase("Final Results")
+        print_debug(f"Final results: {len(included_files)} included, {len(git_ignored_files)} git ignored, {len(blobify_excluded_files)} blobify excluded")
 
     # Build index and content
     index = []
@@ -1194,11 +1273,18 @@ def scan_directory(
             content.append("[Content excluded - file excluded by .blobify]")
         else:
             try:
+                if debug:
+                    print_file_processing(f"Processing file: {relative_path}")
+                
                 with open(file_path, "r", encoding="utf-8", errors="strict") as f:
                     file_content = f.read()
 
                 # Attempt to scrub content if enabled
-                processed_content = scrub_content(file_content, scrub_data)
+                processed_content, substitutions = scrub_content(file_content, scrub_data, debug)
+                total_substitutions += substitutions
+                
+                if debug and substitutions > 0:
+                    print_debug(f"File had {substitutions} substitutions, total now: {total_substitutions}")
 
                 # Add line numbers if enabled
                 if include_line_numbers:
@@ -1219,7 +1305,7 @@ def scan_directory(
 
         content.append("\nEND_FILE: {}\n".format(relative_path))
 
-    return header + index_section + "".join(content)
+    return header + index_section + "".join(content), total_substitutions, len(included_files)
 
 
 def main():
@@ -1284,7 +1370,7 @@ def main():
         if blobify_file.exists():
             args.directory = "."
             if args.debug:
-                print("# No directory specified, but .blobify file found - using current directory", file=sys.stderr)
+                print_debug("No directory specified, but .blobify file found - using current directory")
         else:
             parser.error("directory argument is required when no .blobify file exists in current directory")
 
@@ -1292,15 +1378,17 @@ def main():
     directory = Path(args.directory)
     git_root = is_git_repository(directory)
     if git_root:
+        if args.debug:
+            print_phase("Default Switch Application")
         _, _, default_switches = read_blobify_config(git_root, args.context, args.debug)
         if default_switches:
             if args.debug:
                 context_info = f" for context '{args.context}'" if args.context else " (default context)"
-                print(f"# Found {len(default_switches)} default switches in .blobify{context_info}", file=sys.stderr)
+                print_debug(f"Found {len(default_switches)} default switches in .blobify{context_info}")
             args = apply_default_switches(args, default_switches, args.debug)
 
     try:
-        result = scan_directory(
+        result, total_substitutions, file_count = scan_directory(
             args.directory,
             context=args.context,
             debug=args.debug,
@@ -1308,6 +1396,19 @@ def main():
             include_line_numbers=not args.no_line_numbers,
             include_index=not args.no_index,
         )
+        
+        # Show final summary here after all processing is complete
+        context_info = f" (context: {args.context})" if args.context else ""
+        summary_parts = [f"Processed {file_count} files{context_info}"]
+        
+        if not args.noclean and SCRUBADUB_AVAILABLE and total_substitutions > 0:
+            if args.debug:
+                summary_parts.append(f"scrubadub made {total_substitutions} substitutions")
+            else:
+                summary_parts.append(f"scrubadub made {total_substitutions} substitutions - use --debug for details")
+        
+        summary_message = ", ".join(summary_parts)
+        print_status(summary_message, style="bold blue")
 
         # Remove BOM if present
         if result.startswith("\ufeff"):
@@ -1343,17 +1444,17 @@ def main():
                                           stdin=subprocess.PIPE, text=True, encoding='utf-8')
                     proc.communicate(result)
                     
-                print("# Output copied to clipboard", file=sys.stderr)
+                print_success("Output copied to clipboard")
                 
             except Exception as e:
-                print(f"# Clipboard failed: {e}. Use: blobify . --noclean > file.txt", file=sys.stderr)
+                print_error(f"Clipboard failed: {e}. Use: blobify . --noclean > file.txt")
                 return  # Don't output to stdout if clipboard was requested
         else:
             sys.stdout.write(result)
             sys.stdout.flush()
 
     except Exception as e:
-        print(f"Error: {str(e)}", file=sys.stderr)
+        print_error(f"Error: {str(e)}")
         sys.exit(1)
 
 
