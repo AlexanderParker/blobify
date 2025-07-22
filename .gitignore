@@ -4,3 +4,6 @@ build/
 dist/
 *.pyc
 __pycache__/
+
+# Local files (todo lists etc)
+*.local
