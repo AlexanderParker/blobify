@@ -153,7 +153,7 @@ The file index and line numbers significantly improve AI response quality and ac
 # Keep file index but remove line numbers to save tokens
 ```
 
-**For maximum compression** - Exclude both:
+**For minimum blobify output size** - Exclude both:
 
 ```
 [minimal]
@@ -170,19 +170,67 @@ You could add these example contexts to .blobify and use with: `bfy -x compact -
 
 ### Setup
 
-```bash
-pip install -e ".[dev,scrubbing]"
-pre-commit install
-```
+1. Clone the repository
+    ```bash
+    git clone https://github.com/AlexanderParker/blobify.git
+    ```
+    Enter the project folder:
+    ```bash
+    cd blobify
+    ```
+2. Create a virtual environment:
+
+    ```bash
+    python -m venv venv
+    ```
+
+2. Activate the virtual environment
+
+    Linux, MacOS:
+
+    ```bash
+    source venv/bin/activate
+    ```
+
+    Windows:
+
+    ```
+    venv\Scripts\activate
+    ```
+
+4. Install with dev & scrubbing dependencies:
+
+    ```bash
+    pip install -e ".[dev,scrubbing]"
+    ```
+
+5. Install pre-commit hooks:
+    ```bash
+    pre-commit install
+    ```
 
 ### Run Tests
 
-```bash
-invoke test           # Run tests
-invoke coverage       # Run with coverage
-invoke format         # Format code
-invoke lint          # Check code quality
-```
+* Run tests
+
+    ```bash
+    invoke test
+    ```
+* Run with coverage
+
+    ```bash
+    invoke coverage
+    ```
+* Format code
+
+    ```bash
+    invoke format
+    ```
+* Check code quality
+
+    ```bash
+    invoke lint
+    ```
 
 ## License
 
