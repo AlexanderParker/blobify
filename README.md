@@ -6,24 +6,18 @@ A Python utility that packages your entire codebase into a single text file for 
 
 **Primary use case:** Get AI help with your entire codebase by sharing a single comprehensive file, e.g.
 
-Package entire codebase and copy to clipboard:
-
 ```bash
+# Package entire codebase for AI analysis and copy to clipboard
 blobify . --clip
-```
 
-Or pipe to clipboard manually (may have Unicode issues on Windows)
-```bash
+# Or pipe to clipboard manually (may have Unicode issues on Windows)
 blobify . | clip
+
+# Then paste the contents into Claude/ChatGPT with prompts like:
+# "Review this code and suggest improvements"
+# "Add oauth user authentication to this app"
+# "Find potential security issues in this codebase"
 ```
-
-Then paste the contents into Claude/ChatGPT (assuming large enough context window) with prompts like:
-
-- "Review this code and suggest improvements"
-- "Add oauth user authentication to this app"
-- "Find potential security issues in this codebase"
-
-This is an alternative to agentic coding, and places the entire codebase in the context window.
 
 **What it does:**
 
@@ -68,6 +62,9 @@ blobify . --noclean
 # Disable line numbers
 blobify . --no-line-numbers
 
+# Disable file index for cleaner output
+blobify . --no-index
+
 # Debug mode (see processing details)
 blobify . --debug
 ```
@@ -80,6 +77,7 @@ blobify . --debug
 - `--clip` - Copy output to clipboard with proper Unicode support
 - `--noclean` - Disable sensitive data scrubbing
 - `--no-line-numbers` - Disable line numbers in output
+- `--no-index` - Disable file index section at start of output
 - `--debug` - Show detailed processing information
 
 **Default exclusions:** `.git`, `.svn`, `node_modules`, `venv`, `env`, `__pycache__`, `dist`, `build`, `target`, `.idea`, `.vscode`, and other common build/cache directories.
@@ -182,6 +180,7 @@ The `@` prefix allows you to set default command-line options that will be appli
 - `@debug` - Enable debug output
 - `@noclean` - Disable sensitive data scrubbing
 - `@no-line-numbers` - Disable line numbers in output
+- `@no-index` - Disable file index section
 - `@clip` - Copy output to clipboard
 
 **Priority:** Command-line arguments override default switches from `.blobify`. This means you can always override project defaults when needed.

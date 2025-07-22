@@ -147,6 +147,11 @@ def apply_default_switches(args: argparse.Namespace, default_switches: List[str]
                 args_dict["no_line_numbers"] = True
                 if debug:
                     print(f"# Applied default: --no-line-numbers", file=sys.stderr)
+        elif switch == "no-index":
+            if not args_dict.get("no_index", False):
+                args_dict["no_index"] = True
+                if debug:
+                    print(f"# Applied default: --no-index", file=sys.stderr)
         elif switch == "clip":
             if not args_dict.get("clip", False):
                 args_dict["clip"] = True
@@ -694,7 +699,7 @@ def get_file_metadata(file_path):
 
 
 def scan_directory(
-    directory_path, context=None, debug=False, scrub_data=True, include_line_numbers=True
+    directory_path, context=None, debug=False, scrub_data=True, include_line_numbers=True, include_index=True
 ):
     """
     Recursively scan directory for text files and build index and content.
@@ -1100,26 +1105,32 @@ def scan_directory(
     # Sort all files for consistent output
     all_files.sort(key=lambda x: str(x['relative_path']).lower())
     
-    # Add gitignored directories to the index
-    for dir_path in sorted(gitignored_directories, key=lambda x: str(x).lower()):
-        index.append(f"{dir_path} [IGNORED BY GITIGNORE]")
-    
-    # Build index for files
-    for file_info in all_files:
-        relative_path = file_info['relative_path']
-        if file_info.get('is_blobify_included', False):
-            index.append(f"{relative_path} [INCLUDED BY .blobify]")
-        elif file_info['is_git_ignored']:
-            index.append(f"{relative_path} [IGNORED BY GITIGNORE]")
-        elif file_info['is_blobify_excluded']:
-            index.append(f"{relative_path} [EXCLUDED BY .blobify]")
-        else:
-            index.append(str(relative_path))
+    # Build index section (if enabled)
+    index_section = ""
+    if include_index:
+        # Add gitignored directories to the index
+        for dir_path in sorted(gitignored_directories, key=lambda x: str(x).lower()):
+            index.append(f"{dir_path} [IGNORED BY GITIGNORE]")
+        
+        # Build index for files
+        for file_info in all_files:
+            relative_path = file_info['relative_path']
+            if file_info.get('is_blobify_included', False):
+                index.append(f"{relative_path} [INCLUDED BY .blobify]")
+            elif file_info['is_git_ignored']:
+                index.append(f"{relative_path} [IGNORED BY GITIGNORE]")
+            elif file_info['is_blobify_excluded']:
+                index.append(f"{relative_path} [EXCLUDED BY .blobify]")
+            else:
+                index.append(str(relative_path))
 
-    # Build index section
-    index_section = "# FILE INDEX\n" + "#" * 80 + "\n"
-    index_section += "\n".join(index)
-    index_section += "\n\n# FILE CONTENTS\n" + "#" * 80 + "\n"
+        # Build index section
+        index_section = "# FILE INDEX\n" + "#" * 80 + "\n"
+        index_section += "\n".join(index)
+        index_section += "\n\n# FILE CONTENTS\n" + "#" * 80 + "\n"
+    else:
+        # No index, just file contents header
+        index_section = "# FILE CONTENTS\n" + "#" * 80 + "\n"
 
     # Build content section
     for file_info in all_files:
@@ -1219,6 +1230,11 @@ def main():
         help="Disable line numbers in file content output",
     )
     parser.add_argument(
+        "--no-index",
+        action="store_true",
+        help="Disable file index section at start of output",
+    )
+    parser.add_argument(
         "--clip",
         action="store_true",
         help="Copy output to clipboard",
@@ -1243,6 +1259,7 @@ def main():
             debug=args.debug,
             scrub_data=not args.noclean,
             include_line_numbers=not args.no_line_numbers,
+            include_index=not args.no_index,
         )
 
         # Remove BOM if present
