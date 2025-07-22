@@ -38,7 +38,7 @@ keywords = [
 scrubbing = ["scrubadub>=2.0.1"]
 
 [project.scripts]
-blobify = "blobify.main:main"
+bfy = "blobify.main:main"
 
 [project.urls]
 Homepage = "https://github.com/AlexanderParker/blobify"
