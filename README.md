@@ -6,18 +6,24 @@ A Python utility that packages your entire codebase into a single text file for 
 
 **Primary use case:** Get AI help with your entire codebase by sharing a single comprehensive file, e.g.
 
+Package entire codebase and copy to clipboard:
+
 ```bash
-# Package entire codebase for AI analysis and copy to clipboard
 blobify . --clip
-
-# Or pipe to clipboard manually (may have Unicode issues on Windows)
-blobify . | clip
-
-# Then paste the contents into Claude/ChatGPT with prompts like:
-# "Review this code and suggest improvements"
-# "Add oauth user authentication to this app"
-# "Find potential security issues in this codebase"
 ```
+
+Or pipe to clipboard manually (may have Unicode issues on Windows)
+```bash
+blobify . | clip
+```
+
+Then paste the contents into Claude/ChatGPT (assuming large enough context window) with prompts like:
+
+- "Review this code and suggest improvements"
+- "Add oauth user authentication to this app"
+- "Find potential security issues in this codebase"
+
+This is an alternative to agentic coding, and places the entire codebase in the context window.
 
 **What it does:**
 
@@ -27,6 +33,7 @@ blobify . | clip
 - Scrubs sensitive data (emails, API keys, etc.) by default
 - Includes line numbers for precise AI feedback
 - Allows custom file filtering with `.blobify` configuration
+- Supports contexts for different views of your codebase
 - Supports default command-line switches via `.blobify` file
 - Built-in clipboard support with proper Unicode handling
 
@@ -52,6 +59,9 @@ blobify . --clip
 # Save to file
 blobify /path/to/project output.txt
 
+# Use specific context from .blobify file
+blobify . --context=docs-only
+
 # Disable data scrubbing (keep original content)
 blobify . --noclean
 
@@ -66,6 +76,7 @@ blobify . --debug
 
 - `directory` - Directory to scan (required)
 - `output` - Output file path (optional, defaults to stdout)
+- `-x`, `--context` - Use specific context from .blobify file
 - `--clip` - Copy output to clipboard with proper Unicode support
 - `--noclean` - Disable sensitive data scrubbing
 - `--no-line-numbers` - Disable line numbers in output
@@ -108,31 +119,59 @@ If you find the default exclusions don't go far enough, or exclude files you'd l
 # Default command-line switches (always applied unless overridden)
 @debug
 @clip
-@noclean
 
 # Include configuration files that might be gitignored
 +.pre-commit-config.yaml
 +.editorconfig
 +.github/**
 
-# Include local development files
-+local.settings.json
-+.env.local
-
 # Exclude additional files
 -*.log
 -temp/**
--backup/
+
+[docs-only]
+# Documentation-only context
+-**
++*.md
++docs/**
 ```
 
-**Blobify file Pattern syntax:**
+### Context System
 
+Contexts allow you to define different "views" of your codebase within a single `.blobify` file. Each context can have its own patterns and default switches.
+
+### Using Contexts
+
+```bash
+# Default context (patterns outside any [context] section)
+blobify .
+
+# Use documentation-only context
+blobify . --context=docs-only
+
+# Use code-only context for development analysis
+blobify . -x code-only --clip
+
+# Minimal context for quick AI reviews
+blobify . -x minimal
+```
+
+### Context Benefits
+
+- **Documentation Reviews**: Use `docs-only` context to focus on README files, documentation, and guides
+- **Code Analysis**: Use `code-only` context to exclude tests and configuration for pure code review
+- **Security Audits**: Create a `security` context that includes config files and excludes test data
+- **Team Onboarding**: Create a `minimal` context showing just the essential files new developers need
+
+### Blobify File Pattern Syntax
+
+- `[context-name]` - Define a new context section (use snake-case or kebab-case names)
 - `@switch` - Set default command-line switch (e.g., `@debug`, `@clip`, `@noclean`, `@no-line-numbers`)
 - `+pattern` - Include files matching pattern with `+` (overrides gitignore and default exclusions)
 - `-pattern` - Exclude files matching pattern with `-`
 - Use `*` for wildcards, `**` for recursive directories
 - Patterns are relative to git root, so assumes you are operating in a git repo directory structure
-- Patterns and switches are parsed sequentially
+- Patterns and switches are parsed sequentially within each context
 
 ### Default Switches
 
@@ -165,6 +204,46 @@ Blobify uses the `scrubadub` library to automatically detect and replace sensiti
 This is a best-effort attempt at data scrubbing. scrubadub may miss sensitive data or incorrectly identify non-sensitive data. **Always review output before sharing externally.**
 
 To disable scrubbing and preserve original content, use the `--noclean` flag.
+
+## Common Use Cases
+
+### AI Code Review
+
+```bash
+# Default: comprehensive analysis with gitignore respected
+blobify . --clip
+# Paste into AI: "Review this codebase for potential improvements"
+
+# Alternative: code-only view without tests/config
+blobify . -x code-only --clip
+```
+
+### Documentation Analysis
+
+```bash
+# Default: all files including docs
+blobify . --clip
+# Paste into AI: "Improve the documentation structure and clarity"
+
+# Alternative: focus only on documentation
+blobify . -x docs-only --clip
+```
+
+### Security Audit
+
+```bash
+# Include config files but scrub sensitive data (default behaviour)
+blobify . --clip
+# Paste into AI: "Identify potential security vulnerabilities"
+```
+
+### Quick Project Overview
+
+```bash
+# Standard overview respecting gitignore
+blobify . --clip
+# Paste into AI: "Explain what this project does and how it's structured"
+```
 
 ## License
 

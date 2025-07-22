@@ -34,10 +34,11 @@ def is_git_repository(path: Path) -> Optional[Path]:
     return None
 
 
-def read_blobify_config(git_root: Path, debug: bool = False) -> Tuple[List[str], List[str], List[str]]:
+def read_blobify_config(git_root: Path, context: Optional[str] = None, debug: bool = False) -> Tuple[List[str], List[str], List[str]]:
     """
     Read .blobify configuration file from git root.
     Returns tuple of (include_patterns, exclude_patterns, default_switches).
+    If context is provided, uses patterns from that context section instead of defaults.
     """
     blobify_file = git_root / ".blobify"
     include_patterns = []
@@ -51,10 +52,29 @@ def read_blobify_config(git_root: Path, debug: bool = False) -> Tuple[List[str],
     
     try:
         with open(blobify_file, "r", encoding="utf-8", errors="ignore") as f:
+            current_context = None  # None means default context
+            target_context = context  # Context we're looking for
+            in_target_section = target_context is None  # Start in target if no context specified
+            
             for line_num, line in enumerate(f, 1):
                 line = line.strip()
                 # Skip empty lines and comments
                 if not line or line.startswith("#"):
+                    continue
+                
+                # Check for context headers [context-name]
+                if line.startswith("[") and line.endswith("]"):
+                    current_context = line[1:-1]
+                    in_target_section = (target_context == current_context)
+                    if debug:
+                        if in_target_section:
+                            print(f"# .blobify line {line_num}: Entering context '{current_context}'", file=sys.stderr)
+                        else:
+                            print(f"# .blobify line {line_num}: Skipping context '{current_context}'", file=sys.stderr)
+                    continue
+                
+                # Only process lines if we're in the target context section
+                if not in_target_section:
                     continue
                 
                 if line.startswith("@"):
@@ -62,28 +82,32 @@ def read_blobify_config(git_root: Path, debug: bool = False) -> Tuple[List[str],
                     switch = line[1:].strip()
                     if switch:
                         default_switches.append(switch)
+                        context_info = f" (context: {current_context})" if current_context else " (default)"
                         if debug:
-                            print(f"# .blobify line {line_num}: Default switch '{switch}'", file=sys.stderr)
+                            print(f"# .blobify line {line_num}: Default switch '{switch}'{context_info}", file=sys.stderr)
                 elif line.startswith("+"):
                     # Include pattern
                     pattern = line[1:].strip()
                     if pattern:
                         include_patterns.append(pattern)
+                        context_info = f" (context: {current_context})" if current_context else " (default)"
                         if debug:
-                            print(f"# .blobify line {line_num}: Include pattern '{pattern}'", file=sys.stderr)
+                            print(f"# .blobify line {line_num}: Include pattern '{pattern}'{context_info}", file=sys.stderr)
                 elif line.startswith("-"):
                     # Exclude pattern
                     pattern = line[1:].strip()
                     if pattern:
                         exclude_patterns.append(pattern)
+                        context_info = f" (context: {current_context})" if current_context else " (default)"
                         if debug:
-                            print(f"# .blobify line {line_num}: Exclude pattern '{pattern}'", file=sys.stderr)
+                            print(f"# .blobify line {line_num}: Exclude pattern '{pattern}'{context_info}", file=sys.stderr)
                 else:
                     if debug:
                         print(f"# .blobify line {line_num}: Ignoring invalid pattern '{line}' (must start with +, -, or @)", file=sys.stderr)
         
+        context_info = f" for context '{context}'" if context else " (default context)"
         if debug:
-            print(f"# Loaded .blobify config: {len(include_patterns)} include patterns, {len(exclude_patterns)} exclude patterns, {len(default_switches)} default switches", file=sys.stderr)
+            print(f"# Loaded .blobify config{context_info}: {len(include_patterns)} include patterns, {len(exclude_patterns)} exclude patterns, {len(default_switches)} default switches", file=sys.stderr)
     
     except (IOError, OSError) as e:
         if debug:
@@ -670,7 +694,7 @@ def get_file_metadata(file_path):
 
 
 def scan_directory(
-    directory_path, debug=False, scrub_data=True, include_line_numbers=True
+    directory_path, context=None, debug=False, scrub_data=True, include_line_numbers=True
 ):
     """
     Recursively scan directory for text files and build index and content.
@@ -696,8 +720,8 @@ def scan_directory(
             file=sys.stderr,
         )
 
-        # Load .blobify configuration
-        blobify_include_patterns, blobify_exclude_patterns, default_switches = read_blobify_config(git_root, debug)
+        # Load .blobify configuration with context support
+        blobify_include_patterns, blobify_exclude_patterns, default_switches = read_blobify_config(git_root, context, debug)
 
     # Check scrubadub availability and warn if needed
     if scrub_data and not SCRUBADUB_AVAILABLE:
@@ -714,7 +738,8 @@ def scan_directory(
     )
     blobify_info = ""
     if git_root and (blobify_include_patterns or blobify_exclude_patterns):
-        blobify_info = f"\n# .blobify configuration: {len(blobify_include_patterns)} include patterns, {len(blobify_exclude_patterns)} exclude patterns"
+        context_info = f" (context: {context})" if context else ""
+        blobify_info = f"\n# .blobify configuration{context_info}: {len(blobify_include_patterns)} include patterns, {len(blobify_exclude_patterns)} exclude patterns"
     if git_root and default_switches:
         blobify_info += f", {len(default_switches)} default switches"
     
@@ -941,17 +966,35 @@ def scan_directory(
             if blobify_file.exists():
                 try:
                     with open(blobify_file, "r", encoding="utf-8", errors="ignore") as f:
+                        current_context = None
+                        target_context = context
+                        in_target_section = target_context is None
+                        
                         for line in f:
                             line = line.strip()
-                            if line and not line.startswith("#") and not line.startswith("@"):
-                                if line.startswith("+"):
-                                    pattern = line[1:].strip()
-                                    if pattern:
-                                        original_patterns.append(('+', pattern))
-                                elif line.startswith("-"):
-                                    pattern = line[1:].strip()
-                                    if pattern:
-                                        original_patterns.append(('-', pattern))
+                            if not line or line.startswith("#"):
+                                continue
+                            
+                            # Check for context headers
+                            if line.startswith("[") and line.endswith("]"):
+                                current_context = line[1:-1]
+                                in_target_section = (target_context == current_context)
+                                continue
+                            
+                            # Only process lines in target context
+                            if not in_target_section:
+                                continue
+                            
+                            if line.startswith("@"):
+                                continue  # Skip switches
+                            elif line.startswith("+"):
+                                pattern = line[1:].strip()
+                                if pattern:
+                                    original_patterns.append(('+', pattern))
+                            elif line.startswith("-"):
+                                pattern = line[1:].strip()
+                                if pattern:
+                                    original_patterns.append(('-', pattern))
                 except (IOError, OSError):
                     pass
         
@@ -1157,6 +1200,10 @@ def main():
     parser.add_argument("directory", help="Directory to scan")
     parser.add_argument("output", nargs="?", help="Output file (optional)")
     parser.add_argument(
+        "-x", "--context",
+        help="Use specific context from .blobify file (default uses patterns outside any context section)"
+    )
+    parser.add_argument(
         "--debug",
         action="store_true",
         help="Enable debug output for gitignore and .blobify processing",
@@ -1182,15 +1229,17 @@ def main():
     directory = Path(args.directory)
     git_root = is_git_repository(directory)
     if git_root:
-        _, _, default_switches = read_blobify_config(git_root, args.debug)
+        _, _, default_switches = read_blobify_config(git_root, args.context, args.debug)
         if default_switches:
             if args.debug:
-                print(f"# Found {len(default_switches)} default switches in .blobify", file=sys.stderr)
+                context_info = f" for context '{args.context}'" if args.context else " (default context)"
+                print(f"# Found {len(default_switches)} default switches in .blobify{context_info}", file=sys.stderr)
             args = apply_default_switches(args, default_switches, args.debug)
 
     try:
         result = scan_directory(
             args.directory,
+            context=args.context,
             debug=args.debug,
             scrub_data=not args.noclean,
             include_line_numbers=not args.no_line_numbers,
