@@ -209,8 +209,21 @@ class TestMain(unittest.TestCase):
     @patch("blobify.main.is_git_repository")
     @patch("blobify.main.read_blobify_config")
     @patch("blobify.main.apply_default_switches")
+    @patch("blobify.main.subprocess.run")
+    @patch("blobify.main.tempfile.NamedTemporaryFile")
+    @patch("blobify.main.os.unlink")
+    @patch("blobify.main.io.TextIOWrapper")  # Mock the TextIOWrapper creation
     def test_main_with_default_switches(
-        self, mock_apply_switches, mock_read_config, mock_is_git, mock_format, mock_scan
+        self,
+        mock_textiowrapper,
+        mock_unlink,
+        mock_tempfile,
+        mock_subprocess,
+        mock_apply_switches,
+        mock_read_config,
+        mock_is_git,
+        mock_format,
+        mock_scan,
     ):
         """Test main function with default switches from .blobify."""
         sys.argv = ["bfy", str(self.temp_dir)]
@@ -220,6 +233,9 @@ class TestMain(unittest.TestCase):
         mock_scan.return_value = {"included_files": []}
         mock_format.return_value = ("Test output", 0, 1)
 
+        # Mock TextIOWrapper to return the original stdout
+        mock_textiowrapper.return_value = sys.stdout
+
         # Mock apply_default_switches to return modified args
         def mock_apply(args, switches, debug):
             args.debug = True
@@ -228,10 +244,24 @@ class TestMain(unittest.TestCase):
 
         mock_apply_switches.side_effect = mock_apply
 
-        with patch("blobify.main.subprocess.run"):  # Mock clipboard
+        # Mock temp file creation for Windows clipboard
+        mock_temp_context = Mock()
+        mock_temp_context.__enter__ = Mock()
+        mock_temp_context.__exit__ = Mock(return_value=None)
+        mock_temp_file = Mock()
+        mock_temp_file.name = "mocked_temp_file.txt"
+        mock_temp_context.__enter__.return_value = mock_temp_file
+        mock_tempfile.return_value = mock_temp_context
+
+        # Mock the subprocess call for clipboard
+        mock_subprocess.return_value = None
+
+        with patch("sys.platform", "win32"):
             main()
 
         mock_apply_switches.assert_called_once()
+        # Verify subprocess was called for clipboard
+        mock_subprocess.assert_called_once_with('type "mocked_temp_file.txt" | clip', shell=True, check=True)
 
     @patch("blobify.main.scan_files")
     @patch("blobify.main.format_output")
