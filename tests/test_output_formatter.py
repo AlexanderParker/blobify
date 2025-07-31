@@ -1,76 +1,63 @@
 """Tests for output_formatter.py module."""
 
 import tempfile
-import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from blobify.output_formatter import (
+    format_output,
+    generate_content,
     generate_header,
     generate_index,
-    generate_content,
-    format_output,
 )
 
 
-class TestOutputFormatter(unittest.TestCase):
+class TestOutputFormatter:
     """Test cases for output formatting functions."""
 
-    def setUp(self):
-        """Set up test fixtures."""
-        self.temp_dir = Path(tempfile.mkdtemp())
-
-    def tearDown(self):
-        """Clean up test fixtures."""
-        for file in self.temp_dir.rglob("*"):
-            if file.is_file():
-                file.unlink()
-        for dir in sorted(self.temp_dir.rglob("*"), reverse=True):
-            if dir.is_dir():
-                dir.rmdir()
-        self.temp_dir.rmdir()
-
-    def test_generate_header_no_git(self):
+    def test_generate_header_no_git(self, temp_dir):
         """Test generate_header without git repository."""
-        header = generate_header(self.temp_dir, None, None, False, ([], [], []))
+        header = generate_header(temp_dir, None, None, False, ([], [], []))
 
-        self.assertIn("# Blobify Text File Index", header)
-        self.assertIn("# Not in a git repository", header)
-        self.assertIn("# Sensitive data scrubbing DISABLED", header)
+        assert "# Blobify Text File Index" in header
+        assert "# Not in a git repository" in header
+        assert "# Sensitive data scrubbing DISABLED" in header
 
-    def test_generate_header_with_git(self):
+    def test_generate_header_with_git(self, temp_dir):
         """Test generate_header with git repository."""
-        git_root = self.temp_dir / "repo"
+        git_root = temp_dir / "repo"
         git_root.mkdir()
 
         header = generate_header(
-            self.temp_dir,
+            temp_dir,
             git_root,
             "test-context",
             True,
             (["*.py"], ["*.log"], ["debug"]),
         )
 
-        self.assertIn(f"# Git repository: {git_root}", header)
-        self.assertIn(
-            "# .blobify configuration (context: test-context): 1 include patterns, 1 exclude patterns, 1 default switches",
-            header,
+        assert f"# Git repository: {git_root}" in header
+        assert (
+            "# .blobify configuration (context: test-context): 1 include patterns, 1 exclude patterns, 1 default switches"
+            in header
         )
 
     @patch("blobify.output_formatter.SCRUBADUB_AVAILABLE", True)
-    def test_generate_header_with_scrubbing(self):
+    def test_generate_header_with_scrubbing(self, temp_dir):
         """Test generate_header with scrubbing enabled."""
-        header = generate_header(self.temp_dir, None, None, True, ([], [], []))
+        header = generate_header(temp_dir, None, None, True, ([], [], []))
 
-        self.assertIn("# Content processed with scrubadub", header)
-        self.assertIn("# WARNING: Review output carefully", header)
+        assert "# Content processed with scrubadub" in header
+        assert "# WARNING: Review output carefully" in header
 
     @patch("blobify.output_formatter.SCRUBADUB_AVAILABLE", False)
-    def test_generate_header_scrubbing_unavailable(self):
+    def test_generate_header_scrubbing_unavailable(self, temp_dir):
         """Test generate_header when scrubbing is unavailable."""
-        header = generate_header(self.temp_dir, None, None, True, ([], [], []))
+        header = generate_header(temp_dir, None, None, True, ([], [], []))
 
-        self.assertIn("# Sensitive data scrubbing UNAVAILABLE", header)
+        assert "# Sensitive data scrubbing UNAVAILABLE" in header
 
     def test_generate_index(self):
         """Test generate_index function."""
@@ -105,19 +92,19 @@ class TestOutputFormatter(unittest.TestCase):
 
         index = generate_index(all_files, gitignored_directories)
 
-        self.assertIn("# FILE INDEX", index)
-        self.assertIn("node_modules [IGNORED BY GITIGNORE]", index)
-        self.assertIn("test.py", index)
-        self.assertIn("test.log [IGNORED BY GITIGNORE]", index)
-        self.assertIn("important.py [INCLUDED BY .blobify]", index)
-        self.assertIn("excluded.txt [EXCLUDED BY .blobify]", index)
+        assert "# FILE INDEX" in index
+        assert "node_modules [IGNORED BY GITIGNORE]" in index
+        assert "test.py" in index
+        assert "test.log [IGNORED BY GITIGNORE]" in index
+        assert "important.py [INCLUDED BY .blobify]" in index
+        assert "excluded.txt [EXCLUDED BY .blobify]" in index
 
     @patch("blobify.output_formatter.scrub_content")
     @patch("blobify.output_formatter.get_file_metadata")
-    def test_generate_content(self, mock_get_metadata, mock_scrub):
+    def test_generate_content(self, mock_get_metadata, mock_scrub, temp_dir):
         """Test generate_content function."""
         # Create test file
-        test_file = self.temp_dir / "test.py"
+        test_file = temp_dir / "test.py"
         test_file.write_text("print('hello')")
 
         mock_get_metadata.return_value = {
@@ -140,18 +127,18 @@ class TestOutputFormatter(unittest.TestCase):
 
         content, substitutions = generate_content(all_files, False, True, False)
 
-        self.assertIn("START_FILE: test.py", content)
-        self.assertIn("END_FILE: test.py", content)
-        self.assertIn("FILE_METADATA:", content)
-        self.assertIn("Size: 14 bytes", content)
-        self.assertIn("1: print('hello')", content)  # With line numbers
-        self.assertEqual(substitutions, 0)
+        assert "START_FILE: test.py" in content
+        assert "END_FILE: test.py" in content
+        assert "FILE_METADATA:" in content
+        assert "Size: 14 bytes" in content
+        assert "1: print('hello')" in content  # With line numbers
+        assert substitutions == 0
 
     @patch("blobify.output_formatter.scrub_content")
     @patch("blobify.output_formatter.get_file_metadata")
-    def test_generate_content_git_ignored(self, mock_get_metadata, mock_scrub):
+    def test_generate_content_git_ignored(self, mock_get_metadata, mock_scrub, temp_dir):
         """Test generate_content with git ignored file."""
-        test_file = self.temp_dir / "test.log"
+        test_file = temp_dir / "test.log"
         test_file.write_text("log content")
 
         mock_get_metadata.return_value = {
@@ -173,14 +160,14 @@ class TestOutputFormatter(unittest.TestCase):
 
         content, substitutions = generate_content(all_files, False, False, False)
 
-        self.assertIn("[Content excluded - file ignored by .gitignore]", content)
-        self.assertIn("Status: IGNORED BY GITIGNORE", content)
+        assert "[Content excluded - file ignored by .gitignore]" in content
+        assert "Status: IGNORED BY GITIGNORE" in content
 
     @patch("blobify.output_formatter.scrub_content")
     @patch("blobify.output_formatter.get_file_metadata")
-    def test_generate_content_blobify_excluded(self, mock_get_metadata, mock_scrub):
+    def test_generate_content_blobify_excluded(self, mock_get_metadata, mock_scrub, temp_dir):
         """Test generate_content with blobify excluded file."""
-        test_file = self.temp_dir / "test.txt"
+        test_file = temp_dir / "test.txt"
         test_file.write_text("content")
 
         mock_get_metadata.return_value = {
@@ -202,14 +189,14 @@ class TestOutputFormatter(unittest.TestCase):
 
         content, substitutions = generate_content(all_files, False, False, False)
 
-        self.assertIn("[Content excluded - file excluded by .blobify]", content)
-        self.assertIn("Status: EXCLUDED BY .blobify", content)
+        assert "[Content excluded - file excluded by .blobify]" in content
+        assert "Status: EXCLUDED BY .blobify" in content
 
     @patch("blobify.output_formatter.scrub_content")
     @patch("blobify.output_formatter.get_file_metadata")
-    def test_generate_content_no_line_numbers(self, mock_get_metadata, mock_scrub):
+    def test_generate_content_no_line_numbers(self, mock_get_metadata, mock_scrub, temp_dir):
         """Test generate_content without line numbers."""
-        test_file = self.temp_dir / "test.py"
+        test_file = temp_dir / "test.py"
         test_file.write_text("print('hello')")
 
         mock_get_metadata.return_value = {
@@ -232,13 +219,13 @@ class TestOutputFormatter(unittest.TestCase):
 
         content, substitutions = generate_content(all_files, False, False, False)
 
-        self.assertIn("print('hello')", content)
-        self.assertNotIn("1: print('hello')", content)  # No line numbers
+        assert "print('hello')" in content
+        assert "1: print('hello')" not in content  # No line numbers
 
     @patch("blobify.output_formatter.generate_header")
     @patch("blobify.output_formatter.generate_index")
     @patch("blobify.output_formatter.generate_content")
-    def test_format_output(self, mock_gen_content, mock_gen_index, mock_gen_header):
+    def test_format_output(self, mock_gen_content, mock_gen_index, mock_gen_header, temp_dir):
         """Test format_output function."""
         mock_gen_header.return_value = "# Header\n"
         mock_gen_index.return_value = "# Index\n"
@@ -247,13 +234,13 @@ class TestOutputFormatter(unittest.TestCase):
         discovery_context = {
             "all_files": [{"relative_path": Path("test.py")}],
             "gitignored_directories": [],
-            "git_root": self.temp_dir,
+            "git_root": temp_dir,
             "included_files": [{"relative_path": Path("test.py")}],
         }
 
         result, substitutions, file_count = format_output(
             discovery_context,
-            self.temp_dir,
+            temp_dir,
             None,
             False,
             True,
@@ -262,13 +249,13 @@ class TestOutputFormatter(unittest.TestCase):
             ([], [], []),
         )
 
-        self.assertEqual(result, "# Header\n# Index\n# Content\n")
-        self.assertEqual(substitutions, 5)
-        self.assertEqual(file_count, 1)
+        assert result == "# Header\n# Index\n# Content\n"
+        assert substitutions == 5
+        assert file_count == 1
 
     @patch("blobify.output_formatter.generate_header")
     @patch("blobify.output_formatter.generate_content")
-    def test_format_output_no_index(self, mock_gen_content, mock_gen_header):
+    def test_format_output_no_index(self, mock_gen_content, mock_gen_header, temp_dir):
         """Test format_output without index."""
         mock_gen_header.return_value = "# Header\n"
         mock_gen_content.return_value = ("# Content\n", 0)
@@ -282,7 +269,7 @@ class TestOutputFormatter(unittest.TestCase):
 
         result, substitutions, file_count = format_output(
             discovery_context,
-            self.temp_dir,
+            temp_dir,
             None,
             False,
             True,
@@ -291,10 +278,6 @@ class TestOutputFormatter(unittest.TestCase):
             ([], [], []),
         )
 
-        self.assertIn("# Header\n", result)
-        self.assertIn("# FILE CONTENTS\n", result)
-        self.assertNotIn("# FILE INDEX", result)
-
-
-if __name__ == "__main__":
-    unittest.main()
+        assert "# Header\n" in result
+        assert "# FILE CONTENTS\n" in result
+        assert "# FILE INDEX" not in result

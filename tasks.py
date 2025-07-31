@@ -1,8 +1,9 @@
 """Development tasks for blobify using invoke."""
 
-from invoke import task
-from pathlib import Path
 import shutil
+from pathlib import Path
+
+from invoke import task
 
 
 @task
@@ -12,7 +13,7 @@ def test_to_clip(c):
     import sys
 
     # Capture both stdout and stderr
-    result = c.run("python test_runner.py", hide=True, warn=True)
+    result = c.run("pytest -v", hide=True, warn=True)
     output = result.stdout + result.stderr
 
     # Copy to clipboard
@@ -29,31 +30,32 @@ def test_to_clip(c):
 @task
 def install_dev(c):
     """Install development dependencies."""
-    c.run("pip install -e .[scrubbing]")
-    c.run(
-        "pip install invoke black isort flake8 coverage unittest-xml-reporting pre-commit"
-    )
+    c.run("pip install -e .[dev,scrubbing]")
     c.run("pre-commit install")
 
 
 @task
 def test(c):
     """Run tests."""
-    c.run("python test_runner.py")
+    c.run("pytest")
 
 
 @task
 def test_verbose(c):
     """Run tests with verbose output."""
-    c.run("python test_runner.py --verbosity=2")
+    c.run("pytest -v")
+
+
+@task
+def test_xunit(c):
+    """Run tests with xunit XML output."""
+    c.run("pytest --junitxml=test-results.xml")
 
 
 @task
 def coverage(c):
     """Run tests with coverage."""
-    c.run("coverage run test_runner.py")
-    c.run("coverage report -m")
-    c.run("coverage html")
+    c.run("pytest --cov=blobify --cov-report=term-missing --cov-report=html")
 
 
 @task
@@ -85,14 +87,17 @@ def clean(c):
         print(f"Removed {path}")
 
     # Remove build artifacts
-    dirs_to_remove = ["build", "dist", "htmlcov", ".pytest_cache"]
+    dirs_to_remove = ["build", "dist", "htmlcov", ".pytest_cache", ".coverage"]
     for dir_name in dirs_to_remove:
         path = Path(dir_name)
-        if path.exists() and path.is_dir():
-            shutil.rmtree(path)
+        if path.exists():
+            if path.is_dir():
+                shutil.rmtree(path)
+            else:
+                path.unlink()
             print(f"Removed {path}")
 
-    files_to_remove = [".coverage", "test-results.xml"]
+    files_to_remove = ["test-results.xml"]
     for file_name in files_to_remove:
         path = Path(file_name)
         if path.exists():

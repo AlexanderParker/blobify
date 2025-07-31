@@ -4,13 +4,21 @@ repos:
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
       - id: check-merge-conflict
+      - id: debug-statements
 
   - repo: https://github.com/psf/black
     rev: 25.1.0
     hooks:
       - id: black
         language_version: python3
+
+  - repo: https://github.com/pycqa/isort
+    rev: 6.0.1
+    hooks:
+      - id: isort
 
   - repo: https://github.com/pycqa/flake8
     rev: 7.3.0
@@ -20,9 +28,11 @@ repos:
 
   - repo: local
     hooks:
-      - id: run-tests
-        name: Run unit tests
-        entry: python test_runner.py
+      - id: pytest
+        name: pytest
+        entry: pytest
         language: system
+        types: [python]
         pass_filenames: false
         always_run: true
+        args: ["-v", "--tb=short"]

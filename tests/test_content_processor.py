@@ -1,41 +1,31 @@
 """Tests for content_processor.py module."""
 
 import tempfile
-import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from blobify.content_processor import scrub_content, is_text_file, get_file_metadata
+import pytest
+
+from blobify.content_processor import get_file_metadata, is_text_file, scrub_content
 
 
-class TestContentProcessor(unittest.TestCase):
+class TestContentProcessor:
     """Test cases for content processing functions."""
-
-    def setUp(self):
-        """Set up test fixtures."""
-        self.temp_dir = Path(tempfile.mkdtemp())
-
-    def tearDown(self):
-        """Clean up test fixtures."""
-        for file in self.temp_dir.rglob("*"):
-            if file.is_file():
-                file.unlink()
-        self.temp_dir.rmdir()
 
     def test_scrub_content_disabled(self):
         """Test scrub_content when disabled."""
         content = "Email: test@example.com"
         result, count = scrub_content(content, enabled=False)
-        self.assertEqual(result, content)
-        self.assertEqual(count, 0)
+        assert result == content
+        assert count == 0
 
     @patch("blobify.content_processor.SCRUBADUB_AVAILABLE", False)
     def test_scrub_content_unavailable(self):
         """Test scrub_content when scrubadub is unavailable."""
         content = "Email: test@example.com"
         result, count = scrub_content(content, enabled=True)
-        self.assertEqual(result, content)
-        self.assertEqual(count, 0)
+        assert result == content
+        assert count == 0
 
     @patch("blobify.content_processor.SCRUBADUB_AVAILABLE", True)
     @patch("blobify.content_processor.scrubadub")
@@ -55,8 +45,8 @@ class TestContentProcessor(unittest.TestCase):
         content = "Email: test@example.com"
         result, count = scrub_content(content, enabled=True, debug=True)
 
-        self.assertEqual(result, "Email: {{EMAIL}}")
-        self.assertEqual(count, 1)
+        assert result == "Email: {{EMAIL}}"
+        assert count == 1
         mock_scrubber.remove_detector.assert_called_once_with("twitter")
 
     @patch("blobify.content_processor.SCRUBADUB_AVAILABLE", True)
@@ -68,78 +58,74 @@ class TestContentProcessor(unittest.TestCase):
         content = "Email: test@example.com"
         result, count = scrub_content(content, enabled=True, debug=True)
 
-        self.assertEqual(result, content)
-        self.assertEqual(count, 0)
+        assert result == content
+        assert count == 0
 
-    def test_is_text_file_python(self):
+    def test_is_text_file_python(self, temp_dir):
         """Test is_text_file with Python file."""
-        py_file = self.temp_dir / "test.py"
+        py_file = temp_dir / "test.py"
         py_file.write_text("print('hello')")
-        self.assertTrue(is_text_file(py_file))
+        assert is_text_file(py_file) is True
 
-    def test_is_text_file_text(self):
+    def test_is_text_file_text(self, temp_dir):
         """Test is_text_file with text file."""
-        txt_file = self.temp_dir / "test.txt"
+        txt_file = temp_dir / "test.txt"
         txt_file.write_text("Hello world")
-        self.assertTrue(is_text_file(txt_file))
+        assert is_text_file(txt_file) is True
 
-    def test_is_text_file_security_extension(self):
+    def test_is_text_file_security_extension(self, temp_dir):
         """Test is_text_file rejects security file extensions."""
-        key_file = self.temp_dir / "test.key"
+        key_file = temp_dir / "test.key"
         key_file.write_text("-----BEGIN PRIVATE KEY-----")
-        self.assertFalse(is_text_file(key_file))
+        assert is_text_file(key_file) is False
 
-    def test_is_text_file_unknown_extension(self):
+    def test_is_text_file_unknown_extension(self, temp_dir):
         """Test is_text_file with unknown extension."""
-        unknown_file = self.temp_dir / "test.unknown"
+        unknown_file = temp_dir / "test.unknown"
         unknown_file.write_text("Some content")
-        self.assertFalse(is_text_file(unknown_file))
+        assert is_text_file(unknown_file) is False
 
-    def test_is_text_file_binary_content(self):
+    def test_is_text_file_binary_content(self, temp_dir):
         """Test is_text_file with binary content."""
-        bin_file = self.temp_dir / "test.py"
+        bin_file = temp_dir / "test.py"
         bin_file.write_bytes(b"\x7f\x45\x4c\x46")  # ELF signature
-        self.assertFalse(is_text_file(bin_file))
+        assert is_text_file(bin_file) is False
 
-    def test_is_text_file_high_null_bytes(self):
+    def test_is_text_file_high_null_bytes(self, temp_dir):
         """Test is_text_file with high null byte concentration."""
-        bin_file = self.temp_dir / "test.py"
+        bin_file = temp_dir / "test.py"
         content = b"a" + b"\x00" * 1000  # > 30% nulls
         bin_file.write_bytes(content)
-        self.assertFalse(is_text_file(bin_file))
+        assert is_text_file(bin_file) is False
 
-    def test_is_text_file_unicode_decode_error(self):
+    def test_is_text_file_unicode_decode_error(self, temp_dir):
         """Test is_text_file with invalid UTF-8."""
-        bin_file = self.temp_dir / "test.py"
+        bin_file = temp_dir / "test.py"
         bin_file.write_bytes(b"\xff\xfe\xfd")  # Invalid UTF-8
-        self.assertFalse(is_text_file(bin_file))
+        assert is_text_file(bin_file) is False
 
-    def test_is_text_file_io_error(self):
+    def test_is_text_file_io_error(self, temp_dir):
         """Test is_text_file handles IO errors."""
-        nonexistent = self.temp_dir / "nonexistent.py"
-        self.assertFalse(is_text_file(nonexistent))
+        nonexistent = temp_dir / "nonexistent.py"
+        assert is_text_file(nonexistent) is False
 
-    def test_get_file_metadata(self):
+    def test_get_file_metadata(self, temp_dir):
         """Test get_file_metadata returns correct structure."""
-        test_file = self.temp_dir / "test.txt"
+        test_file = temp_dir / "test.txt"
         test_file.write_text("Test content")
 
         metadata = get_file_metadata(test_file)
 
-        self.assertIn("size", metadata)
-        self.assertIn("created", metadata)
-        self.assertIn("modified", metadata)
-        self.assertIn("accessed", metadata)
-        self.assertEqual(metadata["size"], 12)  # "Test content" is 12 bytes
+        assert "size" in metadata
+        assert "created" in metadata
+        assert "modified" in metadata
+        assert "accessed" in metadata
+        assert metadata["size"] == 12  # "Test content" is 12 bytes
 
         # Check that timestamps are ISO format strings
         for key in ["created", "modified", "accessed"]:
-            self.assertIsInstance(metadata[key], str)
+            assert isinstance(metadata[key], str)
             # Should be able to parse as ISO datetime
             import datetime
 
             datetime.datetime.fromisoformat(metadata[key])
-
-
-if __name__ == "__main__":
-    unittest.main()
