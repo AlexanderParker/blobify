@@ -170,12 +170,12 @@ class TestOutputFormatter:
         ]
 
         # Without line numbers
-        content, _ = generate_content(all_files, scrub_data=False, include_line_numbers=False, debug=False)
+        content, *_ = generate_content(all_files, scrub_data=False, include_line_numbers=False, debug=False)
         assert "print('no lines')" in content
         assert "1: print('no lines')" not in content
 
         # With line numbers
-        content_with_lines, _ = generate_content(all_files, scrub_data=False, include_line_numbers=True, debug=False)
+        content_with_lines, *_ = generate_content(all_files, scrub_data=False, include_line_numbers=True, debug=False)
         assert "1: print('no lines')" in content_with_lines
 
     def test_generate_content_exclusion_handling(self, tmp_path):
@@ -194,7 +194,7 @@ class TestOutputFormatter:
             }
         ]
 
-        content, _ = generate_content(excluded_files, scrub_data=False, include_line_numbers=False, debug=False)
+        content, *_ = generate_content(excluded_files, scrub_data=False, include_line_numbers=False, debug=False)
         assert "[Content excluded - file excluded by .blobify]" in content
         assert "secret content" not in content
         assert "Status: EXCLUDED BY .blobify" in content
@@ -214,7 +214,7 @@ class TestOutputFormatter:
             }
         ]
 
-        content, _ = generate_content(all_files, scrub_data=False, include_line_numbers=False, debug=False)
+        content, *_ = generate_content(all_files, scrub_data=False, include_line_numbers=False, debug=False)
 
         assert "[Error reading file:" in content
         assert "START_FILE: missing.py" in content
