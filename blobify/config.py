@@ -7,9 +7,7 @@ from typing import List, Optional, Tuple
 from .console import print_debug, print_error, print_warning
 
 
-def read_blobify_config(
-    git_root: Path, context: Optional[str] = None, debug: bool = False
-) -> Tuple[List[str], List[str], List[str]]:
+def read_blobify_config(git_root: Path, context: Optional[str] = None, debug: bool = False) -> Tuple[List[str], List[str], List[str]]:
     """
     Read .blobify configuration file from git root.
     Returns tuple of (include_patterns, exclude_patterns, default_switches).
@@ -78,9 +76,7 @@ def read_blobify_config(
                             print_debug(f".blobify line {line_num}: Exclude pattern '{pattern}'{context_info}")
                 else:
                     if debug:
-                        print_debug(
-                            f".blobify line {line_num}: Ignoring invalid pattern '{line}' (must start with +, -, or @)"
-                        )
+                        print_debug(f".blobify line {line_num}: Ignoring invalid pattern '{line}' (must start with +, -, or @)")
 
         context_info = f" for context '{context}'" if context else " (default context)"
         if debug:
@@ -95,9 +91,7 @@ def read_blobify_config(
     return include_patterns, exclude_patterns, default_switches
 
 
-def apply_default_switches(
-    args: argparse.Namespace, default_switches: List[str], debug: bool = False
-) -> argparse.Namespace:
+def apply_default_switches(args: argparse.Namespace, default_switches: List[str], debug: bool = False) -> argparse.Namespace:
     """
     Apply default switches from .blobify file to command line arguments.
     Command line arguments take precedence over defaults.

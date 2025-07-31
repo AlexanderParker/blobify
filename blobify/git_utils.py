@@ -134,9 +134,7 @@ def is_directory_ignored(
     return False
 
 
-def is_path_ignored_by_patterns(
-    path_str: str, compiled_patterns: List[Tuple[re.Pattern, bool]], debug: bool = False
-) -> bool:
+def is_path_ignored_by_patterns(path_str: str, compiled_patterns: List[Tuple[re.Pattern, bool]], debug: bool = False) -> bool:
     """
     Check if a path is ignored by a set of compiled gitignore patterns.
     """
@@ -213,9 +211,7 @@ def gitignore_to_regex(pattern: str) -> str:
     pattern = re.escape(pattern)
 
     # Unescape the characters we want to handle specially
-    pattern = (
-        pattern.replace(r"\*", "*").replace(r"\?", "?").replace(r"\[", "[").replace(r"\]", "]").replace(r"\/", "/")
-    )
+    pattern = pattern.replace(r"\*", "*").replace(r"\?", "?").replace(r"\[", "[").replace(r"\]", "]").replace(r"\/", "/")
 
     # Handle gitignore-specific patterns
     # First handle ** (must be done before single *)

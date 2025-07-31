@@ -198,9 +198,7 @@ def main():
                     proc = subprocess.Popen(["pbcopy"], stdin=subprocess.PIPE, text=True, encoding="utf-8")
                     proc.communicate(result)
                 else:  # Linux
-                    proc = subprocess.Popen(
-                        ["xclip", "-selection", "clipboard"], stdin=subprocess.PIPE, text=True, encoding="utf-8"
-                    )
+                    proc = subprocess.Popen(["xclip", "-selection", "clipboard"], stdin=subprocess.PIPE, text=True, encoding="utf-8")
                     proc.communicate(result)
 
                 print_success("Output copied to clipboard")

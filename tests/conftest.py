@@ -1,9 +1,13 @@
 """Pytest configuration and shared fixtures for blobify tests."""
 
 import sys
+import warnings
 from pathlib import Path
 
 import pytest
+
+# Suppress textblob deprecation warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="textblob.*")
 
 # Add the project root to Python path so we can import blobify modules
 project_root = Path(__file__).parent.parent

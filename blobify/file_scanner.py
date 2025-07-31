@@ -201,9 +201,7 @@ def discover_files(directory: Path, debug: bool = False) -> Dict:
     }
 
 
-def apply_blobify_patterns(
-    discovery_context: Dict, directory: Path, context: Optional[str] = None, debug: bool = False
-) -> None:
+def apply_blobify_patterns(discovery_context: Dict, directory: Path, context: Optional[str] = None, debug: bool = False) -> None:
     """
     Second sweep: Apply .blobify rules to modify the file list.
     Modifies the discovery context in place.
@@ -303,9 +301,7 @@ def apply_blobify_patterns(
                 if op == "+":  # Include pattern
                     # Check if this pattern matches the exact file path (no wildcards in the match)
                     relative_path_str = str(relative_path).replace("\\", "/")
-                    is_exact_file_match = relative_path_str == pattern or (
-                        not ("*" in pattern or "?" in pattern) and not pattern.endswith("/")
-                    )
+                    is_exact_file_match = relative_path_str == pattern or (not ("*" in pattern or "?" in pattern) and not pattern.endswith("/"))
 
                     # If it's not an exact file match, check if it's a text file
                     if not is_exact_file_match and not is_text_file(file_path):
@@ -349,9 +345,7 @@ def apply_blobify_patterns(
                             if debug:
                                 print_debug(f".blobify ADD: '{relative_path}' matches pattern '{pattern}'{bypass_msg}")
                         elif debug:
-                            print_debug(
-                                f".blobify ALREADY ADDED: '{relative_path}' matches pattern '{pattern}' but already in list"
-                            )
+                            print_debug(f".blobify ALREADY ADDED: '{relative_path}' matches pattern '{pattern}' but already in list")
 
                 else:  # Exclude pattern (op == '-')
                     # Remove from all_files if present
@@ -393,9 +387,7 @@ def scan_files(directory: Path, context: Optional[str] = None, debug: bool = Fal
 
     if debug:
         print_phase("Final Results")
-        print_debug(
-            f"Final results: {len(included_files)} included, {len(git_ignored_files)} git ignored, {len(blobify_excluded_files)} blobify excluded"
-        )
+        print_debug(f"Final results: {len(included_files)} included, {len(git_ignored_files)} git ignored, {len(blobify_excluded_files)} blobify excluded")
 
     discovery_context["included_files"] = included_files
     discovery_context["git_ignored_files"] = git_ignored_files

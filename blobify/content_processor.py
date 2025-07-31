@@ -47,9 +47,7 @@ def scrub_content(content: str, enabled: bool = True, debug: bool = False) -> Tu
             print_debug(f"scrubadub found {len(filth_items)} items:")
             for filth in filth_items:
                 original_text = content[filth.beg : filth.end]
-                print_debug(
-                    f"  {filth.type.upper()}: '{original_text}' -> '{filth.replacement_string}' (pos {filth.beg}-{filth.end})"
-                )
+                print_debug(f"  {filth.type.upper()}: '{original_text}' -> '{filth.replacement_string}' (pos {filth.beg}-{filth.end})")
         elif debug:
             print_debug("scrubadub found no sensitive data")
 

@@ -39,10 +39,7 @@ class TestOutputFormatter:
         )
 
         assert f"# Git repository: {git_root}" in header
-        assert (
-            "# .blobify configuration (context: test-context): 1 include patterns, 1 exclude patterns, 1 default switches"
-            in header
-        )
+        assert "# .blobify configuration (context: test-context): 1 include patterns, 1 exclude patterns, 1 default switches" in header
 
     @patch("blobify.output_formatter.SCRUBADUB_AVAILABLE", True)
     def test_generate_header_scrubbing_enabled(self, tmp_path):
@@ -381,9 +378,6 @@ class TestOutputFormatter:
         )
 
         # Verify context and patterns are reflected in header
-        assert (
-            "# .blobify configuration (context: dev-context): 1 include patterns, 1 exclude patterns, 1 default switches"
-            in result
-        )
+        assert "# .blobify configuration (context: dev-context): 1 include patterns, 1 exclude patterns, 1 default switches" in result
         assert "script.py [INCLUDED BY .blobify]" in result
         assert "import os" in result

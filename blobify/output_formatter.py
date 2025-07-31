@@ -8,9 +8,7 @@ from .console import print_debug, print_file_processing
 from .content_processor import SCRUBADUB_AVAILABLE, get_file_metadata, scrub_content
 
 
-def generate_header(
-    directory: Path, git_root: Path, context: str, scrub_data: bool, blobify_patterns_info: tuple
-) -> str:
+def generate_header(directory: Path, git_root: Path, context: str, scrub_data: bool, blobify_patterns_info: tuple) -> str:
     """Generate the file header with metadata and configuration info."""
     blobify_include_patterns, blobify_exclude_patterns, default_switches = blobify_patterns_info
 
