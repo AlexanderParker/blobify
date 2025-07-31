@@ -75,12 +75,15 @@ class TestMain:
         assert "log content" not in content
 
     def test_main_command_line_options(self, tmp_path):
-        """Test command line options work - output to file avoids capture issues."""
-        (tmp_path / "test.py").write_text("line1\nline2\nline3")
+        """Test command line options work."""
+        # Create test data in subdirectory
+        test_data_dir = tmp_path / "test_data"
+        test_data_dir.mkdir()
+        (test_data_dir / "test.py").write_text("line1\nline2\nline3")
 
         # Test with line numbers (default)
         output_file1 = tmp_path / "with_lines.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file1)]):
+        with patch("sys.argv", ["bfy", str(test_data_dir), "-o", str(output_file1)]):
             main()
 
         with_lines = output_file1.read_text()
@@ -89,7 +92,7 @@ class TestMain:
 
         # Test without line numbers
         output_file2 = tmp_path / "without_lines.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "--no-line-numbers", "-o", str(output_file2)]):
+        with patch("sys.argv", ["bfy", str(test_data_dir), "--no-line-numbers", "-o", str(output_file2)]):
             main()
 
         without_lines = output_file2.read_text()

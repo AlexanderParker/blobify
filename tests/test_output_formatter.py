@@ -1,4 +1,4 @@
-"""Tests for output_formatter.py module - WORKING: No capture conflicts."""
+"""Tests for output_formatter.py module."""
 
 from pathlib import Path
 from unittest.mock import patch
@@ -14,7 +14,7 @@ from blobify.output_formatter import (
 
 
 class TestOutputFormatter:
-    """Test cases for output formatting functions - avoiding capture issues."""
+    """Test cases for output formatting functions."""
 
     def test_generate_header_basic(self, tmp_path):
         """Test generate_header with basic functionality."""
@@ -112,7 +112,8 @@ class TestOutputFormatter:
         """Test generate_content with actual files."""
         # Create real test files
         py_file = tmp_path / "test.py"
-        py_file.write_text("def hello():\n    print('world')\n    return 42")
+        py_content = "def hello():\n    print('world')\n    return 42"
+        py_file.write_text(py_content)
 
         log_file = tmp_path / "debug.log"
         log_file.write_text("Error: something happened")
@@ -141,7 +142,10 @@ class TestOutputFormatter:
         assert "START_FILE: test.py" in content
         assert "END_FILE: test.py" in content
         assert "FILE_METADATA:" in content
-        assert "Size: 43 bytes" in content  # Actual file size
+
+        # Check actual file size (content length in bytes when encoded as UTF-8)
+        expected_size = len(py_content.encode("utf-8"))
+        assert f"Size: {expected_size} bytes" in content
 
         # Verify line numbers are added
         assert "1: def hello():" in content
@@ -214,11 +218,15 @@ class TestOutputFormatter:
             }
         ]
 
+        # The function should handle the missing file gracefully
         content, *_ = generate_content(all_files, scrub_data=False, include_line_numbers=False, debug=False)
 
-        assert "[Error reading file:" in content
         assert "START_FILE: missing.py" in content
         assert "END_FILE: missing.py" in content
+        # Should contain error message about reading the file
+        assert "[Error reading file:" in content
+        # Should show metadata with default values for missing file
+        assert "Size: 0 bytes" in content
 
     def test_format_output_end_to_end(self, tmp_path):
         """Test format_output with real files - complete integration."""
