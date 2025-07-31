@@ -9,6 +9,7 @@ from .console import print_debug, print_warning
 
 try:
     import scrubadub
+
     SCRUBADUB_AVAILABLE = True
 except ImportError:
     SCRUBADUB_AVAILABLE = False
@@ -35,21 +36,23 @@ def scrub_content(content: str, enabled: bool = True, debug: bool = False) -> Tu
 
     try:
         scrubber = scrubadub.Scrubber()
-        
+
         # Disable the twitter detector which has too many false positives
-        scrubber.remove_detector('twitter')
-        
+        scrubber.remove_detector("twitter")
+
         # Get filth items for counting and debug output
         filth_items = list(scrubber.iter_filth(content))
-        
+
         if debug and filth_items:
             print_debug(f"scrubadub found {len(filth_items)} items:")
             for filth in filth_items:
-                original_text = content[filth.beg:filth.end]
-                print_debug(f"  {filth.type.upper()}: '{original_text}' -> '{filth.replacement_string}' (pos {filth.beg}-{filth.end})")
+                original_text = content[filth.beg : filth.end]
+                print_debug(
+                    f"  {filth.type.upper()}: '{original_text}' -> '{filth.replacement_string}' (pos {filth.beg}-{filth.end})"
+                )
         elif debug:
             print_debug("scrubadub found no sensitive data")
-        
+
         cleaned_content = scrubber.clean(content)
         return cleaned_content, len(filth_items)
     except Exception as e:
@@ -153,9 +156,7 @@ def is_text_file(file_path: Path) -> bool:
 
     # Then check mimetype
     mime_type, _ = mimetypes.guess_type(str(file_path))
-    if mime_type and not any(
-        t in mime_type for t in ["text", "xml", "json", "javascript", "typescript"]
-    ):
+    if mime_type and not any(t in mime_type for t in ["text", "xml", "json", "javascript", "typescript"]):
         return False
 
     # Finally, check content

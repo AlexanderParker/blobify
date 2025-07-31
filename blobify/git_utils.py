@@ -61,9 +61,7 @@ def get_gitignore_patterns(git_root: Path, debug: bool = False) -> Dict[Path, Li
                 patterns_by_dir[git_root] = repo_patterns
 
     # Compile patterns for the root directory so we can check if subdirectories are ignored
-    root_compiled_patterns = compile_gitignore_patterns(
-        patterns_by_dir.get(git_root, [])
-    )
+    root_compiled_patterns = compile_gitignore_patterns(patterns_by_dir.get(git_root, []))
 
     # Get all .gitignore files in subdirectories, but only if their containing directory is not ignored
     for gitignore_file in git_root.rglob(".gitignore"):
@@ -126,9 +124,7 @@ def is_directory_ignored(
                 remaining_parts = path_parts[i - 1 :]
                 test_path = "/".join(remaining_parts) if remaining_parts else ""
 
-            if test_path and is_path_ignored_by_patterns(
-                test_path, compiled_patterns, debug
-            ):
+            if test_path and is_path_ignored_by_patterns(test_path, compiled_patterns, debug):
                 return True
 
         # Move to the next directory level
@@ -218,11 +214,7 @@ def gitignore_to_regex(pattern: str) -> str:
 
     # Unescape the characters we want to handle specially
     pattern = (
-        pattern.replace(r"\*", "*")
-        .replace(r"\?", "?")
-        .replace(r"\[", "[")
-        .replace(r"\]", "]")
-        .replace(r"\/", "/")
+        pattern.replace(r"\*", "*").replace(r"\?", "?").replace(r"\[", "[").replace(r"\]", "]").replace(r"\/", "/")
     )
 
     # Handle gitignore-specific patterns
@@ -249,7 +241,7 @@ def gitignore_to_regex(pattern: str) -> str:
             # Non-root-relative directory pattern like "*.egg-info/" or "node_modules/"
             # This should match:
             # 1. The directory at root: "some.egg-info"
-            # 2. Contents of directory at root: "some.egg-info/file.txt"  
+            # 2. Contents of directory at root: "some.egg-info/file.txt"
             # 3. The directory in subdirs: "path/some.egg-info"
             # 4. Contents in subdirs: "path/some.egg-info/file.txt"
             final_pattern = f"^({pattern}|{pattern}/.*|.*/{pattern}|.*/{pattern}/.*)$"
@@ -259,7 +251,7 @@ def gitignore_to_regex(pattern: str) -> str:
             final_pattern = f"^{pattern}$"
         else:
             final_pattern = f"^({pattern}|.*/{pattern})$"
-    
+
     return final_pattern
 
 
@@ -282,13 +274,13 @@ def is_ignored_by_git(
 
     # Check each gitignore file's patterns
     is_ignored = False
-    
+
     # We need to check patterns from git root and all parent directories
     # Start from the git root and work our way down
     for gitignore_dir, patterns in patterns_by_dir.items():
         if not patterns:
             continue
-            
+
         # Calculate the path relative to this gitignore's directory
         try:
             if gitignore_dir == git_root:
