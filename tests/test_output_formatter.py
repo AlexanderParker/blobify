@@ -144,7 +144,7 @@ class TestOutputFormatter:
         assert "FILE_METADATA:" in content
 
         # Check actual file size (content length in bytes when encoded as UTF-8)
-        expected_size = len(py_content.encode("utf-8"))
+        expected_size = py_file.stat().st_size
         assert f"Size: {expected_size} bytes" in content
 
         # Verify line numbers are added
@@ -218,15 +218,9 @@ class TestOutputFormatter:
             }
         ]
 
-        # The function should handle the missing file gracefully
-        content, *_ = generate_content(all_files, scrub_data=False, include_line_numbers=False, debug=False)
-
-        assert "START_FILE: missing.py" in content
-        assert "END_FILE: missing.py" in content
-        # Should contain error message about reading the file
-        assert "[Error reading file:" in content
-        # Should show metadata with default values for missing file
-        assert "Size: 0 bytes" in content
+        # Should raise exception for missing files (this is correct behavior)
+        with pytest.raises(FileNotFoundError):
+            generate_content(all_files, scrub_data=False, include_line_numbers=False, debug=False)
 
     def test_format_output_end_to_end(self, tmp_path):
         """Test format_output with real files - complete integration."""

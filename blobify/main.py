@@ -114,6 +114,13 @@ def main():
 
         # Check if we're in a git repository and apply default switches from .blobify
         directory = Path(args.directory)
+        if not directory.exists():
+            print_error(f"Directory does not exist: {directory}")
+            sys.exit(1)
+
+        if not directory.is_dir():
+            print_error(f"Path is not a directory: {directory}")
+            sys.exit(1)
         git_root = is_git_repository(directory)
         if git_root:
             if args.debug:
