@@ -172,7 +172,7 @@ class TestMain(unittest.TestCase):
         """Test main function with no directory and no .blobify file."""
         sys.argv = ["bfy"]
 
-        with patch("sys.exit") as mock_exit:
+        with patch("sys.exit"):
             with patch("argparse.ArgumentParser.error") as mock_error:
                 mock_error.side_effect = SystemExit(2)
                 try:

@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
-"""Test runner for blobify with xunit output support."""
+"""Test runner for blobify with simple, clean output and xunit support."""
 
 import argparse
 import sys
 import unittest
 from pathlib import Path
+from typing import Optional
 
 
 def discover_and_run_tests(
     test_dir: Path,
     pattern: str = "test_*.py",
     verbosity: int = 2,
-    xunit_file: str = None,
+    xunit_file: Optional[str] = None,
 ) -> bool:
     """Discover and run tests with optional xunit output."""
 
@@ -24,13 +25,12 @@ def discover_and_run_tests(
         try:
             import xmlrunner
 
-            runner = xmlrunner.XMLTestRunner(
-                output=str(Path(xunit_file).parent), outsuffix=""
-            )
+            runner = xmlrunner.XMLTestRunner(output=str(Path(xunit_file).parent), outsuffix="")
         except ImportError:
             print("Warning: xmlrunner not available, falling back to standard runner")
             runner = unittest.TextTestRunner(verbosity=verbosity)
     else:
+        # Use the standard unittest runner - it's clean and works well
         runner = unittest.TextTestRunner(verbosity=verbosity)
 
     # Run tests
@@ -44,12 +44,8 @@ def main():
     """Main entry point for test runner."""
     parser = argparse.ArgumentParser(description="Run blobify tests")
     parser.add_argument("--xunit-file", help="Output xunit XML file for CI integration")
-    parser.add_argument(
-        "--pattern", default="test_*.py", help="Test file pattern (default: test_*.py)"
-    )
-    parser.add_argument(
-        "--verbosity", type=int, default=2, help="Test verbosity level (default: 2)"
-    )
+    parser.add_argument("--pattern", default="test_*.py", help="Test file pattern (default: test_*.py)")
+    parser.add_argument("--verbosity", type=int, default=2, help="Test verbosity level (default: 2)")
 
     args = parser.parse_args()
 
@@ -60,9 +56,7 @@ def main():
         sys.exit(1)
 
     # Run tests
-    success = discover_and_run_tests(
-        test_dir, args.pattern, args.verbosity, args.xunit_file
-    )
+    success = discover_and_run_tests(test_dir, args.pattern, args.verbosity, args.xunit_file)
 
     sys.exit(0 if success else 1)
 
