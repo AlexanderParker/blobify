@@ -6,6 +6,7 @@ from typing import Optional
 try:
     from rich.console import Console
     from rich.text import Text
+
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False

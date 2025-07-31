@@ -18,38 +18,38 @@ from blobify.file_scanner import (
 class TestFileScanner:
     """Test cases for file scanning and pattern matching."""
 
-    def test_matches_pattern_exact(self, temp_dir):
+    def test_matches_pattern_exact(self, tmp_path):
         """Test exact pattern matching."""
-        test_file = temp_dir / "test.py"
+        test_file = tmp_path / "test.py"
         test_file.write_text("test")
 
-        result = matches_pattern(test_file, temp_dir, "test.py")
+        result = matches_pattern(test_file, tmp_path, "test.py")
         assert result is True
 
-    def test_matches_pattern_glob(self, temp_dir):
+    def test_matches_pattern_glob(self, tmp_path):
         """Test glob pattern matching."""
-        test_file = temp_dir / "test.py"
+        test_file = tmp_path / "test.py"
         test_file.write_text("test")
 
-        result = matches_pattern(test_file, temp_dir, "*.py")
+        result = matches_pattern(test_file, tmp_path, "*.py")
         assert result is True
 
-    def test_matches_pattern_directory(self, temp_dir):
+    def test_matches_pattern_directory(self, tmp_path):
         """Test directory pattern matching."""
-        sub_dir = temp_dir / "src"
+        sub_dir = tmp_path / "src"
         sub_dir.mkdir()
         test_file = sub_dir / "test.py"
         test_file.write_text("test")
 
-        result = matches_pattern(test_file, temp_dir, "src/")
+        result = matches_pattern(test_file, tmp_path, "src/")
         assert result is True
 
-    def test_matches_pattern_no_match(self, temp_dir):
+    def test_matches_pattern_no_match(self, tmp_path):
         """Test pattern that doesn't match."""
-        test_file = temp_dir / "test.py"
+        test_file = tmp_path / "test.py"
         test_file.write_text("test")
 
-        result = matches_pattern(test_file, temp_dir, "*.js")
+        result = matches_pattern(test_file, tmp_path, "*.js")
         assert result is False
 
     def test_matches_pattern_outside_base(self):
@@ -79,20 +79,20 @@ class TestFileScanner:
 
     @patch("blobify.file_scanner.is_git_repository")
     @patch("blobify.file_scanner.get_gitignore_patterns")
-    def test_discover_files_no_git(self, mock_get_patterns, mock_is_git, temp_dir):
+    def test_discover_files_no_git(self, mock_get_patterns, mock_is_git, tmp_path):
         """Test discover_files when not in git repository."""
         mock_is_git.return_value = None
 
         # Create test files
-        (temp_dir / "test.py").write_text("test")
-        (temp_dir / "README.md").write_text("readme")
+        (tmp_path / "test.py").write_text("test")
+        (tmp_path / "README.md").write_text("readme")
 
         # Create ignored directory
-        ignored_dir = temp_dir / "node_modules"
+        ignored_dir = tmp_path / "node_modules"
         ignored_dir.mkdir()
         (ignored_dir / "package.js").write_text("ignored")
 
-        context = discover_files(temp_dir)
+        context = discover_files(tmp_path)
 
         assert context["git_root"] is None
         assert len(context["all_files"]) == 2
@@ -104,19 +104,19 @@ class TestFileScanner:
     @patch("blobify.file_scanner.is_git_repository")
     @patch("blobify.file_scanner.get_gitignore_patterns")
     @patch("blobify.file_scanner.is_ignored_by_git")
-    def test_discover_files_with_git(self, mock_is_ignored, mock_get_patterns, mock_is_git, temp_dir):
+    def test_discover_files_with_git(self, mock_is_ignored, mock_get_patterns, mock_is_git, tmp_path):
         """Test discover_files with git repository."""
-        mock_is_git.return_value = temp_dir
-        mock_get_patterns.return_value = {temp_dir: ["*.log"]}
+        mock_is_git.return_value = tmp_path
+        mock_get_patterns.return_value = {tmp_path: ["*.log"]}
         mock_is_ignored.side_effect = lambda path, *args: path.suffix == ".log"
 
         # Create test files
-        (temp_dir / "test.py").write_text("test")
-        (temp_dir / "test.log").write_text("log")
+        (tmp_path / "test.py").write_text("test")
+        (tmp_path / "test.log").write_text("log")
 
-        context = discover_files(temp_dir)
+        context = discover_files(tmp_path)
 
-        assert context["git_root"] == temp_dir
+        assert context["git_root"] == tmp_path
         assert len(context["all_files"]) == 2
 
         # Check git ignored status
@@ -126,30 +126,30 @@ class TestFileScanner:
         assert log_file["is_git_ignored"] is True
         assert py_file["is_git_ignored"] is False
 
-    def test_apply_blobify_patterns_no_git(self, temp_dir):
+    def test_apply_blobify_patterns_no_git(self, tmp_path):
         """Test apply_blobify_patterns when not in git repository."""
         context = {"all_files": [], "git_root": None, "patterns_by_dir": {}}
 
-        apply_blobify_patterns(context, temp_dir)
+        apply_blobify_patterns(context, tmp_path)
 
         # Should not modify anything
         assert context["all_files"] == []
 
     @patch("blobify.file_scanner.read_blobify_config")
-    def test_apply_blobify_patterns_with_config(self, mock_read_config, temp_dir):
+    def test_apply_blobify_patterns_with_config(self, mock_read_config, tmp_path):
         """Test apply_blobify_patterns with .blobify configuration."""
         mock_read_config.return_value = (["*.py"], ["*.log"], [])
 
         # Create test files
-        (temp_dir / "test.py").write_text("test")
-        (temp_dir / "test.log").write_text("log")
-        (temp_dir / "README.md").write_text("readme")
+        (tmp_path / "test.py").write_text("test")
+        (tmp_path / "test.log").write_text("log")
+        (tmp_path / "README.md").write_text("readme")
 
         # Initial context with all files marked as git ignored
         context = {
             "all_files": [
                 {
-                    "path": temp_dir / "test.py",
+                    "path": tmp_path / "test.py",
                     "relative_path": Path("test.py"),
                     "is_git_ignored": True,
                     "is_blobify_excluded": False,
@@ -157,7 +157,7 @@ class TestFileScanner:
                     "include_in_output": False,
                 },
                 {
-                    "path": temp_dir / "README.md",
+                    "path": tmp_path / "README.md",
                     "relative_path": Path("README.md"),
                     "is_git_ignored": False,
                     "is_blobify_excluded": False,
@@ -165,11 +165,11 @@ class TestFileScanner:
                     "include_in_output": True,
                 },
             ],
-            "git_root": temp_dir,
+            "git_root": tmp_path,
             "patterns_by_dir": {},
         }
 
-        apply_blobify_patterns(context, temp_dir)
+        apply_blobify_patterns(context, tmp_path)
 
         # Check that test.py was included by .blobify
         py_file = next(f for f in context["all_files"] if f["relative_path"].name == "test.py")
@@ -182,7 +182,7 @@ class TestFileScanner:
 
     @patch("blobify.file_scanner.discover_files")
     @patch("blobify.file_scanner.apply_blobify_patterns")
-    def test_scan_files(self, mock_apply_patterns, mock_discover, temp_dir):
+    def test_scan_files(self, mock_apply_patterns, mock_discover, tmp_path):
         """Test main scan_files function."""
         mock_context = {
             "all_files": [
@@ -201,10 +201,10 @@ class TestFileScanner:
         }
         mock_discover.return_value = mock_context
 
-        result = scan_files(temp_dir)
+        result = scan_files(tmp_path)
 
-        mock_discover.assert_called_once_with(temp_dir, False)
-        mock_apply_patterns.assert_called_once_with(mock_context, temp_dir, None, False)
+        mock_discover.assert_called_once_with(tmp_path, False)
+        mock_apply_patterns.assert_called_once_with(mock_context, tmp_path, None, False)
 
         # Check result structure
         assert "included_files" in result

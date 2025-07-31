@@ -61,57 +61,57 @@ class TestContentProcessor:
         assert result == content
         assert count == 0
 
-    def test_is_text_file_python(self, temp_dir):
+    def test_is_text_file_python(self, tmp_path):
         """Test is_text_file with Python file."""
-        py_file = temp_dir / "test.py"
+        py_file = tmp_path / "test.py"
         py_file.write_text("print('hello')")
         assert is_text_file(py_file) is True
 
-    def test_is_text_file_text(self, temp_dir):
+    def test_is_text_file_text(self, tmp_path):
         """Test is_text_file with text file."""
-        txt_file = temp_dir / "test.txt"
+        txt_file = tmp_path / "test.txt"
         txt_file.write_text("Hello world")
         assert is_text_file(txt_file) is True
 
-    def test_is_text_file_security_extension(self, temp_dir):
+    def test_is_text_file_security_extension(self, tmp_path):
         """Test is_text_file rejects security file extensions."""
-        key_file = temp_dir / "test.key"
+        key_file = tmp_path / "test.key"
         key_file.write_text("-----BEGIN PRIVATE KEY-----")
         assert is_text_file(key_file) is False
 
-    def test_is_text_file_unknown_extension(self, temp_dir):
+    def test_is_text_file_unknown_extension(self, tmp_path):
         """Test is_text_file with unknown extension."""
-        unknown_file = temp_dir / "test.unknown"
+        unknown_file = tmp_path / "test.unknown"
         unknown_file.write_text("Some content")
         assert is_text_file(unknown_file) is False
 
-    def test_is_text_file_binary_content(self, temp_dir):
+    def test_is_text_file_binary_content(self, tmp_path):
         """Test is_text_file with binary content."""
-        bin_file = temp_dir / "test.py"
+        bin_file = tmp_path / "test.py"
         bin_file.write_bytes(b"\x7f\x45\x4c\x46")  # ELF signature
         assert is_text_file(bin_file) is False
 
-    def test_is_text_file_high_null_bytes(self, temp_dir):
+    def test_is_text_file_high_null_bytes(self, tmp_path):
         """Test is_text_file with high null byte concentration."""
-        bin_file = temp_dir / "test.py"
+        bin_file = tmp_path / "test.py"
         content = b"a" + b"\x00" * 1000  # > 30% nulls
         bin_file.write_bytes(content)
         assert is_text_file(bin_file) is False
 
-    def test_is_text_file_unicode_decode_error(self, temp_dir):
+    def test_is_text_file_unicode_decode_error(self, tmp_path):
         """Test is_text_file with invalid UTF-8."""
-        bin_file = temp_dir / "test.py"
+        bin_file = tmp_path / "test.py"
         bin_file.write_bytes(b"\xff\xfe\xfd")  # Invalid UTF-8
         assert is_text_file(bin_file) is False
 
-    def test_is_text_file_io_error(self, temp_dir):
+    def test_is_text_file_io_error(self, tmp_path):
         """Test is_text_file handles IO errors."""
-        nonexistent = temp_dir / "nonexistent.py"
+        nonexistent = tmp_path / "nonexistent.py"
         assert is_text_file(nonexistent) is False
 
-    def test_get_file_metadata(self, temp_dir):
+    def test_get_file_metadata(self, tmp_path):
         """Test get_file_metadata returns correct structure."""
-        test_file = temp_dir / "test.txt"
+        test_file = tmp_path / "test.txt"
         test_file.write_text("Test content")
 
         metadata = get_file_metadata(test_file)

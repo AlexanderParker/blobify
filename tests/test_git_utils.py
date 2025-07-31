@@ -20,32 +20,32 @@ from blobify.git_utils import (
 class TestGitUtils:
     """Test cases for git utilities."""
 
-    def test_is_git_repository_found(self, temp_dir):
+    def test_is_git_repository_found(self, tmp_path):
         """Test is_git_repository when .git directory exists."""
-        git_dir = temp_dir / ".git"
+        git_dir = tmp_path / ".git"
         git_dir.mkdir()
 
-        result = is_git_repository(temp_dir)
-        assert result == temp_dir
+        result = is_git_repository(tmp_path)
+        assert result == tmp_path
 
-    def test_is_git_repository_not_found(self, temp_dir):
+    def test_is_git_repository_not_found(self, tmp_path):
         """Test is_git_repository when no .git directory exists."""
-        result = is_git_repository(temp_dir)
+        result = is_git_repository(tmp_path)
         assert result is None
 
-    def test_is_git_repository_parent_directory(self, temp_dir):
+    def test_is_git_repository_parent_directory(self, tmp_path):
         """Test is_git_repository finds .git in parent directory."""
-        git_dir = temp_dir / ".git"
+        git_dir = tmp_path / ".git"
         git_dir.mkdir()
-        sub_dir = temp_dir / "subdir"
+        sub_dir = tmp_path / "subdir"
         sub_dir.mkdir()
 
         result = is_git_repository(sub_dir)
-        assert result == temp_dir
+        assert result == tmp_path
 
-    def test_read_gitignore_file(self, temp_dir):
+    def test_read_gitignore_file(self, tmp_path):
         """Test reading .gitignore file patterns."""
-        gitignore = temp_dir / ".gitignore"
+        gitignore = tmp_path / ".gitignore"
         gitignore.write_text(
             """
 # Comment
@@ -59,9 +59,9 @@ build/
         patterns = read_gitignore_file(gitignore)
         assert patterns == ["*.log", "temp/", "build/"]
 
-    def test_read_gitignore_file_nonexistent(self, temp_dir):
+    def test_read_gitignore_file_nonexistent(self, tmp_path):
         """Test reading nonexistent .gitignore file."""
-        gitignore = temp_dir / ".gitignore"
+        gitignore = tmp_path / ".gitignore"
         patterns = read_gitignore_file(gitignore)
         assert patterns == []
 
@@ -106,18 +106,18 @@ build/
         assert len(compiled) == 1
 
     @patch("blobify.git_utils.subprocess.run")
-    def test_get_gitignore_patterns_with_global(self, mock_run, temp_dir):
+    def test_get_gitignore_patterns_with_global(self, mock_run, tmp_path):
         """Test getting gitignore patterns including global gitignore."""
         # Setup git directory
-        git_dir = temp_dir / ".git"
+        git_dir = tmp_path / ".git"
         git_dir.mkdir()
 
         # Setup global gitignore
-        global_gitignore = temp_dir / "global.gitignore"
+        global_gitignore = tmp_path / "global.gitignore"
         global_gitignore.write_text("*.tmp\n")
 
         # Setup repo gitignore
-        repo_gitignore = temp_dir / ".gitignore"
+        repo_gitignore = tmp_path / ".gitignore"
         repo_gitignore.write_text("*.log\n")
 
         # Mock git config command
@@ -126,23 +126,23 @@ build/
         mock_result.stdout = str(global_gitignore)
         mock_run.return_value = mock_result
 
-        patterns_by_dir = get_gitignore_patterns(temp_dir)
+        patterns_by_dir = get_gitignore_patterns(tmp_path)
 
         # Should include both global and repo patterns
-        assert temp_dir in patterns_by_dir
-        patterns = patterns_by_dir[temp_dir]
+        assert tmp_path in patterns_by_dir
+        patterns = patterns_by_dir[tmp_path]
         assert "*.tmp" in patterns
         assert "*.log" in patterns
 
     @patch("blobify.git_utils.subprocess.run")
-    def test_get_gitignore_patterns_no_global(self, mock_run, temp_dir):
+    def test_get_gitignore_patterns_no_global(self, mock_run, tmp_path):
         """Test getting gitignore patterns without global gitignore."""
         # Setup git directory
-        git_dir = temp_dir / ".git"
+        git_dir = tmp_path / ".git"
         git_dir.mkdir()
 
         # Setup repo gitignore
-        repo_gitignore = temp_dir / ".gitignore"
+        repo_gitignore = tmp_path / ".gitignore"
         repo_gitignore.write_text("*.log\n")
 
         # Mock git config command (no global gitignore)
@@ -150,21 +150,21 @@ build/
         mock_result.returncode = 1
         mock_run.return_value = mock_result
 
-        patterns_by_dir = get_gitignore_patterns(temp_dir)
+        patterns_by_dir = get_gitignore_patterns(tmp_path)
 
         # Should only include repo patterns
-        assert temp_dir in patterns_by_dir
-        patterns = patterns_by_dir[temp_dir]
+        assert tmp_path in patterns_by_dir
+        patterns = patterns_by_dir[tmp_path]
         assert patterns == ["*.log"]
 
-    def test_get_gitignore_patterns_git_error(self, temp_dir):
+    def test_get_gitignore_patterns_git_error(self, tmp_path):
         """Test getting gitignore patterns when git command fails."""
         # Setup git directory
-        git_dir = temp_dir / ".git"
+        git_dir = tmp_path / ".git"
         git_dir.mkdir()
 
         # Setup repo gitignore
-        repo_gitignore = temp_dir / ".gitignore"
+        repo_gitignore = tmp_path / ".gitignore"
         repo_gitignore.write_text("*.log\n")
 
         # Test that function handles subprocess errors gracefully
@@ -177,60 +177,60 @@ build/
             ]
 
             # Should still work despite git errors
-            patterns_by_dir = get_gitignore_patterns(temp_dir)
+            patterns_by_dir = get_gitignore_patterns(tmp_path)
 
         # Should still get repo patterns despite git error
-        assert temp_dir in patterns_by_dir
-        patterns = patterns_by_dir[temp_dir]
+        assert tmp_path in patterns_by_dir
+        patterns = patterns_by_dir[tmp_path]
         assert patterns == ["*.log"]
 
-    def test_is_ignored_by_git_simple(self, temp_dir):
+    def test_is_ignored_by_git_simple(self, tmp_path):
         """Test is_ignored_by_git with simple patterns."""
         # Create test file
-        test_file = temp_dir / "test.log"
+        test_file = tmp_path / "test.log"
         test_file.write_text("test")
 
         # Create patterns dict
-        patterns_by_dir = {temp_dir: ["*.log"]}
+        patterns_by_dir = {tmp_path: ["*.log"]}
 
-        result = is_ignored_by_git(test_file, temp_dir, patterns_by_dir)
+        result = is_ignored_by_git(test_file, tmp_path, patterns_by_dir)
         assert result is True
 
-    def test_is_ignored_by_git_negation(self, temp_dir):
+    def test_is_ignored_by_git_negation(self, tmp_path):
         """Test is_ignored_by_git with negation patterns."""
         # Create test file
-        test_file = temp_dir / "important.log"
+        test_file = tmp_path / "important.log"
         test_file.write_text("test")
 
         # Create patterns dict with negation
-        patterns_by_dir = {temp_dir: ["*.log", "!important.log"]}
+        patterns_by_dir = {tmp_path: ["*.log", "!important.log"]}
 
-        result = is_ignored_by_git(test_file, temp_dir, patterns_by_dir)
+        result = is_ignored_by_git(test_file, tmp_path, patterns_by_dir)
         assert result is False
 
-    def test_is_ignored_by_git_not_ignored(self, temp_dir):
+    def test_is_ignored_by_git_not_ignored(self, tmp_path):
         """Test is_ignored_by_git with non-ignored file."""
         # Create test file
-        test_file = temp_dir / "test.py"
+        test_file = tmp_path / "test.py"
         test_file.write_text("test")
 
         # Create patterns dict
-        patterns_by_dir = {temp_dir: ["*.log"]}
+        patterns_by_dir = {tmp_path: ["*.log"]}
 
-        result = is_ignored_by_git(test_file, temp_dir, patterns_by_dir)
+        result = is_ignored_by_git(test_file, tmp_path, patterns_by_dir)
         assert result is False
 
-    def test_is_ignored_by_git_file_outside_repo(self, temp_dir):
+    def test_is_ignored_by_git_file_outside_repo(self, tmp_path):
         """Test is_ignored_by_git with file outside repository."""
-        # Create file outside temp_dir
+        # Create file outside tmp_path
         other_dir = Path(tempfile.mkdtemp())
         test_file = other_dir / "test.log"
         test_file.write_text("test")
 
         try:
-            patterns_by_dir = {temp_dir: ["*.log"]}
+            patterns_by_dir = {tmp_path: ["*.log"]}
 
-            result = is_ignored_by_git(test_file, temp_dir, patterns_by_dir)
+            result = is_ignored_by_git(test_file, tmp_path, patterns_by_dir)
             assert result is False
         finally:
             test_file.unlink()

@@ -20,21 +20,12 @@ from blobify.console import (
 class TestConsoleOutput:
     """Test cases for console output functions."""
 
-    @pytest.fixture
-    def captured_stderr(self):
-        """Capture stderr output."""
-        stderr_backup = sys.stderr
-        stderr_capture = StringIO()
-        sys.stderr = stderr_capture
-        yield stderr_capture
-        sys.stderr = stderr_backup
-
     @patch("blobify.console.console", None)
-    def test_print_status_no_rich(self, captured_stderr):
+    def test_print_status_no_rich(self, capsys):
         """Test print_status without rich console."""
         print_status("Test message")
-        output = captured_stderr.getvalue()
-        assert "Test message" in output
+        captured = capsys.readouterr()
+        assert "Test message" in captured.err
 
     @patch("blobify.console.console")
     def test_print_status_with_rich(self, mock_console):
@@ -43,11 +34,11 @@ class TestConsoleOutput:
         mock_console.print.assert_called_once_with("Test message", style="bold")
 
     @patch("blobify.console.console", None)
-    def test_print_debug_no_rich(self, captured_stderr):
+    def test_print_debug_no_rich(self, capsys):
         """Test print_debug without rich console."""
         print_debug("Debug message")
-        output = captured_stderr.getvalue()
-        assert "Debug message" in output
+        captured = capsys.readouterr()
+        assert "Debug message" in captured.err
 
     @patch("blobify.console.console")
     def test_print_debug_with_rich(self, mock_console):
@@ -56,25 +47,26 @@ class TestConsoleOutput:
         mock_console.print.assert_called_once_with("Debug message", style="dim cyan")
 
     @patch("blobify.console.console", None)
-    def test_print_phase_no_rich(self, captured_stderr):
+    def test_print_phase_no_rich(self, capsys):
         """Test print_phase without rich console."""
         print_phase("test phase")
-        output = captured_stderr.getvalue()
-        assert "=== TEST PHASE ===" in output
+        captured = capsys.readouterr()
+        assert "=== TEST PHASE ===" in captured.err
 
     @patch("blobify.console.console")
     def test_print_phase_with_rich(self, mock_console):
         """Test print_phase with rich console."""
         print_phase("test phase")
-        expected = "\n[bold magenta]ΓöÇΓöÇΓöÇΓöÇ TEST PHASE ΓöÇΓöÇΓöÇΓöÇ[/bold magenta]"
+        # The actual characters used are em dash (—) which is \u2500
+        expected = "\n[bold magenta]──── TEST PHASE ────[/bold magenta]"
         mock_console.print.assert_called_once_with(expected)
 
     @patch("blobify.console.console", None)
-    def test_print_warning_no_rich(self, captured_stderr):
+    def test_print_warning_no_rich(self, capsys):
         """Test print_warning without rich console."""
         print_warning("Warning message")
-        output = captured_stderr.getvalue()
-        assert "Warning message" in output
+        captured = capsys.readouterr()
+        assert "Warning message" in captured.err
 
     @patch("blobify.console.console")
     def test_print_warning_with_rich(self, mock_console):
@@ -83,11 +75,11 @@ class TestConsoleOutput:
         mock_console.print.assert_called_once_with("Warning message", style="yellow")
 
     @patch("blobify.console.console", None)
-    def test_print_error_no_rich(self, captured_stderr):
+    def test_print_error_no_rich(self, capsys):
         """Test print_error without rich console."""
         print_error("Error message")
-        output = captured_stderr.getvalue()
-        assert "Error message" in output
+        captured = capsys.readouterr()
+        assert "Error message" in captured.err
 
     @patch("blobify.console.console")
     def test_print_error_with_rich(self, mock_console):
@@ -96,11 +88,11 @@ class TestConsoleOutput:
         mock_console.print.assert_called_once_with("Error message", style="bold red")
 
     @patch("blobify.console.console", None)
-    def test_print_success_no_rich(self, captured_stderr):
+    def test_print_success_no_rich(self, capsys):
         """Test print_success without rich console."""
         print_success("Success message")
-        output = captured_stderr.getvalue()
-        assert "Success message" in output
+        captured = capsys.readouterr()
+        assert "Success message" in captured.err
 
     @patch("blobify.console.console")
     def test_print_success_with_rich(self, mock_console):
@@ -109,11 +101,11 @@ class TestConsoleOutput:
         mock_console.print.assert_called_once_with("Success message", style="green")
 
     @patch("blobify.console.console", None)
-    def test_print_file_processing_no_rich(self, captured_stderr):
+    def test_print_file_processing_no_rich(self, capsys):
         """Test print_file_processing without rich console."""
         print_file_processing("Processing file")
-        output = captured_stderr.getvalue()
-        assert "Processing file" in output
+        captured = capsys.readouterr()
+        assert "Processing file" in captured.err
 
     @patch("blobify.console.console")
     def test_print_file_processing_with_rich(self, mock_console):
