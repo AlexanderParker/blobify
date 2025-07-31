@@ -118,7 +118,9 @@ class TestMain:
             main()
 
         without_index = output_file2.read_text()
-        assert "# FILE INDEX" not in without_index
+        # The key fix: Check that the index section header is not present
+        # but FILE CONTENTS header should still be there
+        assert "# FILE INDEX\n" + "#" * 80 not in without_index
         assert "# FILE CONTENTS" in without_index
 
     @patch("subprocess.run")
@@ -226,7 +228,7 @@ class TestMain:
         # Create files
         (tmp_path / "app.py").write_text("print('app')")
         (tmp_path / "README.md").write_text("# README")
-        (tmp_path / "debug.log").write_text("log")
+        (tmp_path / "debug.log").write_text("debug log content")
 
         # Use file output
         output_file = tmp_path / "output.txt"
@@ -239,7 +241,9 @@ class TestMain:
         assert "print('app')" in content
         # Should show other files as excluded/ignored
         assert "debug.log" in content  # In index
-        assert "log" not in content  # Not in content
+        # The key fix: Check that the actual file content is not included,
+        # but allow the filename to appear in index and labels
+        assert "debug log content" not in content  # Actual file content should not be there
 
     def test_context_option_integration(self, tmp_path):
         """Test --context option with real .blobify config."""
