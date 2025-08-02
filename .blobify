@@ -12,11 +12,3 @@
 +*.md
 @clip
 @noclean
-
-[clone-default]
-+pyproject.toml
-+.pre-commit-config.yaml
-+.github\workflows\test.yml
-+.blobify
-@clip
-@noclean
