@@ -124,7 +124,7 @@ class TestMain:
         output_file = tmp_path / "output.txt"
 
         # Mock format_output to return content with BOM
-        # Use sys.modules to get the actual module and patch there
+        # Import sys.modules to get the actual module
         import sys
 
         main_module = sys.modules["blobify.main"]
@@ -292,10 +292,14 @@ class TestCliSummaryMessages:
         self.setup_test_files(tmp_path)
 
         # Mock scrubbing to return substitutions
-        with patch("blobify.main.format_output") as mock_format:
+        # Import sys.modules to get the actual module
+        import sys
+
+        main_module = sys.modules["blobify.main"]
+        with patch.object(main_module, "format_output") as mock_format:
             mock_format.return_value = ("output", 5, 2)  # 5 substitutions
 
-            with patch("blobify.main.SCRUBADUB_AVAILABLE", True):
+            with patch.object(main_module, "SCRUBADUB_AVAILABLE", True):
                 with patch("sys.argv", ["bfy", str(tmp_path)]):
                     main()
 
@@ -307,10 +311,14 @@ class TestCliSummaryMessages:
         self.setup_test_files(tmp_path)
 
         # Mock scrubbing to return substitutions
-        with patch("blobify.main.format_output") as mock_format:
+        # Import sys.modules to get the actual module
+        import sys
+
+        main_module = sys.modules["blobify.main"]
+        with patch.object(main_module, "format_output") as mock_format:
             mock_format.return_value = ("output", 3, 2)  # 3 substitutions
 
-            with patch("blobify.main.SCRUBADUB_AVAILABLE", True):
+            with patch.object(main_module, "SCRUBADUB_AVAILABLE", True):
                 with patch("sys.argv", ["bfy", str(tmp_path), "--debug"]):
                     main()
 
