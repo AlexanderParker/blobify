@@ -1,30 +1,6 @@
 """Pytest configuration and shared fixtures for blobify tests."""
 
 import sys
-import warnings
-
-
-# Capture warnings at the lowest level
-def debug_filter_function(message, category, filename, lineno, file=None, line=None):
-    print(f"\n=== RAW WARNING DETAILS ===")
-    print(f"message: '{message}'")
-    print(f"category: {category}")
-    print(f"filename: '{filename}'")
-    print(f"lineno: {lineno}")
-
-    # Check what sys.modules shows for this file
-    for module_name, module in sys.modules.items():
-        if hasattr(module, "__file__") and module.__file__ and filename in str(module.__file__):
-            print(f"Found matching module: '{module_name}'")
-
-    # Show the original warning too
-    warnings._original_showwarning(message, category, filename, lineno, file, line)
-
-
-# Store original and replace
-warnings._original_showwarning = warnings.showwarning
-warnings.showwarning = debug_filter_function
-
 from pathlib import Path
 
 import pytest
