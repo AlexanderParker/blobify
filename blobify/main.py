@@ -11,7 +11,7 @@ from pathlib import Path
 from .config import apply_default_switches, read_blobify_config
 from .console import print_debug, print_error, print_phase, print_status, print_success
 from .content_processor import SCRUBADUB_AVAILABLE
-from .file_scanner import scan_files
+from .file_scanner import get_built_in_ignored_patterns, scan_files
 from .git_utils import is_git_repository
 from .output_formatter import format_output
 
@@ -42,6 +42,37 @@ def _should_modify_stdout():
         return False
 
     return True
+
+
+def list_ignored_patterns():
+    """List the built-in ignored patterns to stdout."""
+    patterns = get_built_in_ignored_patterns()
+
+    print("Built-in ignored patterns:")
+    print("=" * 30)
+
+    # Group patterns by type for better readability
+    dot_folders = [p for p in patterns if p.startswith(".")]
+    package_dirs = [p for p in patterns if p in ["node_modules", "bower_components", "vendor", "packages"]]
+    python_dirs = [p for p in patterns if p in ["venv", "env", ".env", ".venv", "__pycache__", ".pytest_cache", ".mypy_cache"]]
+    build_dirs = [p for p in patterns if p in ["dist", "build", "target", "out", "obj", "Debug"]]
+    security_dirs = [p for p in patterns if p in ["certs", "certificates", "keys", "private", "ssl", ".ssh", "tls", ".gpg", ".keyring", ".gnupg"]]
+    other_patterns = [p for p in patterns if p not in dot_folders + package_dirs + python_dirs + build_dirs + security_dirs]
+
+    categories = [
+        ("Dot folders:", dot_folders),
+        ("Package manager directories:", package_dirs),
+        ("Python environments & cache:", python_dirs),
+        ("Build directories:", build_dirs),
+        ("Security & certificate directories:", security_dirs),
+        ("Other patterns:", other_patterns),
+    ]
+
+    for category_name, category_patterns in categories:
+        if category_patterns:
+            print(f"\n{category_name}")
+            for pattern in sorted(category_patterns):
+                print(f"  {pattern}")
 
 
 def main():
@@ -100,7 +131,18 @@ def main():
             action="store_true",
             help="Copy output to clipboard",
         )
+        parser.add_argument(
+            "-g",
+            "--list-ignored",
+            action="store_true",
+            help="List built-in ignored patterns and exit",
+        )
         args = parser.parse_args()
+
+        # Handle --list-ignored option
+        if args.list_ignored:
+            list_ignored_patterns()
+            return
 
         # Handle default directory logic
         if args.directory is None:
