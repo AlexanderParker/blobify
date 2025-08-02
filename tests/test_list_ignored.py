@@ -67,22 +67,22 @@ class TestListIgnoredFeature:
         assert "keys" in output
         assert ".ssh" in output
 
-    def test_list_ignored_patterns_exits_early(self, tmp_path):
+    def test_list_ignored_patterns_exits_early(self, tmp_path, capsys):
         """Test that --list-ignored exits without processing files."""
         # Create test files that would normally be processed
         (tmp_path / "test.py").write_text("print('should not be processed')")
 
-        # Instead of mocking scan_files, let's test the behavior differently
-        # We can check that when --list-ignored is used, the function returns early
-        # by verifying that list_ignored_patterns is called instead
+        # Test that the --list-ignored flag works and doesn't process files
         with patch("sys.argv", ["bfy", str(tmp_path), "-g"]):
-            with patch("blobify.main.list_ignored_patterns") as mock_list:
-                try:
-                    main()
-                except SystemExit:
-                    pass  # main() calls sys.exit after listing patterns
-                # list_ignored_patterns should be called when -g flag is used
-                mock_list.assert_called_once()
+            main()
+
+        # Verify that the list was printed (which means the function worked)
+        captured = capsys.readouterr()
+        assert "Built-in ignored patterns:" in captured.out
+
+        # The key test: verify that the content of our test file doesn't appear
+        # in the output, which means files weren't processed
+        assert "print('should not be processed')" not in captured.out
 
     def test_list_ignored_patterns_with_other_flags_ignored(self, capsys):
         """Test that other flags are ignored when --list-ignored is used."""
