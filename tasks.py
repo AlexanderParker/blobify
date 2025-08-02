@@ -179,7 +179,7 @@ def clean(c):
 
 
 @task
-def all_checks(c):
+def all(c):
     """Run all checks (format, lint, test)."""
     format(c)
     lint(c)
