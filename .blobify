@@ -1,4 +1,6 @@
 # Default context - all content
 +pyproject.toml
++.pre-commit-config.yaml
++.github\workflows\test.yml
 @clip
 @noclean
