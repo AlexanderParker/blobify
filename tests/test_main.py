@@ -167,17 +167,21 @@ class TestMain:
             with pytest.raises(SystemExit):
                 main()
 
-    @patch("blobify.main.format_output")
-    def test_bom_removal_with_file_output(self, mock_format, tmp_path):
+    def test_bom_removal_with_file_output(self, tmp_path):
         """Test BOM removal using file output."""
         (tmp_path / "test.py").write_text("print('test')")
         output_file = tmp_path / "output.txt"
 
         # Mock format_output to return content with BOM
-        mock_format.return_value = ("\ufeffTest output with BOM", 0, 1)
+        # Use sys.modules to get the actual module and patch there
+        import sys
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file)]):
-            main()
+        main_module = sys.modules["blobify.main"]
+        with patch.object(main_module, "format_output") as mock_format:
+            mock_format.return_value = ("\ufeffTest output with BOM", 0, 1)
+
+            with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file)]):
+                main()
 
         # Check BOM was removed from file
         content = output_file.read_text(encoding="utf-8")
