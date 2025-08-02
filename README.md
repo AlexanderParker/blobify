@@ -16,29 +16,28 @@ Install (with sensitive data scrubbing):
 pip install "blobify[scrubbing] @ git+https://github.com/AlexanderParker/blobify.git"
 ```
 
-Run (packages current directory and copies to clipboard):
+Basic usage:
 
 ```bash
+# Package current directory to clipboard
 bfy . --clip
-```
 
-Or simply run without arguments if you have a `.blobify` configuration file:
-
-```bash
+# Or run without directory if .blobify exists
 bfy --clip
+
+# List available contexts from .blobify file
+bfy -x
+
+# Extract only function signatures
+bfy . --filter "signatures:^(def|class)\s+" --clip
+
+# Use specific context
+bfy -x docs-only --clip
 ```
 
-Extract only function signatures and return statements:
+**Key features:** Respects `.gitignore`, optional sensitive data scrubbing, includes line numbers, supports custom filtering via `.blobify` configuration, content filters for extracting specific patterns, context listing for easy discovery, cross-platform clipboard support.
 
-```bash
-bfy . --filter "signatures:^(def|class)\s+" --filter "returns:return" --clip
-```
-
-Then paste into AI with prompts like "Review this code and suggest improvements" or "Add oauth authentication to this app".
-
-**Key features:** Respects `.gitignore`, optional sensitive data scrubbing (see important notice below), includes line numbers, supports custom filtering via `.blobify` configuration, **content filters for extracting specific patterns**, cross-platform clipboard support. Automatically excludes common build/cache directories (`.git`, `node_modules`, `__pycache__`, etc.) and binary files. Only includes text files automatically detected by file extension and content analysis.
-
-**⚠️ Important Notice:** The optional scrubbing feature is not guaranteed to work; it may not detect some sensitive data, it may find false positives. Consider it to be a best-effort helper feature only. Scrubbing, if installed, can be disabled with --noclean. You can opt not to install it upfront if you do not use the [scrubbing] option when installing. _This project makes no claims or guarantees of data security - you should always review the output of any tool to check for and clean up sensitive data before you use such data anywhere._
+**⚠️ Important Notice:** The optional scrubbing feature is not guaranteed to work; it may not detect some sensitive data. Consider it a best-effort helper only. Always review output before sharing.
 
 ## Command Line Options
 
@@ -48,7 +47,7 @@ bfy [directory] [options]
 
 - `directory` - Directory to scan (optional, defaults to current directory if .blobify file exists)
 - `-o,` `--output <file>` - Output file path (optional, defaults to stdout)
-- `-x,` `--context <name>` - Use specific context from .blobify file
+- `-x,` `--context [name]` - Use specific context from .blobify file, or list available contexts if no name provided
 - `-f,` `--filter <name:regex>` - Content filter: extract only lines matching regex pattern (can be used multiple times)
 - `-d,` `--debug` - Enable debug output for gitignore and .blobify processing
 - `-n,` `--noclean` - Disable scrubadub processing of sensitive data
@@ -62,333 +61,134 @@ bfy [directory] [options]
 
 ## Content Filters
 
-Content filters allow you to extract only specific patterns from your files, perfect for generating focused summaries for AI analysis.
-
-### Basic Filter Usage
+Extract specific patterns from your files for focused AI analysis:
 
 ```bash
-# Extract function and class definitions
+# Function and class definitions
 bfy . --filter "signatures:^(def|class)\s+" --clip
 
-# Extract import statements
+# Import statements
 bfy . --filter "imports:^(import|from)" --clip
 
-# Extract TODO comments
-bfy . --filter "todos:(TODO|FIXME|XXX)" --clip
+# Multiple filters (OR logic)
+bfy . --filter "funcs:^def" --filter "imports:^import" --clip
 
-# Multiple filters (OR logic - line included if ANY filter matches)
-bfy . --filter "funcs:^def" --filter "classes:^class" --filter "imports:^import" --clip
+# API endpoints
+bfy . --filter "routes:@app\.(get|post|put|delete)" --clip
+
+# Error handling
+bfy . --filter "errors:(except|raise|Error)" --clip
 ```
 
-### Filter Format
-
-Filters use the format `name:regex` where:
-
-- `name` - Descriptive name for the filter (shown in output header)
-- `regex` - Python regex pattern to match lines
-
-If you omit the name (just provide the regex), the pattern itself becomes the name.
-
-### Advanced Filter Examples
-
-```bash
-# Extract API endpoints and routes
-bfy . --filter "routes:@app\.(get|post|put|delete)" --filter "endpoints:/api/" --clip
-
-# Extract type annotations and return types
-bfy . --filter "types::\s*\w+.*->" --filter "returns:return\s+" --clip
-
-# Extract configuration and constants
-bfy . --filter "config:^[A-Z_]+ = " --filter "env:os\.environ" --clip
-
-# Extract error handling
-bfy . --filter "errors:(except|raise|Error)" --filter "logging:(log\.|logger)" --clip
-```
-
-### Filter Integration with Other Options
-
-```bash
-# Clean output with only filtered content
-bfy . --filter "sigs:^(def|class)" --suppress-excluded --no-metadata --clip
-
-# Filter with specific context
-bfy . --context docs-only --filter "headers:^#+\s" --clip
-
-# Save filtered overview for AI analysis
-bfy . --filter "funcs:^def" --filter "imports:^import" --output ai-overview.txt
-```
-
-## Examples
-
-Output current directory to stdout (requires .blobify file):
-
-```bash
-bfy
-```
-
-Output specific directory to stdout:
-
-```bash
-bfy .
-```
-
-Copy to clipboard:
-
-```bash
-bfy . --clip
-```
-
-Copy to clipboard using .blobify defaults:
-
-```bash
-bfy --clip
-```
-
-Save to file:
-
-```bash
-bfy /path/to/project -o output.txt
-```
-
-Extract only Python signatures and save for AI review:
-
-```bash
-bfy . --filter "signatures:^(def|class)\s+" --filter "imports:^(import|from)" -o code-summary.txt
-```
-
-Use context (if configured in .blobify):
-
-```bash
-bfy . -x docs-only --clip
-```
-
-Use context with .blobify defaults:
-
-```bash
-bfy -x docs-only --clip
-```
-
-Index only (no file contents):
-
-```bash
-bfy . --no-content --clip
-```
-
-Metadata only (file info with content but no sizes/timestamps):
-
-```bash
-bfy . --no-metadata --clip
-```
-
-Index only (no metadata or content):
-
-```bash
-bfy . --no-content --no-metadata --clip
-```
-
-Suppress excluded files from content section:
-
-```bash
-bfy . --suppress-excluded --clip
-```
-
-Clean output with only included files in content:
-
-```bash
-bfy . --suppress-excluded --no-metadata --clip
-```
-
-List built-in ignored patterns:
-
-```bash
-bfy -g
-```
+Filters use `name:regex` format. If you omit the name, the regex becomes the name.
 
 ## .blobify Configuration
 
-The `.blobify` file lets you customise which files are included, set default command-line options, and configure content filters. Blobify applies filters in this order: default exclusions → gitignore → .blobify excludes → .blobify includes → content filters. This means you can override gitignore rules when needed.
-
-Create a `.blobify` file in your project directory (git repository or otherwise):
+Create a `.blobify` file in your project directory for custom configurations. When a `.blobify` file exists in your current directory, you can run `bfy` without specifying a directory argument.
 
 ```
-# Default switches (applied automatically)
-@debug
+# Default switches
 @clip
 @suppress-excluded
-@output=blob.txt
 
-# Content filters for extracting specific patterns
+# Content filters
 @filter=signatures:^(def|class)\s+
 @filter=imports:^(import|from)
 
-# Include files that would normally be excluded
-+.pre-commit-config.yaml
+# Include/exclude patterns
 +.github/**
-
-# Exclude additional files
++.pre-commit-config.yaml
 -*.log
 -temp/**
 
 [docs-only]
-# Context for documentation review (use with -x docs-only or --context=docs-only)
+# Documentation review context
 -**
 +*.md
 +docs/**
 
-[code-signatures]
-# Context for extracting code structure without implementation details
-@filter=signatures:^(def|class|function)\s+
-@filter=imports:^(import|from|#include)
-@filter=exports:^(export|module\.exports)
-@suppress-excluded
-@no-metadata
-+*.py
-+*.js
-+*.ts
-+*.java
-+*.cpp
-+*.h
-
-[overview]
-# Context for project overview with key components
-@filter=classes:^(class|interface)\s+
-@filter=functions:^(def|function|public|private)\s+
-@filter=imports:^(import|from|#include)
+[signatures]
+# Code structure analysis
+@filter=signatures:^(def|class)\s+
 @no-line-numbers
+@suppress-excluded
 +*.py
 +*.js
-+*.ts
-+*.md
 
 [todos]
-# Context for finding all TODOs and FIXMEs
-@filter=todos:(TODO|FIXME|XXX|HACK|NOTE)
+# Find all TODOs and FIXMEs
+@filter=todos:(TODO|FIXME|XXX)
 @suppress-excluded
 +**
-
-[errors]
-# Context for error handling analysis
-@filter=errors:(except|catch|throw|raise|Error|Exception)
-@filter=logging:(log\.|logger|console\.)
-+*.py
-+*.js
-+*.ts
-+*.java
 ```
 
-**Syntax:**
+### Context Discovery
 
-- `@switch` - Set default boolean option (`@debug`, `@clip`, `@noclean`, `@no-line-numbers`, `@no-index`, `@no-content`, `@no-metadata`, `@suppress-excluded`)
-- `@key=value` - Set default option with value (`@output=filename.txt`)
-- `@filter=name:regex` - Set default content filter pattern
-- `+pattern` - Include files (overrides gitignore/default exclusions)
-- `-pattern` - Exclude files
-- `[context-name]` - Define named contexts for different views
-- Supports `*` and `**` wildcards, patterns relative to project root
-
-**Content Filters in .blobify:**
-
-- Multiple `@filter=` lines add multiple filters (OR logic)
-- Filters are applied after file inclusion/exclusion rules
-- Files with no matching lines are marked as `[FILE CONTENTS EXCLUDED BY FILTERS]`
-- Use `@suppress-excluded` to hide filter-excluded files from content sections
-
-**Contexts:** Use `-x context-name` to apply different file filtering rules and content filters. Contexts are independent - they don't inherit patterns from the default section. Command line arguments take precedence over .blobify default switches. Perfect for different analysis needs:
-
-- `code-signatures` - Extract function/class signatures without implementation
-- `overview` - High-level project structure for AI understanding
-- `todos` - Find all TODO items across the codebase
-- `errors` - Focus on error handling patterns
-- `docs-only` - Documentation files only
-
-**Default Directory Behaviour:** When you have a `.blobify` file in your current directory, you can run `bfy` without specifying a directory argument - it will automatically use the current directory. This makes it easy to set up project-specific configurations and run blobify with just `bfy --clip` or `bfy -x context-name`.
-
-**Suppressing Excluded Files:** By default, excluded files (those ignored by .gitignore, excluded by .blobify patterns, or with no filter matches) appear in the file contents section with placeholder messages like "[Content excluded - file ignored by .gitignore]". Use `--suppress-excluded` to remove these files from the contents section entirely while keeping them listed in the index. This creates cleaner output when you only want to see the actual content of included files.
-
-## Efficient Usage
-
-The file index and line numbers significantly improve AI response quality and accuracy, but they also increase token usage. For large projects approaching input limits, you can use filters and contexts to reduce tokens:
-
-**For getting project overview** - Use signatures and imports:
-
-```
-[overview]
-@filter=signatures:^(def|class|function)\s+
-@filter=imports:^(import|from|#include)
-@no-line-numbers
-@suppress-excluded
-```
-
-**For finding specific patterns** - Use targeted filters:
-
-```
-[api-analysis]
-@filter=routes:@app\.(get|post|put|delete)
-@filter=endpoints:/api/
-@filter=auth:(login|authenticate|authorize)
-@suppress-excluded
-```
-
-**For code structure analysis** - Extract definitions only:
-
-```
-[structure]
-@filter=definitions:^(def|class|function|interface|type)\s+
-@filter=exports:^(export|module\.exports)
-@no-metadata
-@suppress-excluded
-```
-
-**For error analysis** - Focus on error handling:
-
-```
-[errors]
-@filter=errors:(except|catch|throw|raise|Error)
-@filter=logging:(log\.|logger|console\.)
-@filter=validation:(validate|check|verify)
-@suppress-excluded
-```
-
-**For minimum token usage** - Exclude index and line numbers:
-
-```
-[minimal]
-@filter=key-functions:^(def main|function main|public static)
-@no-index
-@no-line-numbers
-@no-metadata
-@suppress-excluded
-```
-
-**For AI-optimized summaries** - Perfect for pre-commit hooks:
+List available contexts before using them:
 
 ```bash
-# Generate AI-friendly project summary
-bfy . --filter "sigs:^(def|class)" --filter "imports:^import" --suppress-excluded --output .ai-summary.txt
+# List contexts
+bfy -x
+bfy --context
+
+# Example output:
+# Available contexts:
+# ====================
+#   docs-only: Documentation review context
+#   signatures: Code structure analysis
+#   todos: Find all TODOs and FIXMEs
+#
+# Use with: bfy -x <context-name>
 ```
 
-You can add these example contexts to .blobify and use with: `bfy -x overview --clip`, `bfy -x structure --clip`, `bfy -x errors --clip`, or `bfy -x minimal --clip`
+### Configuration Syntax
 
-## Pre-commit Integration
+- `@switch` - Set default boolean option (`@debug`, `@clip`, `@no-content`, etc.)
+- `@key=value` - Set default option with value (`@output=file.txt`)
+- `@filter=name:regex` - Set default content filter
+- `+pattern` - Include files (overrides gitignore)
+- `-pattern` - Exclude files
+- `[context-name]` - Define named contexts
+- Supports `*` and `**` wildcards
 
-Perfect for automatically generating AI-readable summaries:
+## Common Use Cases
 
-```yaml
-# .pre-commit-config.yaml
-repos:
-  - repo: local
-    hooks:
-      - id: blobify-summary
-        name: Generate AI project summary
-        entry: bfy
-        language: system
-        args: ["-x", "overview", "--output", ".ai-summary.txt"]
-        files: "\.(py|js|ts|md)$"
-        pass_filenames: false
-        always_run: true
+```bash
+# Basic usage
+bfy . --clip                              # Copy project to clipboard
+bfy -x                                    # List available contexts
+bfy -x docs-only --clip                   # Use docs context
+
+# Content filtering
+bfy . --filter "sigs:^def" --clip         # Extract function definitions
+bfy . --filter "todos:TODO" --clip        # Find all TODOs
+
+# Clean output
+bfy . --suppress-excluded --no-metadata --clip  # Only included files
+bfy . --no-content --clip                 # Index only
+
+# Save to file
+bfy . -o project-summary.txt              # Save to file
+bfy . --filter "sigs:^def" -o overview.txt # Filtered overview
 ```
 
-This automatically updates `.ai-summary.txt` with filtered project content whenever you commit, perfect for feeding to AI assistants.
+## Efficient Token Usage
+
+For large projects, use contexts and filters to reduce AI token consumption:
+
+```bash
+# Project overview (minimal tokens)
+bfy -x signatures --clip
+
+# Find specific patterns
+bfy . --filter "errors:(except|Error)" --suppress-excluded --clip
+
+# Documentation only
+bfy -x docs-only --clip
+
+# Clean summary
+bfy . --filter "sigs:^(def|class)" --no-line-numbers --suppress-excluded --clip
+```
 
 ---
 
@@ -396,90 +196,37 @@ This automatically updates `.ai-summary.txt` with filtered project content whene
 
 ### Setup
 
-1. Clone the repository
+1. Clone and enter directory:
+
    ```bash
    git clone https://github.com/AlexanderParker/blobify.git
-   ```
-   Enter the project folder:
-   ```bash
    cd blobify
    ```
-2. Create a virtual environment:
+
+2. Create and activate virtual environment:
 
    ```bash
    python -m venv venv
+   source venv/bin/activate  # Linux/macOS
+   # or
+   venv\Scripts\activate     # Windows
    ```
 
-3. Activate the virtual environment
-
-   Linux, MacOS:
-
-   ```bash
-   source venv/bin/activate
-   ```
-
-   Windows:
-
-   ```
-   venv\Scripts\activate
-   ```
-
-4. Install with dev & scrubbing dependencies:
-
+3. Install with dev dependencies:
    ```bash
    pip install -e ".[dev,scrubbing]"
-   ```
-
-5. Install pre-commit hooks:
-   ```bash
    pre-commit install
    ```
 
 ### Run Tests
 
-- Run tests
-
-  With normal CLI output:
-
-  ```bash
-  invoke test
-  ```
-
-  Redirect to clipboard (test on windows only at this stage)
-
-  ```bash
-  invoke test-to-clip
-  ```
-
-  Or:
-
-  ```bash
-  invoke test | clip
-  ```
-
-- Run with coverage
-
-  ```bash
-  invoke coverage
-  ```
-
-- Format code
-
-  ```bash
-  invoke format
-  ```
-
-- Check code quality
-
-  ```bash
-  invoke lint
-  ```
-
-- Check all
-
-  ```bash
-  invoke all
-  ```
+```bash
+invoke test        # Run tests
+invoke coverage    # Run with coverage
+invoke format      # Format code
+invoke lint        # Check code quality
+invoke all         # Check everything
+```
 
 ## License
 
