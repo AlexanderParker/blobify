@@ -250,11 +250,10 @@ class TestSwitchCombinations:
         assert "[INCLUDED BY .blobify]" not in content2
         assert "Status:" not in content2
 
-    def test_line_numbers_with_content_combinations(self, tmp_path):
-        """Test that line numbers work correctly with content-related switches."""
+    def test_line_numbers_enabled_by_default(self, tmp_path):
+        """Test that line numbers are shown by default when content is enabled."""
         self.setup_test_files(tmp_path)
 
-        # Test with content enabled (should show line numbers)
         output_file = tmp_path / "with_lines.txt"
         with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file)]):
             main()
@@ -262,23 +261,29 @@ class TestSwitchCombinations:
         content = output_file.read_text(encoding="utf-8")
         assert "1: print('hello world')" in content
 
-        # Test with content disabled (line numbers irrelevant)
-        output_file2 = tmp_path / "no_content.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "--no-content", "-o", str(output_file2)]):
+    def test_no_line_numbers_flag_disables_line_numbers(self, tmp_path):
+        """Test that --no-line-numbers flag disables line numbers in content."""
+        self.setup_test_files(tmp_path)
+
+        output_file = tmp_path / "no_line_numbers.txt"
+        with patch("sys.argv", ["bfy", str(tmp_path), "--no-line-numbers", "-o", str(output_file)]):
             main()
 
-        content2 = output_file2.read_text(encoding="utf-8")
-        assert "1: print('hello world')" not in content2
-        assert "print('hello world')" not in content2  # No content at all
+        content = output_file.read_text(encoding="utf-8")
+        assert "print('hello world')" in content  # Content present
+        assert "1: print('hello world')" not in content  # No line numbers
 
-        # Test with content enabled but no line numbers
-        output_file3 = tmp_path / "no_line_numbers.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "--no-line-numbers", "-o", str(output_file3)]):
+    def test_no_content_flag_excludes_all_content_and_line_numbers(self, tmp_path):
+        """Test that --no-content flag excludes all file content including line numbers."""
+        self.setup_test_files(tmp_path)
+
+        output_file = tmp_path / "no_content.txt"
+        with patch("sys.argv", ["bfy", str(tmp_path), "--no-content", "-o", str(output_file)]):
             main()
 
-        content3 = output_file3.read_text(encoding="utf-8")
-        assert "print('hello world')" in content3  # Content present
-        assert "1: print('hello world')" not in content3  # No line numbers
+        content = output_file.read_text(encoding="utf-8")
+        assert "1: print('hello world')" not in content
+        assert "print('hello world')" not in content  # No content at all
 
 
 class TestSwitchCombinationsWithContext:
@@ -296,6 +301,7 @@ class TestSwitchCombinationsWithContext:
 +*.py
 
 [docs-only]
+-**
 +*.md
 +docs/**
 """
@@ -310,13 +316,14 @@ class TestSwitchCombinationsWithContext:
 
         content = output_file.read_text(encoding="utf-8")
 
-        # Should include README.md (matches docs-only context) but not app.py
+        # Should include ALL files in index (contexts don't filter the file discovery)
         assert "README.md" in content
-        assert "app.py" not in content  # Not included in docs-only context
+        assert "app.py" in content  # All files appear in index
 
-        # Should not show content or status labels
+        # Should not show content (due to --no-content) or status labels
         assert "# README" not in content
-        assert "[INCLUDED BY .blobify]" not in content
+        assert "print('app')" not in content
+        assert "[EXCLUDED BY .blobify]" not in content  # No status labels when --no-content
 
     def test_context_with_all_switches(self, tmp_path):
         """Test context works with various switch combinations."""
@@ -329,6 +336,7 @@ class TestSwitchCombinationsWithContext:
 [minimal]
 @no-content
 @no-metadata
+-**
 +*.py
 +*.md
 """
@@ -344,17 +352,49 @@ class TestSwitchCombinationsWithContext:
 
         content = output_file.read_text(encoding="utf-8")
 
-        # Should include files matched by context
+        # Should include ALL discovered files in index (contexts don't filter discovery)
         assert "app.py" in content
         assert "README.md" in content
-
-        # Should not include files not matched by context
-        assert "config.xml" not in content
+        assert "config.xml" in content  # All files appear in index
 
         # Default switches should apply
         assert "# FILE CONTENTS" not in content  # no-content applied
         assert "FILE_METADATA:" not in content  # no-metadata applied
         assert "# FILE INDEX" in content  # Index still enabled
+
+    def test_context_with_content_filtering(self, tmp_path):
+        """Test that context patterns control content inclusion when content is enabled."""
+        # Create git repo
+        (tmp_path / ".git").mkdir()
+
+        # Create .blobify with context that excludes everything then includes specific files
+        (tmp_path / ".blobify").write_text(
+            """
+[docs-only]
+-**
++*.md
+"""
+        )
+
+        (tmp_path / "app.py").write_text("print('app code')")
+        (tmp_path / "README.md").write_text("# README content")
+
+        output_file = tmp_path / "output.txt"
+        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "docs-only", "-o", str(output_file)]):
+            main()
+
+        content = output_file.read_text(encoding="utf-8")
+
+        # All files should appear in index
+        assert "app.py" in content
+        assert "README.md" in content
+
+        # But content should be filtered by context patterns
+        assert "# README content" in content  # .md file content included
+        assert "print('app code')" not in content  # .py file content excluded
+
+        # Should show appropriate exclusion status
+        assert "[EXCLUDED BY .blobify]" in content  # For the excluded files
 
 
 class TestConfigSwitchDefaults:

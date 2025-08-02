@@ -101,7 +101,10 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
 ]
-filterwarnings = ["ignore:invalid escape sequence.*:DeprecationWarning"]
+filterwarnings = [
+    "ignore:invalid escape sequence.*:DeprecationWarning",
+    "ignore:Filth.replace_with.*:DeprecationWarning:scrubadub.*",
+]
 
 [tool.coverage.run]
 source = ["blobify"]

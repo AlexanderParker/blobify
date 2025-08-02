@@ -440,12 +440,8 @@ def scan_files(directory: Path, context: Optional[str] = None, debug: bool = Fal
     all_files = discovery_context["all_files"]
 
     # Apply context filtering to determine final included files
-    if context:
-        # When using a context, only include files that match the context patterns
-        included_files = [f for f in all_files if f.get("is_blobify_included", False) and f["include_in_output"]]
-    else:
-        # Default context - include files that weren't explicitly excluded
-        included_files = [f for f in all_files if f["include_in_output"]]
+    # Both context and default should use the same logic
+    included_files = [f for f in all_files if f["include_in_output"]]
 
     git_ignored_files = [f for f in all_files if f["is_git_ignored"]]
     blobify_excluded_files = [f for f in all_files if f["is_blobify_excluded"]]

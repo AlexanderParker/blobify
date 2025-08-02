@@ -5,3 +5,18 @@
 +.blobify
 @clip
 @noclean
+
+[docs-only]
+# Context for documentation review (use with -x docs-only or --context=docs-only)
+-**
++*.md
+@clip
+@noclean
+
+[clone-default]
++pyproject.toml
++.pre-commit-config.yaml
++.github\workflows\test.yml
++.blobify
+@clip
+@noclean

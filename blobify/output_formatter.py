@@ -242,7 +242,7 @@ def generate_content(
                     if debug and substitutions > 0:
                         print_debug(f"File had {substitutions} substitutions, total now: {total_substitutions}")
 
-                    # Add line numbers if enabled
+                    # Add line numbers if enabled AND include_line_numbers is True
                     if include_line_numbers:
                         lines = processed_content.split("\n")
                         numbered_lines = []
