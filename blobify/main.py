@@ -129,7 +129,13 @@ def main():
             "-k",
             "--no-content",
             action="store_true",
-            help="Include only file index and metadata, exclude all file contents",
+            help="Exclude file contents but include metadata (size, timestamps, status)",
+        )
+        parser.add_argument(
+            "-m",
+            "--no-metadata",
+            action="store_true",
+            help="Exclude file metadata (size, timestamps, status) from output",
         )
         parser.add_argument(
             "-c",
@@ -206,6 +212,7 @@ def main():
             include_line_numbers=not args.no_line_numbers,
             include_index=not args.no_index,
             include_content=not args.no_content,
+            include_metadata=not args.no_metadata,
             debug=args.debug,
             blobify_patterns_info=blobify_patterns_info,
         )
@@ -218,8 +225,12 @@ def main():
             summary_parts.append("(no useful output - both index and content disabled)")
             # Show helpful hint in CLI when there's essentially no output
             print_status("Note: Both --no-index and --no-content are enabled. Use --help to see output options.", style="yellow")
-        elif args.no_content:
+        elif args.no_content and args.no_metadata:
             summary_parts.append("(index only)")
+        elif args.no_content:
+            summary_parts.append("(index and metadata only)")
+        elif args.no_metadata:
+            summary_parts.append("(content only, no metadata)")
         elif scrub_data and SCRUBADUB_AVAILABLE and total_substitutions > 0:
             if args.debug:
                 summary_parts.append(f"scrubadub made {total_substitutions} substitutions")

@@ -151,6 +151,11 @@ def apply_default_switches(args: argparse.Namespace, default_switches: List[str]
                     args_dict["no_content"] = True
                     if debug:
                         print_debug("Applied default: --no-content")
+            elif switch == "no-metadata":
+                if not args_dict.get("no_metadata", False):
+                    args_dict["no_metadata"] = True
+                    if debug:
+                        print_debug("Applied default: --no-metadata")
             elif switch == "clip":
                 if not args_dict.get("clip", False):
                     args_dict["clip"] = True

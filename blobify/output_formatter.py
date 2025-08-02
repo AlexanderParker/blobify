@@ -16,6 +16,7 @@ def generate_header(
     blobify_patterns_info: tuple,
     include_index: bool = True,
     include_content: bool = True,
+    include_metadata: bool = True,
 ) -> str:
     """Generate the file header with metadata and configuration info."""
     blobify_include_patterns, blobify_exclude_patterns, default_switches = blobify_patterns_info
@@ -28,8 +29,27 @@ def generate_header(
     # Adjust format description based on options
     if not include_content and not include_index:
         format_description = """# This file contains no useful output - both file index and content have been disabled."""
-    elif not include_content:
+    elif not include_content and not include_metadata:
         format_description = """# This file contains an index of all text files found in the specified directory."""
+    elif not include_content:
+        format_description = """# This file contains an index and metadata of all text files found in the specified directory.
+# Format:
+# 1. File listing with relative paths and status
+# 2. Metadata sections for each file (size, timestamps, status)
+# 3. Each file section is marked with START_FILE and END_FILE delimiters
+#
+# Files ignored by .gitignore are listed but marked as [IGNORED BY GITIGNORE]
+# Files excluded by .blobify are listed but marked as [EXCLUDED BY .blobify]
+# File metadata is included but content is excluded."""
+    elif not include_metadata:
+        format_description = """# This file contains contents of all text files found in the specified directory.
+# Format:
+# 1. Content sections for each file
+# 2. Each file section is marked with START_FILE and END_FILE delimiters
+#
+# Files ignored by .gitignore or excluded by .blobify have their content excluded
+# with a placeholder message.
+# File metadata (size, timestamps, status) is excluded."""
     elif include_index:
         format_description = """# This file contains an index and contents of all text files found in the specified directory.
 # Format:
@@ -103,13 +123,20 @@ def generate_index(all_files: List[Dict], gitignored_directories: List[Path], in
     return index_section
 
 
-def generate_content(all_files: List[Dict], scrub_data: bool, include_line_numbers: bool, include_content: bool, debug: bool) -> tuple:
+def generate_content(
+    all_files: List[Dict],
+    scrub_data: bool,
+    include_line_numbers: bool,
+    include_content: bool,
+    include_metadata: bool,
+    debug: bool,
+) -> tuple:
     """
     Generate the file content section.
     Returns tuple of (content_string, total_substitutions).
     """
-    # If content is disabled, return empty string immediately
-    if not include_content:
+    # If both content and metadata are disabled, return empty string immediately
+    if not include_content and not include_metadata:
         return "", 0
 
     content = []
@@ -122,63 +149,66 @@ def generate_content(all_files: List[Dict], scrub_data: bool, include_line_numbe
         is_blobify_excluded = file_info["is_blobify_excluded"]
         is_blobify_included = file_info.get("is_blobify_included", False)
 
-        metadata = get_file_metadata(file_path)
-
+        # Always include the START_FILE marker when metadata or content is enabled
         content.append(f"\nSTART_FILE: {relative_path}")
-        content.append("FILE_METADATA:")
-        content.append(f"  Path: {relative_path}")
-        content.append(f"  Size: {metadata['size']} bytes")
-        content.append(f"  Created: {metadata['created']}")
-        content.append(f"  Modified: {metadata['modified']}")
-        content.append(f"  Accessed: {metadata['accessed']}")
 
-        if is_blobify_included:
-            content.append("  Status: INCLUDED BY .blobify")
-        elif is_git_ignored:
-            content.append("  Status: IGNORED BY GITIGNORE")
-        elif is_blobify_excluded:
-            content.append("  Status: EXCLUDED BY .blobify")
-        elif scrub_data and SCRUBADUB_AVAILABLE:
-            content.append("  Status: PROCESSED WITH SCRUBADUB")
+        # Include metadata section if enabled
+        if include_metadata:
+            metadata = get_file_metadata(file_path)
+            content.append("FILE_METADATA:")
+            content.append(f"  Path: {relative_path}")
+            content.append(f"  Size: {metadata['size']} bytes")
+            content.append(f"  Created: {metadata['created']}")
+            content.append(f"  Modified: {metadata['modified']}")
+            content.append(f"  Accessed: {metadata['accessed']}")
 
-        if is_git_ignored:
+            if is_blobify_included:
+                content.append("  Status: INCLUDED BY .blobify")
+            elif is_git_ignored:
+                content.append("  Status: IGNORED BY GITIGNORE")
+            elif is_blobify_excluded:
+                content.append("  Status: EXCLUDED BY .blobify")
+            elif scrub_data and SCRUBADUB_AVAILABLE and include_content:
+                content.append("  Status: PROCESSED WITH SCRUBADUB")
+
+        # Include content section if enabled
+        if include_content:
             content.append("FILE_CONTENT:")
-            content.append("[Content excluded - file ignored by .gitignore]")
-        elif is_blobify_excluded:
-            content.append("FILE_CONTENT:")
-            content.append("[Content excluded - file excluded by .blobify]")
-        else:
-            content.append("FILE_CONTENT:")
-            try:
-                if debug:
-                    print_file_processing(f"Processing file: {relative_path}")
+            if is_git_ignored:
+                content.append("[Content excluded - file ignored by .gitignore]")
+            elif is_blobify_excluded:
+                content.append("[Content excluded - file excluded by .blobify]")
+            else:
+                try:
+                    if debug:
+                        print_file_processing(f"Processing file: {relative_path}")
 
-                with open(file_path, "r", encoding="utf-8", errors="strict") as f:
-                    file_content = f.read()
+                    with open(file_path, "r", encoding="utf-8", errors="strict") as f:
+                        file_content = f.read()
 
-                # Attempt to scrub content if enabled
-                processed_content, substitutions = scrub_content(file_content, scrub_data, debug)
-                total_substitutions += substitutions
+                    # Attempt to scrub content if enabled
+                    processed_content, substitutions = scrub_content(file_content, scrub_data, debug)
+                    total_substitutions += substitutions
 
-                if debug and substitutions > 0:
-                    print_debug(f"File had {substitutions} substitutions, total now: {total_substitutions}")
+                    if debug and substitutions > 0:
+                        print_debug(f"File had {substitutions} substitutions, total now: {total_substitutions}")
 
-                # Add line numbers if enabled
-                if include_line_numbers:
-                    lines = processed_content.split("\n")
-                    numbered_lines = []
-                    line_number_width = len(str(len(lines)))
+                    # Add line numbers if enabled
+                    if include_line_numbers:
+                        lines = processed_content.split("\n")
+                        numbered_lines = []
+                        line_number_width = len(str(len(lines)))
 
-                    for i, line in enumerate(lines, 1):
-                        line_number = str(i).rjust(line_number_width)
-                        numbered_lines.append(f"{line_number}: {line}")
+                        for i, line in enumerate(lines, 1):
+                            line_number = str(i).rjust(line_number_width)
+                            numbered_lines.append(f"{line_number}: {line}")
 
-                    processed_content = "\n".join(numbered_lines)
+                        processed_content = "\n".join(numbered_lines)
 
-                content.append(processed_content)
+                    content.append(processed_content)
 
-            except Exception as e:
-                content.append(f"[Error reading file: {str(e)}]")
+                except Exception as e:
+                    content.append(f"[Error reading file: {str(e)}]")
 
         content.append(f"END_FILE: {relative_path}\n")
 
@@ -193,6 +223,7 @@ def format_output(
     include_line_numbers: bool,
     include_index: bool,
     include_content: bool,
+    include_metadata: bool,
     debug: bool,
     blobify_patterns_info: tuple,
 ) -> tuple:
@@ -209,21 +240,30 @@ def format_output(
     all_files.sort(key=lambda x: str(x["relative_path"]).lower())
 
     # Generate header
-    header = generate_header(directory, git_root, context, scrub_data, blobify_patterns_info, include_index, include_content)
+    header = generate_header(
+        directory,
+        git_root,
+        context,
+        scrub_data,
+        blobify_patterns_info,
+        include_index,
+        include_content,
+        include_metadata,
+    )
 
     # Generate index section (if enabled)
     if include_index:
-        index_section = generate_index(all_files, gitignored_directories, include_content)
+        index_section = generate_index(all_files, gitignored_directories, include_content or include_metadata)
     else:
         # No index, just file contents header (unless no content either)
-        if include_content:
+        if include_content or include_metadata:
             index_section = "\n# FILE CONTENTS\n" + "#" * 80 + "\n"
         else:
             index_section = ""
 
-    # Generate content section (only if content is enabled)
-    if include_content:
-        content_section, total_substitutions = generate_content(all_files, scrub_data, include_line_numbers, include_content, debug)
+    # Generate content section (only if content or metadata is enabled)
+    if include_content or include_metadata:
+        content_section, total_substitutions = generate_content(all_files, scrub_data, include_line_numbers, include_content, include_metadata, debug)
     else:
         content_section = ""
         total_substitutions = 0
@@ -231,7 +271,7 @@ def format_output(
         if debug:
             from .console import print_debug
 
-            print_debug("Skipping content generation due to --no-content flag")
+            print_debug("Skipping content generation due to --no-content and --no-metadata flags")
 
     # Combine all sections
     result = header + index_section + content_section

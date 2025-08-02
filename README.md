@@ -47,7 +47,8 @@ bfy [directory] [options]
 - `-n,` `--noclean` - Disable scrubadub processing of sensitive data
 - `-l,` `--no-line-numbers` - Disable line numbers in file content output
 - `-i,` `--no-index` - Disable file index section at start of output
-- `-k,` `--no-content` - Include only file index and metadata, exclude all file contents
+- `-k,` `--no-content` - Exclude file contents but include metadata (size, timestamps, status)
+- `-m,` `--no-metadata` - Exclude file metadata (size, timestamps, status) from output
 - `-c,` `--clip` - Copy output to clipboard
 - `-g,` `--list-ignored` - List built-in ignored patterns and exit
 
@@ -101,6 +102,18 @@ Index only (no file contents):
 bfy . --no-content --clip
 ```
 
+Metadata only (file info with content but no sizes/timestamps):
+
+```bash
+bfy . --no-metadata --clip
+```
+
+Index only (no metadata or content):
+
+```bash
+bfy . --no-content --no-metadata --clip
+```
+
 List built-in ignored patterns:
 
 ```bash
@@ -148,7 +161,7 @@ Create a `.blobify` file in your project directory (git repository or otherwise)
 
 **Syntax:**
 
-- `@switch` - Set default boolean option (`@debug`, `@clip`, `@noclean`, `@no-line-numbers`, `@no-index`, `@no-content`)
+- `@switch` - Set default boolean option (`@debug`, `@clip`, `@noclean`, `@no-line-numbers`, `@no-index`, `@no-content`, `@no-metadata`)
 - `@key=value` - Set default option with value (`@output=filename.txt`)
 - `+pattern` - Include files (overrides gitignore/default exclusions)
 - `-pattern` - Exclude files
