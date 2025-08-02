@@ -23,8 +23,6 @@ repos:
       - id: flake8
         additional_dependencies:
           - Flake8-pyproject>=1.2.3 # Read config from pyproject.toml
-          - flake8-bugbear>=25.1.0 # Provides B014, B033 errors
-          - pep8-naming>=0.14.1 # Provides N806 errors
         # Remove hardcoded args since we're using pyproject.toml via Flake8-pyproject
   - repo: local
     hooks:
