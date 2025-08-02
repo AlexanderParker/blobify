@@ -1,6 +1,16 @@
-# Blobify
+<div align="center">
+  <h1>
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="misc/blobify-light.svg">
+      <source media="(prefers-color-scheme: light)" srcset="misc/blobify-dark.svg">
+      <img alt="Blobify" src="misc/blobify-dark.svg" width="48" height="48" style="vertical-align: middle; margin-right: 12px;">
+    </picture>
+    Blobify
+  </h1>
+  <p><em>Package your entire codebase into a single text file for AI consumption</em></p>
+</div>
 
-Package your entire codebase into a single text file for AI consumption. Feed your project to Claude, ChatGPT, or other AI assistants for code analysis, debugging, refactoring, documentation, or feature development.
+Feed your project to Claude, ChatGPT, or other AI assistants for code analysis, debugging, refactoring, documentation, or feature development.
 
 ## Quick Start
 

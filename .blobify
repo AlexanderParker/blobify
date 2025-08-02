@@ -3,6 +3,7 @@
 +.pre-commit-config.yaml
 +.github\workflows\test.yml
 +.blobify
++misc\blobify-dark.svg
 @clip
 @noclean
 
