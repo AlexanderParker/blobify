@@ -221,16 +221,23 @@ def main():
         context_info = f" (context: {args.context})" if args.context else ""
         summary_parts = [f"Processed {file_count} files{context_info}"]
 
-        if args.no_content and args.no_index:
-            summary_parts.append("(no useful output - both index and content disabled)")
+        if args.no_content and args.no_index and args.no_metadata:
+            summary_parts.append("(no useful output - index, content, and metadata all disabled)")
             # Show helpful hint in CLI when there's essentially no output
-            print_status("Note: Both --no-index and --no-content are enabled. Use --help to see output options.", style="yellow")
+            print_status(
+                "Note: All output options are disabled (--no-index --no-content --no-metadata). Use --help to see output options.",
+                style="yellow",
+            )
+        elif args.no_content and args.no_index:
+            summary_parts.append("(metadata only)")
         elif args.no_content and args.no_metadata:
             summary_parts.append("(index only)")
         elif args.no_content:
             summary_parts.append("(index and metadata only)")
-        elif args.no_metadata:
+        elif args.no_metadata and args.no_index:
             summary_parts.append("(content only, no metadata)")
+        elif args.no_metadata:
+            summary_parts.append("(index and content, no metadata)")
         elif scrub_data and SCRUBADUB_AVAILABLE and total_substitutions > 0:
             if args.debug:
                 summary_parts.append(f"scrubadub made {total_substitutions} substitutions")
