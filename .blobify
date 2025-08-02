@@ -12,3 +12,4 @@
 +*.md
 @clip
 @noclean
+@suppress-excluded

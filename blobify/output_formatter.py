@@ -170,6 +170,7 @@ def generate_content(
     include_line_numbers: bool,
     include_content: bool,
     include_metadata: bool,
+    suppress_excluded: bool,
     debug: bool,
 ) -> tuple:
     """
@@ -189,6 +190,10 @@ def generate_content(
         is_git_ignored = file_info["is_git_ignored"]
         is_blobify_excluded = file_info["is_blobify_excluded"]
         is_blobify_included = file_info.get("is_blobify_included", False)
+
+        # Skip excluded files entirely if suppress_excluded is enabled
+        if suppress_excluded and (is_git_ignored or is_blobify_excluded):
+            continue
 
         # Always include the START_FILE marker when metadata or content is enabled
         content.append(f"\nSTART_FILE: {relative_path}")
@@ -273,6 +278,7 @@ def format_output(
     include_index: bool,
     include_content: bool,
     include_metadata: bool,
+    suppress_excluded: bool,
     debug: bool,
     blobify_patterns_info: tuple,
 ) -> tuple:
@@ -314,7 +320,7 @@ def format_output(
 
     # Generate content section (only if content or metadata is enabled)
     if include_content or include_metadata:
-        content_section, total_substitutions = generate_content(all_files, scrub_data, include_line_numbers, include_content, include_metadata, debug)
+        content_section, total_substitutions = generate_content(all_files, scrub_data, include_line_numbers, include_content, include_metadata, suppress_excluded, debug)
     else:
         content_section = ""
         total_substitutions = 0

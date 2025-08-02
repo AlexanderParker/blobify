@@ -49,6 +49,7 @@ bfy [directory] [options]
 - `-i,` `--no-index` - Disable file index section at start of output
 - `-k,` `--no-content` - Exclude file contents but include metadata (size, timestamps, status)
 - `-m,` `--no-metadata` - Exclude file metadata (size, timestamps, status) from output
+- `-s,` `--suppress-excluded` - Suppress excluded files from file contents section (keep them in index only)
 - `-c,` `--clip` - Copy output to clipboard
 - `-g,` `--list-ignored` - List built-in ignored patterns and exit
 
@@ -114,6 +115,18 @@ Index only (no metadata or content):
 bfy . --no-content --no-metadata --clip
 ```
 
+Suppress excluded files from content section:
+
+```bash
+bfy . --suppress-excluded --clip
+```
+
+Clean output with only included files in content:
+
+```bash
+bfy . --suppress-excluded --no-metadata --clip
+```
+
 List built-in ignored patterns:
 
 ```bash
@@ -130,6 +143,7 @@ Create a `.blobify` file in your project directory (git repository or otherwise)
 # Default switches (applied automatically)
 @debug
 @clip
+@suppress-excluded
 @output=blob.txt
 
 # Include files that would normally be excluded
@@ -146,6 +160,15 @@ Create a `.blobify` file in your project directory (git repository or otherwise)
 +*.md
 +docs/**
 
+[clean-output]
+# Context for clean output without excluded files
+@suppress-excluded
+@no-metadata
++*.py
++*.js
++*.ts
++*.md
+
 [index-only]
 # Context for getting project overview without file contents
 @no-content
@@ -161,7 +184,7 @@ Create a `.blobify` file in your project directory (git repository or otherwise)
 
 **Syntax:**
 
-- `@switch` - Set default boolean option (`@debug`, `@clip`, `@noclean`, `@no-line-numbers`, `@no-index`, `@no-content`, `@no-metadata`)
+- `@switch` - Set default boolean option (`@debug`, `@clip`, `@noclean`, `@no-line-numbers`, `@no-index`, `@no-content`, `@no-metadata`, `@suppress-excluded`)
 - `@key=value` - Set default option with value (`@output=filename.txt`)
 - `+pattern` - Include files (overrides gitignore/default exclusions)
 - `-pattern` - Exclude files
@@ -171,6 +194,8 @@ Create a `.blobify` file in your project directory (git repository or otherwise)
 **Contexts:** Use `-x context-name` to apply different file filtering rules. Contexts are independent - they don't inherit patterns from the default section. Command line arguments take precedence over .blobify default switches. Useful for documentation-only reviews (`docs-only`), code-only analysis (`code-only`), project overviews (`index-only`), or security audits.
 
 **Default Directory Behaviour:** When you have a `.blobify` file in your current directory, you can run `bfy` without specifying a directory argument - it will automatically use the current directory. This makes it easy to set up project-specific configurations and run blobify with just `bfy --clip` or `bfy -x context-name`.
+
+**Suppressing Excluded Files:** By default, excluded files (those ignored by .gitignore or excluded by .blobify patterns) appear in the file contents section with placeholder messages like "[Content excluded - file ignored by .gitignore]". Use `--suppress-excluded` to remove these files from the contents section entirely while keeping them listed in the index. This creates cleaner output when you only want to see the actual content of included files.
 
 ## Efficient Usage
 
@@ -209,7 +234,16 @@ The file index and line numbers significantly improve AI response quality and ac
 # Minimal tokens for general analysis only
 ```
 
-You could add these example contexts to .blobify and use with: `bfy -x overview --clip`, `bfy -x compact --clip` or `bfy -x minimal --clip`
+**For clean output without excluded files** - Suppress excluded files:
+
+```
+[clean]
+@suppress-excluded
+@no-metadata
+# Only show content of included files, no placeholders for excluded files
+```
+
+You could add these example contexts to .blobify and use with: `bfy -x overview --clip`, `bfy -x compact --clip`, `bfy -x minimal --clip`, or `bfy -x clean --clip`
 
 ---
 

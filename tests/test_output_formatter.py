@@ -167,6 +167,7 @@ class TestGenerateContent:
             include_line_numbers=True,
             include_content=True,
             include_metadata=True,
+            suppress_excluded=False,
             debug=False,
         )
 
@@ -209,6 +210,7 @@ class TestGenerateContent:
             include_line_numbers=False,
             include_content=True,
             include_metadata=False,
+            suppress_excluded=False,
             debug=False,
         )
         assert "print('test line')" in content_no_lines
@@ -221,6 +223,7 @@ class TestGenerateContent:
             include_line_numbers=True,
             include_content=True,
             include_metadata=False,
+            suppress_excluded=False,
             debug=False,
         )
         assert "1: print('test line')" in content_with_lines
@@ -258,6 +261,7 @@ class TestGenerateContent:
             include_line_numbers=False,
             include_content=True,
             include_metadata=True,
+            suppress_excluded=False,
             debug=False,
         )
 
@@ -294,6 +298,7 @@ class TestGenerateContent:
             include_line_numbers=False,
             include_content=True,
             include_metadata=True,
+            suppress_excluded=False,
             debug=False,
         )
 
@@ -321,6 +326,7 @@ class TestGenerateContent:
             include_line_numbers=True,
             include_content=False,
             include_metadata=False,
+            suppress_excluded=False,
             debug=False,
         )
 
@@ -351,6 +357,7 @@ class TestGenerateContent:
             include_line_numbers=False,
             include_content=True,
             include_metadata=False,
+            suppress_excluded=False,
             debug=False,
         )
 
@@ -384,6 +391,7 @@ class TestGenerateContent:
             include_line_numbers=True,
             include_content=True,
             include_metadata=False,
+            suppress_excluded=False,
             debug=False,
         )
 
@@ -395,7 +403,72 @@ class TestGenerateContent:
 
     def test_generate_content_empty_file_list(self):
         """Test generate_content handles empty file list gracefully."""
-        content, substitutions = generate_content([], scrub_data=False, include_line_numbers=True, include_content=True, include_metadata=True, debug=False)
+        content, substitutions = generate_content(
+            [],
+            scrub_data=False,
+            include_line_numbers=True,
+            include_content=True,
+            include_metadata=True,
+            suppress_excluded=False,
+            debug=False,
+        )
 
         assert content == ""
         assert substitutions == 0
+
+    def test_generate_content_suppress_excluded_basic(self, tmp_path):
+        """Test basic suppress_excluded functionality."""
+        # Create included file
+        included_file = tmp_path / "included.py"
+        included_file.write_text("print('included')")
+
+        # Create excluded file
+        excluded_file = tmp_path / "excluded.log"
+        excluded_file.write_text("error log")
+
+        all_files = [
+            {
+                "path": included_file,
+                "relative_path": Path("included.py"),
+                "is_git_ignored": False,
+                "is_blobify_excluded": False,
+                "is_blobify_included": False,
+            },
+            {
+                "path": excluded_file,
+                "relative_path": Path("excluded.log"),
+                "is_git_ignored": True,
+                "is_blobify_excluded": False,
+                "is_blobify_included": False,
+            },
+        ]
+
+        # Without suppression
+        content_normal, *_ = generate_content(
+            all_files,
+            scrub_data=False,
+            include_line_numbers=False,
+            include_content=True,
+            include_metadata=False,
+            suppress_excluded=False,
+            debug=False,
+        )
+
+        assert "START_FILE: included.py" in content_normal
+        assert "START_FILE: excluded.log" in content_normal
+        assert "[Content excluded - file ignored by .gitignore]" in content_normal
+
+        # With suppression
+        content_suppressed, *_ = generate_content(
+            all_files,
+            scrub_data=False,
+            include_line_numbers=False,
+            include_content=True,
+            include_metadata=False,
+            suppress_excluded=True,
+            debug=False,
+        )
+
+        assert "START_FILE: included.py" in content_suppressed
+        assert "START_FILE: excluded.log" not in content_suppressed
+        assert "[Content excluded - file ignored by .gitignore]" not in content_suppressed

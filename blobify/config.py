@@ -161,6 +161,11 @@ def apply_default_switches(args: argparse.Namespace, default_switches: List[str]
                     args_dict["clip"] = True
                     if debug:
                         print_debug("Applied default: --clip")
+            elif switch == "suppress-excluded":
+                if not args_dict.get("suppress_excluded", False):
+                    args_dict["suppress_excluded"] = True
+                    if debug:
+                        print_debug("Applied default: --suppress-excluded")
             else:
                 # Handle switches with dashes converted to underscores
                 switch_variants = [switch, switch.replace("-", "_"), switch.replace("_", "-")]

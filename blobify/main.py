@@ -144,6 +144,12 @@ def main():
             help="Copy output to clipboard",
         )
         parser.add_argument(
+            "-s",
+            "--suppress-excluded",
+            action="store_true",
+            help="Suppress excluded files from file contents section (keep them in index only)",
+        )
+        parser.add_argument(
             "-g",
             "--list-ignored",
             action="store_true",
@@ -213,6 +219,7 @@ def main():
             include_index=not args.no_index,
             include_content=not args.no_content,
             include_metadata=not args.no_metadata,
+            suppress_excluded=args.suppress_excluded,
             debug=args.debug,
             blobify_patterns_info=blobify_patterns_info,
         )
