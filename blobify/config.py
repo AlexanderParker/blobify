@@ -2,7 +2,7 @@
 
 import argparse
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from .console import print_debug, print_error, print_warning
 
@@ -90,6 +90,133 @@ def read_blobify_config(git_root: Path, context: Optional[str] = None, debug: bo
             print_error(f"Error reading .blobify file: {e}")
 
     return include_patterns, exclude_patterns, default_switches
+
+
+def get_available_contexts(git_root: Path, debug: bool = False) -> List[str]:
+    """
+    Get list of available contexts from .blobify file.
+    Returns list of context names found in the file.
+    """
+    blobify_file = git_root / ".blobify"
+    contexts = []
+
+    if not blobify_file.exists():
+        return contexts
+
+    try:
+        with open(blobify_file, "r", encoding="utf-8", errors="ignore") as f:
+            for line_num, line in enumerate(f, 1):
+                line = line.strip()
+                # Skip empty lines and comments
+                if not line or line.startswith("#"):
+                    continue
+
+                # Check for context headers [context-name]
+                if line.startswith("[") and line.endswith("]"):
+                    context_name = line[1:-1]
+                    if context_name and context_name not in contexts:
+                        contexts.append(context_name)
+                        if debug:
+                            print_debug(f".blobify line {line_num}: Found context '{context_name}'")
+
+    except OSError as e:
+        if debug:
+            print_error(f"Error reading .blobify file: {e}")
+
+    return contexts
+
+
+def get_context_descriptions(git_root: Path) -> Dict[str, str]:
+    """
+    Extract context descriptions from comments in .blobify file.
+    Returns dict mapping context names to their descriptions.
+    """
+    blobify_file = git_root / ".blobify"
+    descriptions = {}
+
+    if not blobify_file.exists():
+        return descriptions
+
+    try:
+        with open(blobify_file, "r", encoding="utf-8", errors="ignore") as f:
+            current_context = None
+            pending_comments = []
+
+            for line in f:
+                line = line.strip()
+
+                if not line:
+                    pending_comments.clear()
+                    continue
+
+                # Collect comments that might describe the next context
+                if line.startswith("#"):
+                    comment_text = line[1:].strip()
+                    if comment_text:  # Skip empty comments
+                        pending_comments.append(comment_text)
+                    continue
+
+                # Check for context headers [context-name]
+                if line.startswith("[") and line.endswith("]"):
+                    current_context = line[1:-1]
+                    if current_context and pending_comments:
+                        # Use the last meaningful comment as description
+                        descriptions[current_context] = pending_comments[-1]
+                    pending_comments.clear()
+                    continue
+
+                # Clear pending comments when we hit patterns/switches
+                if line.startswith(("+", "-", "@")):
+                    pending_comments.clear()
+
+    except OSError:
+        pass
+
+    return descriptions
+
+
+def list_available_contexts(directory: Path):
+    """List available contexts from .blobify file and exit."""
+    from .git_utils import is_git_repository
+
+    git_root = is_git_repository(directory)
+    if not git_root:
+        print("No git repository found - contexts require a .blobify file in a git repository.")
+        return
+
+    contexts = get_available_contexts(git_root)
+
+    if not contexts:
+        print("No contexts found in .blobify file.")
+        print("\nTo create contexts, add sections like this to your .blobify file:")
+        print("")
+        print("[docs-only]")
+        print("# Context for documentation files only")
+        print("-**")
+        print("+*.md")
+        print("+docs/**")
+        print("")
+        print("[signatures]")
+        print("# Context for extracting function signatures")
+        print("@filter=signatures:^(def|class)\\s+")
+        print("@no-line-numbers")
+        print("+*.py")
+        return
+
+    print("Available contexts:")
+    print("=" * 20)
+
+    # Try to read context descriptions from comments
+    context_descriptions = get_context_descriptions(git_root)
+
+    for context in sorted(contexts):
+        description = context_descriptions.get(context, "")
+        if description:
+            print(f"  {context}: {description}")
+        else:
+            print(f"  {context}")
+
+    print("\nUse with: bfy -x <context-name> or bfy --context=<context-name>")
 
 
 def apply_default_switches(args: argparse.Namespace, default_switches: List[str], debug: bool = False) -> argparse.Namespace:

@@ -8,7 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from .config import apply_default_switches, read_blobify_config
+from .config import apply_default_switches, list_available_contexts, read_blobify_config
 from .console import print_debug, print_error, print_phase, print_status, print_success
 from .content_processor import SCRUBADUB_AVAILABLE, parse_named_filters
 from .file_scanner import get_built_in_ignored_patterns, scan_files
@@ -99,7 +99,9 @@ def main():
         parser.add_argument(
             "-x",
             "--context",
-            help="Use specific context from .blobify file (default uses patterns outside any context section)",
+            nargs="?",  # Make the value optional
+            const="__list__",  # Default value when flag is provided without argument
+            help="Use specific context from .blobify file, or list available contexts if no name provided",
         )
         parser.add_argument(
             "-d",
@@ -166,6 +168,26 @@ def main():
         # Handle --list-ignored option
         if args.list_ignored:
             list_ignored_patterns()
+            return
+
+        # Handle --context without value (list contexts)
+        if args.context == "__list__":
+            # Handle case where --context was provided without a value
+            if args.directory is None:
+                # Try to use current directory if .blobify exists
+                current_dir = Path.cwd()
+                blobify_file = current_dir / ".blobify"
+                if blobify_file.exists():
+                    list_available_contexts(current_dir)
+                else:
+                    print("No .blobify file found in current directory.")
+                    print("Please specify a directory or run from a directory with a .blobify file.")
+            else:
+                directory = Path(args.directory)
+                if not directory.exists():
+                    print_error(f"Directory does not exist: {directory}")
+                    sys.exit(1)
+                list_available_contexts(directory)
             return
 
         # Handle default directory logic
