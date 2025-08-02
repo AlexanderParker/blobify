@@ -173,7 +173,8 @@ class TestMain:
         output_file = tmp_path / "output.txt"
 
         # Mock format_output to return content with BOM
-        with patch("blobify.main.format_output") as mock_format:
+        # Patch the imported function in the main module, not the original module
+        with patch("blobify.output_formatter.format_output") as mock_format:
             mock_format.return_value = ("\ufeffTest output with BOM", 0, 1)
 
             with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file)]):
