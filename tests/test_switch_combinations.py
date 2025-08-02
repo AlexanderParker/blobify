@@ -48,8 +48,8 @@ class TestSwitchCombinations:
         assert "1: print('hello world')" in content  # Line numbers
 
         # Should show status labels in index
-        assert "[IGNORED BY GITIGNORE]" in content
-        assert "[INCLUDED BY .blobify]" in content
+        assert "[FILE CONTENTS IGNORED BY GITIGNORE]" in content
+        assert "[FILE CONTENTS INCLUDED BY .blobify]" in content
 
     def test_no_content_only(self, tmp_path):
         """Test --no-content: index + metadata, no content."""
@@ -72,8 +72,8 @@ class TestSwitchCombinations:
         assert "FILE_CONTENT:" not in content
         assert "print('hello world')" not in content
         assert "Status:" not in content  # No status when no content
-        assert "[IGNORED BY GITIGNORE]" not in content  # No status labels in index
-        assert "[INCLUDED BY .blobify]" not in content
+        assert "[FILE CONTENTS IGNORED BY GITIGNORE]" not in content  # No status labels in index
+        assert "[FILE CONTENTS INCLUDED BY .blobify]" not in content
 
     def test_no_index_only(self, tmp_path):
         """Test --no-index: content + metadata, no index."""
@@ -236,8 +236,8 @@ class TestSwitchCombinations:
             main()
 
         content = output_file.read_text(encoding="utf-8")
-        assert "[IGNORED BY GITIGNORE]" in content
-        assert "[INCLUDED BY .blobify]" in content
+        assert "[FILE CONTENTS IGNORED BY GITIGNORE]" in content
+        assert "[FILE CONTENTS INCLUDED BY .blobify]" in content
         assert "Status: INCLUDED BY .blobify" in content
 
         # Without content: should NOT show status labels anywhere
@@ -246,8 +246,8 @@ class TestSwitchCombinations:
             main()
 
         content2 = output_file2.read_text(encoding="utf-8")
-        assert "[IGNORED BY GITIGNORE]" not in content2
-        assert "[INCLUDED BY .blobify]" not in content2
+        assert "[FILE CONTENTS IGNORED BY GITIGNORE]" not in content2
+        assert "[FILE CONTENTS INCLUDED BY .blobify]" not in content2
         assert "Status:" not in content2
 
     def test_line_numbers_enabled_by_default(self, tmp_path):
@@ -323,7 +323,7 @@ class TestSwitchCombinationsWithContext:
         # Should not show content (due to --no-content) or status labels
         assert "# README" not in content
         assert "print('app')" not in content
-        assert "[EXCLUDED BY .blobify]" not in content  # No status labels when --no-content
+        assert "[FILE CONTENTS EXCLUDED BY .blobify]" not in content  # No status labels when --no-content
 
     def test_context_with_all_switches(self, tmp_path):
         """Test context works with various switch combinations."""
@@ -394,7 +394,7 @@ class TestSwitchCombinationsWithContext:
         assert "print('app code')" not in content  # .py file content excluded
 
         # Should show appropriate exclusion status
-        assert "[EXCLUDED BY .blobify]" in content  # For the excluded files
+        assert "[FILE CONTENTS EXCLUDED BY .blobify]" in content  # For the excluded files
 
 
 class TestConfigSwitchDefaults:

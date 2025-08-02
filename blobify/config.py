@@ -109,7 +109,7 @@ def apply_default_switches(args: argparse.Namespace, default_switches: List[str]
 
         # Check if this is a key=value switch or boolean switch
         if "=" in switch_line:
-            # Handle key=value switches like "output=filename.txt"
+            # Handle key=value switches like "output=filename.txt" or "filter=name:regex"
             key, value = switch_line.split("=", 1)
             key = key.strip()
             value = value.strip()
@@ -119,6 +119,13 @@ def apply_default_switches(args: argparse.Namespace, default_switches: List[str]
                     args_dict["output"] = value
                     if debug:
                         print_debug(f"Applied default: --output={value}")
+            elif key == "filter":
+                # Handle filter defaults - can have multiple filters
+                if not args_dict.get("filter"):
+                    args_dict["filter"] = []
+                args_dict["filter"].append(value)
+                if debug:
+                    print_debug(f"Applied default: --filter={value}")
             else:
                 if debug:
                     print_warning(f"Unknown key=value switch ignored: '{key}={value}'")

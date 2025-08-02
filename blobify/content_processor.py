@@ -59,6 +59,75 @@ def scrub_content(content: str, enabled: bool = True, debug: bool = False) -> Tu
         return content, 0
 
 
+def parse_named_filters(filter_args: list) -> tuple:
+    """
+    Parse named filters and return (filters dict, filter_names list).
+
+    Args:
+        filter_args: List of "name:regex" strings
+
+    Returns:
+        Tuple of (filters dict, filter_names list)
+    """
+    filters = {}
+    filter_names = []
+
+    for filter_arg in filter_args or []:
+        if ":" in filter_arg:
+            name, pattern = filter_arg.split(":", 1)
+            name = name.strip()
+            pattern = pattern.strip()
+            filters[name] = pattern
+            filter_names.append(name)
+        else:
+            # Fallback: use pattern as both name and pattern
+            filters[filter_arg] = filter_arg
+            filter_names.append(filter_arg)
+
+    return filters, filter_names
+
+
+def filter_content_lines(content: str, filters: dict, debug: bool = False) -> str:
+    """
+    Filter content using named regex patterns (OR logic).
+
+    Args:
+        content: The file content to filter
+        filters: Dict of {name: regex_pattern}
+        debug: Whether to show debug output
+
+    Returns:
+        Filtered content with only matching lines
+    """
+    if not filters:
+        return content
+
+    import re
+
+    lines = content.split("\n")
+    filtered_lines = []
+    total_matches = 0
+
+    for line in lines:
+        for name, pattern in filters.items():
+            try:
+                if re.search(pattern, line):
+                    filtered_lines.append(line)
+                    total_matches += 1
+                    if debug:
+                        print_debug(f"Filter '{name}' matched: {line[:50]}...")
+                    break  # Found match, move to next line
+            except re.error as e:
+                if debug:
+                    print_warning(f"Invalid regex in filter '{name}': {e}")
+                continue  # Skip invalid regex
+
+    if debug:
+        print_debug(f"Content filtering: {len(lines)} lines -> {len(filtered_lines)} lines ({total_matches} total matches)")
+
+    return "\n".join(filtered_lines)
+
+
 def is_text_file(file_path: Path) -> bool:
     """
     Determine if a file is a text file using multiple detection methods.

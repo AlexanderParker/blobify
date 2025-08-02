@@ -13,3 +13,15 @@
 @clip
 @noclean
 @suppress-excluded
+
+[method-signatures]
+# Context for "good enough" method signatures
+# @suppress-excluded
+@filter=signatures:^ *(def|class)\s+
+@filter=returns:^ *return .*
+@clip
+@noclean
++pyproject.toml
++.pre-commit-config.yaml
++.github\workflows\test.yml
++.blobify

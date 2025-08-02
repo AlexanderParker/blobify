@@ -67,7 +67,7 @@ class TestMain:
         assert "app.py" in content
         assert "print('app')" in content
         # Should show ignored files in index but not content
-        assert "debug.log [IGNORED BY GITIGNORE]" in content
+        assert "debug.log [FILE CONTENTS IGNORED BY GITIGNORE]" in content
         assert "log content" not in content
 
     @patch("subprocess.run")

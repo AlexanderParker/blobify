@@ -10,7 +10,7 @@ from pathlib import Path
 
 from .config import apply_default_switches, read_blobify_config
 from .console import print_debug, print_error, print_phase, print_status, print_success
-from .content_processor import SCRUBADUB_AVAILABLE
+from .content_processor import SCRUBADUB_AVAILABLE, parse_named_filters
 from .file_scanner import get_built_in_ignored_patterns, scan_files
 from .git_utils import is_git_repository
 from .output_formatter import format_output
@@ -150,6 +150,12 @@ def main():
             help="Suppress excluded files from file contents section (keep them in index only)",
         )
         parser.add_argument(
+            "-f",
+            "--filter",
+            action="append",
+            help="Content filter: name:regex pattern (can be used multiple times)",
+        )
+        parser.add_argument(
             "-g",
             "--list-ignored",
             action="store_true",
@@ -194,6 +200,14 @@ def main():
                     print_debug(f"Found {len(default_switches)} default switches in .blobify{context_info}")
                 args = apply_default_switches(args, default_switches, args.debug)
 
+        # Parse named filters
+        filters = {}
+        filter_names = []
+        if args.filter:
+            filters, filter_names = parse_named_filters(args.filter)
+            if args.debug:
+                print_debug(f"Parsed {len(filters)} content filters: {', '.join(filter_names)}")
+
         # Check scrubadub availability
         scrub_data = not args.noclean
         if scrub_data and not SCRUBADUB_AVAILABLE:
@@ -222,11 +236,15 @@ def main():
             suppress_excluded=args.suppress_excluded,
             debug=args.debug,
             blobify_patterns_info=blobify_patterns_info,
+            filters=filters,
         )
 
         # Show final summary
         context_info = f" (context: {args.context})" if args.context else ""
         summary_parts = [f"Processed {file_count} files{context_info}"]
+
+        if filters:
+            summary_parts.append(f"with {len(filters)} content filters")
 
         if args.no_content and args.no_index and args.no_metadata:
             summary_parts.append("(no useful output - index, content, and metadata all disabled)")

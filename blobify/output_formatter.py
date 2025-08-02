@@ -17,6 +17,7 @@ def generate_header(
     include_index: bool = True,
     include_content: bool = True,
     include_metadata: bool = True,
+    filters: dict = None,
 ) -> str:
     """Generate the file header with metadata and configuration info."""
     blobify_include_patterns, blobify_exclude_patterns, default_switches = blobify_patterns_info
@@ -25,6 +26,12 @@ def generate_header(
     git_info = ""
     blobify_info = ""
     scrubbing_info = ""
+
+    # Add filter information
+    filter_info = ""
+    if filters:
+        filter_lines = [f"# * {name}: {pattern}" for name, pattern in filters.items()]
+        filter_info = "\n#\n# Content filters applied:\n" + "\n".join(filter_lines)
 
     # Adjust format description based on options
     if not include_content and not include_index and not include_metadata:
@@ -47,7 +54,8 @@ def generate_header(
 # 3. Each file section is marked with START_FILE and END_FILE delimiters"""
     elif not include_index and not include_metadata:
         # Content only
-        format_description = """# This file contains contents of all text files found in the specified directory.
+        content_desc = "filtered content" if filters else "contents"
+        format_description = f"""# This file contains {content_desc} of all text files found in the specified directory.
 # Format:
 # 1. Content sections for each file
 # 2. Each file section is marked with START_FILE and END_FILE delimiters
@@ -56,7 +64,8 @@ def generate_header(
 # with a placeholder message."""
     elif not include_metadata:
         # Index + content
-        format_description = """# This file contains an index and contents of all text files found in the specified directory.
+        content_desc = "filtered content" if filters else "contents"
+        format_description = f"""# This file contains an index and {content_desc} of all text files found in the specified directory.
 # Format:
 # 1. File listing with relative paths
 # 2. Content sections for each file
@@ -67,7 +76,8 @@ def generate_header(
 # and their content is excluded with a placeholder message."""
     elif not include_index:
         # Content + metadata
-        format_description = """# This file contains the contents of all text files found in the specified directory.
+        content_desc = "filtered content" if filters else "contents"
+        format_description = f"""# This file contains the {content_desc} of all text files found in the specified directory.
 # Format:
 # 1. Content sections for each file, including metadata and full content
 # 2. Each file section is marked with START_FILE and END_FILE delimiters
@@ -76,7 +86,8 @@ def generate_header(
 # with a placeholder message."""
     else:
         # Index + content + metadata (default)
-        format_description = """# This file contains an index and contents of all text files found in the specified directory.
+        content_desc = "filtered content" if filters else "contents"
+        format_description = f"""# This file contains an index and {content_desc} of all text files found in the specified directory.
 # Format:
 # 1. File listing with relative paths
 # 2. Content sections for each file, including metadata and full content
@@ -88,7 +99,7 @@ def generate_header(
 
     header = """# Blobify Text File Index
 # Generated: {datetime}
-# Source Directory: {directory}{git_info}{blobify_info}{scrubbing_info}
+# Source Directory: {directory}{git_info}{blobify_info}{scrubbing_info}{filter_info}
 #
 {format_description}
 #
@@ -101,6 +112,7 @@ def generate_header(
         git_info=git_info,
         blobify_info=blobify_info,
         scrubbing_info=scrubbing_info,
+        filter_info=filter_info,
         format_description=format_description,
     )
 
@@ -120,17 +132,20 @@ def generate_index(
     if include_content:
         # Add gitignored directories to the index with status labels
         for dir_path in sorted(gitignored_directories, key=lambda x: str(x).lower()):
-            index.append(f"{dir_path} [IGNORED BY GITIGNORE]")
+            index.append(f"{dir_path} [DIRECTORY CONTENTS IGNORED BY GITIGNORE]")
 
         # Build index for files with status labels
         for file_info in all_files:
             relative_path = file_info["relative_path"]
-            if file_info.get("is_blobify_included", False):
-                index.append(f"{relative_path} [INCLUDED BY .blobify]")
-            elif file_info["is_git_ignored"]:
-                index.append(f"{relative_path} [IGNORED BY GITIGNORE]")
+            # Priority order: git ignored > blobify excluded > filter excluded > blobify included > normal
+            if file_info["is_git_ignored"]:
+                index.append(f"{relative_path} [FILE CONTENTS IGNORED BY GITIGNORE]")
             elif file_info["is_blobify_excluded"]:
-                index.append(f"{relative_path} [EXCLUDED BY .blobify]")
+                index.append(f"{relative_path} [FILE CONTENTS EXCLUDED BY .blobify]")
+            elif file_info.get("is_filter_excluded", False):
+                index.append(f"{relative_path} [FILE CONTENTS EXCLUDED BY FILTERS]")
+            elif file_info.get("is_blobify_included", False):
+                index.append(f"{relative_path} [FILE CONTENTS INCLUDED BY .blobify]")
             else:
                 index.append(str(relative_path))
     else:
@@ -172,6 +187,7 @@ def generate_content(
     include_metadata: bool,
     suppress_excluded: bool,
     debug: bool,
+    filters: dict = None,
 ) -> tuple:
     """
     Generate the file content section.
@@ -190,9 +206,10 @@ def generate_content(
         is_git_ignored = file_info["is_git_ignored"]
         is_blobify_excluded = file_info["is_blobify_excluded"]
         is_blobify_included = file_info.get("is_blobify_included", False)
+        is_filter_excluded = file_info.get("is_filter_excluded", False)
 
         # Skip excluded files entirely if suppress_excluded is enabled
-        if suppress_excluded and (is_git_ignored or is_blobify_excluded):
+        if suppress_excluded and (is_git_ignored or is_blobify_excluded or is_filter_excluded):
             continue
 
         # Always include the START_FILE marker when metadata or content is enabled
@@ -217,6 +234,8 @@ def generate_content(
                         content.append("  Status: IGNORED BY GITIGNORE")
                     elif is_blobify_excluded:
                         content.append("  Status: EXCLUDED BY .blobify")
+                    elif is_filter_excluded:
+                        content.append("  Status: EXCLUDED BY FILTERS")
                     elif scrub_data and SCRUBADUB_AVAILABLE:
                         content.append("  Status: PROCESSED WITH SCRUBADUB")
             except OSError as e:
@@ -232,6 +251,8 @@ def generate_content(
                 content.append("[Content excluded - file ignored by .gitignore]")
             elif is_blobify_excluded:
                 content.append("[Content excluded - file excluded by .blobify]")
+            elif is_filter_excluded:
+                content.append("[Content excluded - no lines matched filters]")
             else:
                 try:
                     if debug:
@@ -243,6 +264,12 @@ def generate_content(
                     # Attempt to scrub content if enabled
                     processed_content, substitutions = scrub_content(file_content, scrub_data, debug)
                     total_substitutions += substitutions
+
+                    # Apply content filters if specified
+                    if filters:
+                        from .content_processor import filter_content_lines
+
+                        processed_content = filter_content_lines(processed_content, filters, debug)
 
                     if debug and substitutions > 0:
                         print_debug(f"File had {substitutions} substitutions, total now: {total_substitutions}")
@@ -281,6 +308,7 @@ def format_output(
     suppress_excluded: bool,
     debug: bool,
     blobify_patterns_info: tuple,
+    filters: dict = None,
 ) -> tuple:
     """
     Format the complete output string.
@@ -294,6 +322,35 @@ def format_output(
     # Sort all files for consistent output
     all_files.sort(key=lambda x: str(x["relative_path"]).lower())
 
+    # Pre-process filters to determine which files are excluded by filters
+    # This needs to happen before index generation so the status labels are correct
+    if filters and include_content:
+        for file_info in all_files:
+            # Skip files already excluded by git or blobify
+            if file_info["is_git_ignored"] or file_info["is_blobify_excluded"]:
+                continue
+
+            file_path = file_info["path"]
+            try:
+                with open(file_path, "r", encoding="utf-8", errors="strict") as f:
+                    file_content = f.read()
+
+                # Apply filters to check if content would be excluded
+                from .content_processor import filter_content_lines
+
+                filtered_content = filter_content_lines(file_content, filters, debug)
+
+                # Mark as filter-excluded if no content remains
+                if filtered_content.strip() == "" and file_content.strip() != "":
+                    file_info["is_filter_excluded"] = True
+                    if debug:
+                        print_debug(f"File {file_info['relative_path']} excluded by filters (no matching lines)")
+                else:
+                    file_info["is_filter_excluded"] = False
+            except Exception:
+                # If we can't read the file, don't mark it as filter-excluded
+                file_info["is_filter_excluded"] = False
+
     # Generate header
     header = generate_header(
         directory,
@@ -304,6 +361,7 @@ def format_output(
         include_index,
         include_content,
         include_metadata,
+        filters,
     )
 
     # Generate index section (if enabled)
@@ -320,7 +378,16 @@ def format_output(
 
     # Generate content section (only if content or metadata is enabled)
     if include_content or include_metadata:
-        content_section, total_substitutions = generate_content(all_files, scrub_data, include_line_numbers, include_content, include_metadata, suppress_excluded, debug)
+        content_section, total_substitutions = generate_content(
+            all_files,
+            scrub_data,
+            include_line_numbers,
+            include_content,
+            include_metadata,
+            suppress_excluded,
+            debug,
+            filters,
+        )
     else:
         content_section = ""
         total_substitutions = 0

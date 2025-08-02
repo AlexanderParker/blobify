@@ -55,8 +55,8 @@ class TestSuppressExcluded:
         # Should include all files in index
         assert "app.py" in content
         assert "README.md" in content
-        assert "debug.log [IGNORED BY GITIGNORE]" in content
-        assert "secret.txt [EXCLUDED BY .blobify]" in content
+        assert "debug.log [FILE CONTENTS IGNORED BY GITIGNORE]" in content
+        assert "secret.txt [FILE CONTENTS EXCLUDED BY .blobify]" in content
 
         # Should include content for non-excluded files
         assert "print('main application')" in content
@@ -85,8 +85,8 @@ class TestSuppressExcluded:
         # Should still include all files in index (suppression only affects content section)
         assert "app.py" in content
         assert "README.md" in content
-        assert "debug.log [IGNORED BY GITIGNORE]" in content
-        assert "secret.txt [EXCLUDED BY .blobify]" in content
+        assert "debug.log [FILE CONTENTS IGNORED BY GITIGNORE]" in content
+        assert "secret.txt [FILE CONTENTS EXCLUDED BY .blobify]" in content
 
         # Should include content for non-excluded files
         assert "print('main application')" in content
@@ -195,7 +195,7 @@ class TestSuppressExcluded:
         # Default switch should be applied
         assert "START_FILE: app.py" in content
         assert "START_FILE: debug.log" not in content  # Suppressed due to default
-        assert "debug.log [EXCLUDED BY .blobify]" in content  # Still in index
+        assert "debug.log [FILE CONTENTS EXCLUDED BY .blobify]" in content  # Still in index
 
     def test_command_line_override_blobify_default(self, tmp_path):
         """Test that command line flag can override .blobify default."""
@@ -259,8 +259,8 @@ class TestSuppressExcluded:
         assert "START_FILE: config.xml" not in content  # Excluded and suppressed
 
         # But should still show in index
-        assert "README.md [EXCLUDED BY .blobify]" in content
-        assert "config.xml [EXCLUDED BY .blobify]" in content
+        assert "README.md [FILE CONTENTS EXCLUDED BY .blobify]" in content
+        assert "config.xml [FILE CONTENTS EXCLUDED BY .blobify]" in content
 
     def test_config_apply_default_switches_suppress_excluded(self):
         """Test that suppress-excluded can be applied as a default switch."""
@@ -325,8 +325,8 @@ class TestSuppressExcluded:
         assert "Size:" not in content
 
         # Should still have index with status labels
-        assert "debug.log [IGNORED BY GITIGNORE]" in content
-        assert "secret.txt [EXCLUDED BY .blobify]" in content
+        assert "debug.log [FILE CONTENTS IGNORED BY GITIGNORE]" in content
+        assert "secret.txt [FILE CONTENTS EXCLUDED BY .blobify]" in content
 
 
 if __name__ == "__main__":

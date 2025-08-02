@@ -52,15 +52,15 @@ class TestGenerateIndex:
         assert "#" * 80 in index
 
         # Check directory entries with labels
-        assert "node_modules [IGNORED BY GITIGNORE]" in index
-        assert "build [IGNORED BY GITIGNORE]" in index
+        assert "node_modules [DIRECTORY CONTENTS IGNORED BY GITIGNORE]" in index
+        assert "build [DIRECTORY CONTENTS IGNORED BY GITIGNORE]" in index
 
         # Check file entries with correct labels
         lines = index.split("\n")
         assert any("normal.py" in line and "[" not in line for line in lines)  # Normal file, no label
-        assert "ignored.log [IGNORED BY GITIGNORE]" in index
-        assert "included.txt [INCLUDED BY .blobify]" in index
-        assert "excluded.md [EXCLUDED BY .blobify]" in index
+        assert "ignored.log [FILE CONTENTS IGNORED BY GITIGNORE]" in index
+        assert "included.txt [FILE CONTENTS INCLUDED BY .blobify]" in index
+        assert "excluded.md [FILE CONTENTS EXCLUDED BY .blobify]" in index
 
     def test_generate_index_without_content_clean_listing(self):
         """Test generate_index shows clean listing when content is disabled."""
@@ -94,9 +94,9 @@ class TestGenerateIndex:
         assert "node_modules" in index
 
         # Should NOT show any status labels
-        assert "[IGNORED BY GITIGNORE]" not in index
-        assert "[INCLUDED BY .blobify]" not in index
-        assert "[EXCLUDED BY .blobify]" not in index
+        assert "[FILE CONTENTS IGNORED BY GITIGNORE]" not in index
+        assert "[FILE CONTENTS INCLUDED BY .blobify]" not in index
+        assert "[FILE CONTENTS EXCLUDED BY .blobify]" not in index
 
     def test_generate_index_empty_lists(self):
         """Test generate_index handles empty file and directory lists."""
