@@ -23,7 +23,8 @@ repos:
       - id: flake8
         additional_dependencies:
           - Flake8-pyproject>=1.2.3 # Read config from pyproject.toml
-        # Remove hardcoded args since we're using pyproject.toml via Flake8-pyproject
+          - flake8-bugbear>=24.12.12 # Catch bugs and anti-patterns
+          - pep8-naming>=0.15.1 # Enforce PEP 8 naming conventions
   - repo: local
     hooks:
       - id: pytest
