@@ -81,10 +81,8 @@ def read_blobify_config(git_root: Path, context: Optional[str] = None, debug: bo
         context_info = f" for context '{context}'" if context else " (default context)"
         if debug:
             print_debug(
-                print_debug(
-                    f"Loaded .blobify config{context_info}: {len(include_patterns)} include patterns, "
-                    f"{len(exclude_patterns)} exclude patterns, {len(default_switches)} default switches"
-                )
+                f"Loaded .blobify config{context_info}: {len(include_patterns)} include patterns, "
+                f"{len(exclude_patterns)} exclude patterns, {len(default_switches)} default switches"
             )
 
     except OSError as e:
