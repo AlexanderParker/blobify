@@ -61,7 +61,7 @@ def get_gitignore_patterns(git_root: Path, debug: bool = False) -> Dict[Path, Li
                 patterns_by_dir[git_root] = repo_patterns
 
     # Compile patterns for the root directory so we can check if subdirectories are ignored
-    root_compiled_patterns = compile_gitignore_patterns(patterns_by_dir.get(git_root, []))
+    compile_gitignore_patterns(patterns_by_dir.get(git_root, []))
 
     # Get all .gitignore files in subdirectories, but only if their containing directory is not ignored
     for gitignore_file in git_root.rglob(".gitignore"):

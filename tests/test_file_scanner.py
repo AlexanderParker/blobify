@@ -4,8 +4,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from blobify.file_scanner import (
     apply_blobify_patterns,
     discover_files,

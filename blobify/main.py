@@ -54,7 +54,9 @@ def main():
 
     try:
         parser = argparse.ArgumentParser(
-            description="Recursively scan directory for text files and create index. Respects .gitignore when in a git repository. Supports .blobify configuration files for pattern-based overrides and default command-line switches. Attempts to detect and replace sensitive data using scrubadub by default."
+            description="Recursively scan directory for text files and create index. Respects .gitignore when in a git repository. "
+            "Supports .blobify configuration files for pattern-based overrides and default command-line switches. "
+            "Attempts to detect and replace sensitive data using scrubadub by default."
         )
         parser.add_argument(
             "directory",

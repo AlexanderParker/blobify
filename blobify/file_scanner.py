@@ -3,7 +3,7 @@
 import fnmatch
 import os
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from .config import read_blobify_config
 from .console import print_debug, print_phase

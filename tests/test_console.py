@@ -1,10 +1,6 @@
 """Tests for console.py module."""
 
-import sys
-from io import StringIO
-from unittest.mock import Mock, patch
-
-import pytest
+from unittest.mock import patch
 
 from blobify.console import (
     print_debug,

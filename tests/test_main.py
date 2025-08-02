@@ -1,10 +1,6 @@
 """Tests for main.py module - WORKING SOLUTION."""
 
-import io
 import subprocess
-import sys
-from contextlib import redirect_stdout
-from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest

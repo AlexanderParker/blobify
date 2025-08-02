@@ -1,10 +1,6 @@
 """Tests for content_processor.py module."""
 
-import tempfile
-from pathlib import Path
 from unittest.mock import Mock, patch
-
-import pytest
 
 from blobify.content_processor import get_file_metadata, is_text_file, scrub_content
 

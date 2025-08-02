@@ -5,8 +5,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import pytest
-
 from blobify.git_utils import (
     compile_gitignore_patterns,
     get_gitignore_patterns,

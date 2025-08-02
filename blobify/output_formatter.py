@@ -112,13 +112,13 @@ def generate_content(all_files: List[Dict], scrub_data: bool, include_line_numbe
         content.append(f"  Accessed: {metadata['accessed']}")
 
         if is_blobify_included:
-            content.append(f"  Status: INCLUDED BY .blobify")
+            content.append("  Status: INCLUDED BY .blobify")
         elif is_git_ignored:
-            content.append(f"  Status: IGNORED BY GITIGNORE")
+            content.append("  Status: IGNORED BY GITIGNORE")
         elif is_blobify_excluded:
-            content.append(f"  Status: EXCLUDED BY .blobify")
+            content.append("  Status: EXCLUDED BY .blobify")
         elif scrub_data and SCRUBADUB_AVAILABLE:
-            content.append(f"  Status: PROCESSED WITH SCRUBADUB")
+            content.append("  Status: PROCESSED WITH SCRUBADUB")
 
         content.append("\nFILE_CONTENT:")
 
