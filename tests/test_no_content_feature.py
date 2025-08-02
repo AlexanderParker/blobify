@@ -274,7 +274,6 @@ class TestOutputFormatterNoContent:
 
     def test_generate_content_no_content(self, tmp_path):
         """Test content generation with no-content flag."""
-        from pathlib import Path
 
         from blobify.output_formatter import generate_content
 
