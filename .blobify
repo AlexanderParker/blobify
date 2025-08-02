@@ -2,6 +2,6 @@
 +pyproject.toml
 +.pre-commit-config.yaml
 +.github\workflows\test.yml
++.blobify
 @clip
 @noclean
-@no-index

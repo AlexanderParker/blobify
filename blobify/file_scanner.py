@@ -99,6 +99,55 @@ def get_built_in_ignored_patterns() -> set:
     }
 
 
+def check_if_dot_item_might_be_included(item_name: str, git_root: Path, context: Optional[str] = None) -> bool:
+    """
+    Check if a dot file or directory might be included by .blobify patterns.
+
+    By default, blobify excludes all dot files and directories (like .git, .vscode, etc.)
+    for performance and cleanliness. However, some dot files are legitimate project
+    files that users may want to include (like .github/workflows, .blobify, etc.).
+
+    This function performs a quick check of .blobify include patterns to see if
+    a dot item should be preserved for later pattern matching, preventing
+    premature exclusion during the first sweep.
+
+    Args:
+        item_name: Name of the dot file or directory (e.g., ".github", ".blobify")
+        git_root: Root of the git repository where .blobify file is located
+        context: Optional context section to read from .blobify file
+
+    Returns:
+        True if .blobify patterns might include this item, False otherwise
+    """
+    if not git_root:
+        return False
+
+    try:
+        blobify_include_patterns, _, _ = read_blobify_config(git_root, context, False)
+        if not blobify_include_patterns:
+            return False
+
+        # Check if any include pattern might match this item
+        for pattern in blobify_include_patterns:
+            # Direct match
+            if pattern == item_name:
+                return True
+            # Wildcard patterns that might match
+            if fnmatch.fnmatch(item_name, pattern):
+                return True
+            # Patterns that might match files within this directory (if it's a directory)
+            if pattern.startswith(f"{item_name}/") or pattern.startswith(f"{item_name}\\"):
+                return True
+            # Patterns like .github/** that would include everything in .github
+            if pattern == f"{item_name}/**" or pattern.startswith(f"{item_name}/*"):
+                return True
+
+        return False
+    except Exception:
+        # If we can't read .blobify, err on the side of caution and don't allow
+        return False
+
+
 def discover_files(directory: Path, debug: bool = False) -> Dict:
     """
     First sweep: Apply gitignore and built-in exclusions.
@@ -140,8 +189,10 @@ def discover_files(directory: Path, debug: bool = False) -> Dict:
 
             # Check if directory starts with . but allow if .blobify might include files from it
             if dir_name.startswith("."):
-                dirs_to_remove.append(dir_name)
-                continue
+                might_be_included = check_if_dot_item_might_be_included(dir_name, git_root)
+                if not might_be_included:
+                    dirs_to_remove.append(dir_name)
+                    continue
 
             # Check if directory is gitignored
             if git_root and patterns_by_dir:
@@ -166,8 +217,13 @@ def discover_files(directory: Path, debug: bool = False) -> Dict:
             file_path = root_path / file_name
             if is_text_file(file_path):
                 # Skip files with built-in ignored names
-                if file_name in ignored_patterns or file_name.startswith("."):
+                if file_name in ignored_patterns:
                     continue
+                # Skip dot files unless .blobify might include them
+                if file_name.startswith("."):
+                    might_be_included = check_if_dot_item_might_be_included(file_name, git_root)
+                    if not might_be_included:
+                        continue
 
                 # Check gitignore if we're in a git repo
                 is_git_ignored = False
@@ -224,16 +280,16 @@ def apply_blobify_patterns(discovery_context: Dict, directory: Path, context: Op
         print_phase("Second Sweep: Blobify Pattern Application")
         print_debug("Second sweep: applying .blobify patterns")
 
-    # Find ALL files again (including gitignored ones) for pattern matching
+    # Find ALL files again (including gitignored ones and dot files) for pattern matching
     ignored_patterns = get_built_in_ignored_patterns()
     all_possible_files = []
     for root, dirs, files in os.walk(directory):
         root_path = Path(root)
 
-        # Only skip built-in patterns, not gitignore
+        # Only skip built-in patterns, not gitignore or dot directories
         dirs_to_remove = []
         for dir_name in dirs:
-            if dir_name in ignored_patterns or dir_name.startswith("."):
+            if dir_name in ignored_patterns:
                 dirs_to_remove.append(dir_name)
 
         for dir_name in dirs_to_remove:
@@ -241,8 +297,9 @@ def apply_blobify_patterns(discovery_context: Dict, directory: Path, context: Op
 
         for file_name in files:
             file_path = root_path / file_name
-            if file_name in ignored_patterns or file_name.startswith("."):
+            if file_name in ignored_patterns:
                 continue
+            # Include all files including dot files for pattern matching
             all_possible_files.append(file_path)
 
     # Get original pattern order from file
