@@ -61,16 +61,37 @@ def coverage(c):
 @task
 def lint(c):
     """Run linting checks."""
+    import subprocess
+    import sys
+
     c.run("flake8 blobify/ tests/", warn=True)
-    c.run("black --check blobify/ tests/", warn=True)
+
+    # Run black with proper UTF-8 handling
+    try:
+        result = subprocess.run(["black", "--check", "blobify/", "tests/"], capture_output=True, text=True, encoding="utf-8", check=False)
+        # Print output directly to avoid invoke's encoding issues
+        if result.stdout:
+            sys.stdout.write(result.stdout)
+        if result.stderr:
+            sys.stderr.write(result.stderr)
+    except subprocess.CalledProcessError:
+        pass  # Black will return non-zero if formatting needed
+
     c.run("isort --check-only blobify/ tests/", warn=True)
 
 
 @task
 def format(c):
     """Format code."""
-    c.run("black blobify/ tests/")
-    c.run("isort blobify/ tests/")
+    # Set encoding environment for subprocess
+    import os
+
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONLEGACYWINDOWSSTDIO"] = "0"
+
+    c.run("black blobify/ tests/", env=env)
+    c.run("isort blobify/ tests/", env=env)
 
 
 @task

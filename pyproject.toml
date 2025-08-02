@@ -9,7 +9,7 @@ authors = [{ name = "Alexander Parker", email = "pypi@parker.im" }]
 description = "Package your entire codebase into a single text file for AI consumption"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["rich>=14.0.0"]
+dependencies = ["rich>=14.1.0"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -99,7 +99,8 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
 ]
-
+# filterwarnings = ["ignore:invalid escape sequence.*:DeprecationWarning:textblob._text:"]
+# filterwarnings = ["ignore:::textblob\\._text"]
 
 [tool.coverage.run]
 source = ["blobify"]
