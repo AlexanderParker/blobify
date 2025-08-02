@@ -64,7 +64,7 @@ def is_text_file(file_path: Path) -> bool:
     Determine if a file is a text file using multiple detection methods.
     """
     # Known text file extensions
-    TEXT_EXTENSIONS = {
+    text_extensions = {
         ".txt",
         ".md",
         ".csv",
@@ -112,7 +112,7 @@ def is_text_file(file_path: Path) -> bool:
     }
 
     # Security-sensitive file extensions to exclude
-    SECURITY_EXTENSIONS = {
+    security_extensions = {
         # Certificates
         ".crt",
         ".cer",
@@ -130,7 +130,6 @@ def is_text_file(file_path: Path) -> bool:
         ".pkcs12",
         ".pk8",
         ".pkcs8",
-        ".asc",
         ".ppk",
         ".pub",
         # Certificate signing requests
@@ -146,10 +145,10 @@ def is_text_file(file_path: Path) -> bool:
 
     # First check extension
     file_suffix = file_path.suffix.lower()
-    if file_suffix in SECURITY_EXTENSIONS:
+    if file_suffix in security_extensions:
         return False
 
-    if file_suffix not in TEXT_EXTENSIONS:
+    if file_suffix not in text_extensions:
         return False
 
     # Then check mimetype
@@ -185,7 +184,7 @@ def is_text_file(file_path: Path) -> bool:
             except UnicodeDecodeError:
                 return False
 
-    except (IOError, OSError):
+    except OSError:
         return False
 
 

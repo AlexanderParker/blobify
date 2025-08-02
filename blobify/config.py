@@ -87,7 +87,7 @@ def read_blobify_config(git_root: Path, context: Optional[str] = None, debug: bo
                 )
             )
 
-    except (IOError, OSError) as e:
+    except OSError as e:
         if debug:
             print_error(f"Error reading .blobify file: {e}")
 

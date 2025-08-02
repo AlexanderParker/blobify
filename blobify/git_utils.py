@@ -164,7 +164,7 @@ def read_gitignore_file(gitignore_path: Path) -> List[str]:
                 # Skip empty lines and comments
                 if line and not line.startswith("#"):
                     patterns.append(line)
-    except (IOError, OSError):
+    except OSError:
         pass
     return patterns
 

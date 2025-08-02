@@ -121,7 +121,7 @@ def discover_files(directory: Path, debug: bool = False) -> Dict:
         print_phase("First Sweep: Gitignore & Built-in Exclusions")
         print_debug("First sweep: applying gitignore and built-in exclusions")
 
-    IGNORED_PATTERNS = get_built_in_ignored_patterns()
+    ignored_patterns = get_built_in_ignored_patterns()
     all_files = []
     gitignored_directories = []
 
@@ -134,7 +134,7 @@ def discover_files(directory: Path, debug: bool = False) -> Dict:
             dir_path = root_path / dir_name
 
             # Check built-in patterns
-            if dir_name in IGNORED_PATTERNS:
+            if dir_name in ignored_patterns:
                 dirs_to_remove.append(dir_name)
                 continue
 
@@ -166,7 +166,7 @@ def discover_files(directory: Path, debug: bool = False) -> Dict:
             file_path = root_path / file_name
             if is_text_file(file_path):
                 # Skip files with built-in ignored names
-                if file_name in IGNORED_PATTERNS or file_name.startswith("."):
+                if file_name in ignored_patterns or file_name.startswith("."):
                     continue
 
                 # Check gitignore if we're in a git repo
@@ -225,7 +225,7 @@ def apply_blobify_patterns(discovery_context: Dict, directory: Path, context: Op
         print_debug("Second sweep: applying .blobify patterns")
 
     # Find ALL files again (including gitignored ones) for pattern matching
-    IGNORED_PATTERNS = get_built_in_ignored_patterns()
+    ignored_patterns = get_built_in_ignored_patterns()
     all_possible_files = []
     for root, dirs, files in os.walk(directory):
         root_path = Path(root)
@@ -233,7 +233,7 @@ def apply_blobify_patterns(discovery_context: Dict, directory: Path, context: Op
         # Only skip built-in patterns, not gitignore
         dirs_to_remove = []
         for dir_name in dirs:
-            if dir_name in IGNORED_PATTERNS or dir_name.startswith("."):
+            if dir_name in ignored_patterns or dir_name.startswith("."):
                 dirs_to_remove.append(dir_name)
 
         for dir_name in dirs_to_remove:
@@ -241,7 +241,7 @@ def apply_blobify_patterns(discovery_context: Dict, directory: Path, context: Op
 
         for file_name in files:
             file_path = root_path / file_name
-            if file_name in IGNORED_PATTERNS or file_name.startswith("."):
+            if file_name in ignored_patterns or file_name.startswith("."):
                 continue
             all_possible_files.append(file_path)
 
@@ -280,7 +280,7 @@ def apply_blobify_patterns(discovery_context: Dict, directory: Path, context: Op
                         pattern = line[1:].strip()
                         if pattern:
                             original_patterns.append(("-", pattern))
-        except (IOError, OSError):
+        except OSError:
             pass
 
     # If we couldn't read the original order, fall back to exclude-then-include
