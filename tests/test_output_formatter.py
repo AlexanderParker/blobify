@@ -41,6 +41,26 @@ class TestOutputFormatter:
         assert f"# Git repository: {git_root}" in header
         assert "# .blobify configuration (context: test-context): 1 include patterns, 1 exclude patterns, 1 default switches" in header
 
+    def test_generate_header_with_index(self, tmp_path):
+        """Test generate_header with index enabled (default)."""
+        header = generate_header(tmp_path, None, None, False, ([], [], []), include_index=True)
+
+        assert "# This file contains an index and contents" in header
+        assert "# 1. File listing with relative paths" in header
+        assert "# 2. Content sections for each file" in header
+        assert "# 3. Each file section is marked with START_FILE" in header
+
+    def test_generate_header_without_index(self, tmp_path):
+        """Test generate_header with index disabled."""
+        header = generate_header(tmp_path, None, None, False, ([], [], []), include_index=False)
+
+        assert "# This file contains the contents of all text files" in header
+        assert "# 1. Content sections for each file" in header
+        assert "# 2. Each file section is marked with START_FILE" in header
+        # Should not mention index or file listing
+        assert "File listing with relative paths" not in header
+        assert "index and contents" not in header
+
     @patch("blobify.output_formatter.SCRUBADUB_AVAILABLE", True)
     def test_generate_header_scrubbing_enabled(self, tmp_path):
         """Test generate_header with scrubbing enabled."""
@@ -337,6 +357,10 @@ class TestOutputFormatter:
         assert "test.py" in result  # Still appears in content
         assert "START_FILE: test.py" in result
         assert "test content" in result
+
+        # Header should reflect no index
+        assert "# This file contains the contents of all text files" in result
+        assert "index and contents" not in result
 
     def test_format_output_with_blobify_context(self, tmp_path):
         """Test format_output with blobify context information."""

@@ -8,7 +8,14 @@ from .console import print_debug, print_file_processing
 from .content_processor import SCRUBADUB_AVAILABLE, get_file_metadata, scrub_content
 
 
-def generate_header(directory: Path, git_root: Path, context: str, scrub_data: bool, blobify_patterns_info: tuple) -> str:
+def generate_header(
+    directory: Path,
+    git_root: Path,
+    context: str,
+    scrub_data: bool,
+    blobify_patterns_info: tuple,
+    include_index: bool = True,
+) -> str:
     """Generate the file header with metadata and configuration info."""
     blobify_include_patterns, blobify_exclude_patterns, default_switches = blobify_patterns_info
 
@@ -30,11 +37,9 @@ def generate_header(directory: Path, git_root: Path, context: str, scrub_data: b
     else:
         scrubbing_info = "\n# Sensitive data scrubbing UNAVAILABLE (scrubadub not installed)"
 
-    header = """# Blobify Text File Index
-# Generated: {datetime}
-# Source Directory: {directory}{git_info}{blobify_info}{scrubbing_info}
-#
-# This file contains an index and contents of all text files found in the specified directory.
+    # Adjust format description based on whether index is included
+    if include_index:
+        format_description = """# This file contains an index and contents of all text files found in the specified directory.
 # Format:
 # 1. File listing with relative paths
 # 2. Content sections for each file, including metadata and full content
@@ -42,7 +47,21 @@ def generate_header(directory: Path, git_root: Path, context: str, scrub_data: b
 #
 # Files ignored by .gitignore are listed in the index but marked as [IGNORED BY GITIGNORE]
 # Files excluded by .blobify are listed in the index but marked as [EXCLUDED BY .blobify]
-# and their content is excluded with a placeholder message.
+# and their content is excluded with a placeholder message."""
+    else:
+        format_description = """# This file contains the contents of all text files found in the specified directory.
+# Format:
+# 1. Content sections for each file, including metadata and full content
+# 2. Each file section is marked with START_FILE and END_FILE delimiters
+#
+# Files ignored by .gitignore or excluded by .blobify have their content excluded
+# with a placeholder message."""
+
+    header = """# Blobify Text File Index
+# Generated: {datetime}
+# Source Directory: {directory}{git_info}{blobify_info}{scrubbing_info}
+#
+{format_description}
 #
 # This format is designed to be both human-readable and machine-parseable.
 # Files are ordered alphabetically by relative path.
@@ -53,6 +72,7 @@ def generate_header(directory: Path, git_root: Path, context: str, scrub_data: b
         git_info=git_info,
         blobify_info=blobify_info,
         scrubbing_info=scrubbing_info,
+        format_description=format_description,
     )
 
     return header
@@ -186,7 +206,7 @@ def format_output(
     all_files.sort(key=lambda x: str(x["relative_path"]).lower())
 
     # Generate header
-    header = generate_header(directory, git_root, context, scrub_data, blobify_patterns_info)
+    header = generate_header(directory, git_root, context, scrub_data, blobify_patterns_info, include_index)
 
     # Generate index section (if enabled)
     if include_index:

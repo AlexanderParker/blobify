@@ -4,3 +4,4 @@
 +.github\workflows\test.yml
 @clip
 @noclean
+@no-index
