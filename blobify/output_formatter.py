@@ -30,19 +30,32 @@ def generate_header(
     if not include_content and not include_index and not include_metadata:
         format_description = """# This file contains no useful output - index, content, and metadata have all been disabled."""
     elif not include_content and not include_index:
+        # Metadata only
         format_description = """# This file contains metadata of all text files found in the specified directory.
 # Format:
 # 1. Metadata sections for each file (size, timestamps)
 # 2. Each file section is marked with START_FILE and END_FILE delimiters"""
     elif not include_content and not include_metadata:
+        # Index only
         format_description = """# This file contains an index of all text files found in the specified directory."""
     elif not include_content:
+        # Index + metadata
         format_description = """# This file contains an index and metadata of all text files found in the specified directory.
 # Format:
 # 1. File listing with relative paths
 # 2. Metadata sections for each file (size, timestamps)
 # 3. Each file section is marked with START_FILE and END_FILE delimiters"""
-    elif not include_metadata and include_index:
+    elif not include_index and not include_metadata:
+        # Content only
+        format_description = """# This file contains contents of all text files found in the specified directory.
+# Format:
+# 1. Content sections for each file
+# 2. Each file section is marked with START_FILE and END_FILE delimiters
+#
+# Files ignored by .gitignore or excluded by .blobify have their content excluded
+# with a placeholder message."""
+    elif not include_metadata:
+        # Index + content
         format_description = """# This file contains an index and contents of all text files found in the specified directory.
 # Format:
 # 1. File listing with relative paths
@@ -52,15 +65,17 @@ def generate_header(
 # Files ignored by .gitignore are listed in the index but marked as [IGNORED BY GITIGNORE]
 # Files excluded by .blobify are listed in the index but marked as [EXCLUDED BY .blobify]
 # and their content is excluded with a placeholder message."""
-    elif not include_metadata:
-        format_description = """# This file contains contents of all text files found in the specified directory.
+    elif not include_index:
+        # Content + metadata
+        format_description = """# This file contains the contents of all text files found in the specified directory.
 # Format:
-# 1. Content sections for each file
+# 1. Content sections for each file, including metadata and full content
 # 2. Each file section is marked with START_FILE and END_FILE delimiters
 #
 # Files ignored by .gitignore or excluded by .blobify have their content excluded
 # with a placeholder message."""
-    elif include_index:
+    else:
+        # Index + content + metadata (default)
         format_description = """# This file contains an index and contents of all text files found in the specified directory.
 # Format:
 # 1. File listing with relative paths
@@ -70,14 +85,6 @@ def generate_header(
 # Files ignored by .gitignore are listed in the index but marked as [IGNORED BY GITIGNORE]
 # Files excluded by .blobify are listed in the index but marked as [EXCLUDED BY .blobify]
 # and their content is excluded with a placeholder message."""
-    else:
-        format_description = """# This file contains the contents of all text files found in the specified directory.
-# Format:
-# 1. Content sections for each file, including metadata and full content
-# 2. Each file section is marked with START_FILE and END_FILE delimiters
-#
-# Files ignored by .gitignore or excluded by .blobify have their content excluded
-# with a placeholder message."""
 
     header = """# Blobify Text File Index
 # Generated: {datetime}
@@ -100,7 +107,12 @@ def generate_header(
     return header
 
 
-def generate_index(all_files: List[Dict], gitignored_directories: List[Path], include_content: bool = True) -> str:
+def generate_index(
+    all_files: List[Dict],
+    gitignored_directories: List[Path],
+    include_content: bool = True,
+    include_metadata: bool = True,
+) -> str:
     """Generate the file index section."""
     index = []
 
@@ -141,9 +153,11 @@ def generate_index(all_files: List[Dict], gitignored_directories: List[Path], in
     index_section = "# FILE INDEX\n" + "#" * 80 + "\n"
     index_section += "\n".join(index)
 
-    # Only add FILE CONTENTS header if content will be included
+    # Add appropriate section header based on what content will follow
     if include_content:
         index_section += "\n\n# FILE CONTENTS\n" + "#" * 80 + "\n"
+    elif include_metadata:
+        index_section += "\n\n# FILE METADATA\n" + "#" * 80 + "\n"
     else:
         index_section += "\n"
 
@@ -181,24 +195,30 @@ def generate_content(
 
         # Include metadata section if enabled
         if include_metadata:
-            metadata = get_file_metadata(file_path)
-            content.append("FILE_METADATA:")
-            content.append(f"  Path: {relative_path}")
-            content.append(f"  Size: {metadata['size']} bytes")
-            content.append(f"  Created: {metadata['created']}")
-            content.append(f"  Modified: {metadata['modified']}")
-            content.append(f"  Accessed: {metadata['accessed']}")
+            try:
+                metadata = get_file_metadata(file_path)
+                content.append("FILE_METADATA:")
+                content.append(f"  Path: {relative_path}")
+                content.append(f"  Size: {metadata['size']} bytes")
+                content.append(f"  Created: {metadata['created']}")
+                content.append(f"  Modified: {metadata['modified']}")
+                content.append(f"  Accessed: {metadata['accessed']}")
 
-            # Only include status when content is also being included
-            if include_content:
-                if is_blobify_included:
-                    content.append("  Status: INCLUDED BY .blobify")
-                elif is_git_ignored:
-                    content.append("  Status: IGNORED BY GITIGNORE")
-                elif is_blobify_excluded:
-                    content.append("  Status: EXCLUDED BY .blobify")
-                elif scrub_data and SCRUBADUB_AVAILABLE:
-                    content.append("  Status: PROCESSED WITH SCRUBADUB")
+                # Only include status when content is also being included
+                if include_content:
+                    if is_blobify_included:
+                        content.append("  Status: INCLUDED BY .blobify")
+                    elif is_git_ignored:
+                        content.append("  Status: IGNORED BY GITIGNORE")
+                    elif is_blobify_excluded:
+                        content.append("  Status: EXCLUDED BY .blobify")
+                    elif scrub_data and SCRUBADUB_AVAILABLE:
+                        content.append("  Status: PROCESSED WITH SCRUBADUB")
+            except OSError as e:
+                # If we can't get metadata, add an error message
+                content.append("FILE_METADATA:")
+                content.append(f"  Path: {relative_path}")
+                content.append(f"  Error: Cannot read file metadata - {e}")
 
         # Include content section if enabled
         if include_content:
@@ -282,11 +302,13 @@ def format_output(
 
     # Generate index section (if enabled)
     if include_index:
-        index_section = generate_index(all_files, gitignored_directories, include_content)
+        index_section = generate_index(all_files, gitignored_directories, include_content, include_metadata)
     else:
-        # No index, just file contents header (unless no content either)
-        if include_content or include_metadata:
+        # No index - add appropriate header based on what we're including
+        if include_content:
             index_section = "\n# FILE CONTENTS\n" + "#" * 80 + "\n"
+        elif include_metadata:
+            index_section = "\n# FILE METADATA\n" + "#" * 80 + "\n"
         else:
             index_section = ""
 

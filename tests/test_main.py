@@ -1,4 +1,4 @@
-"""Tests for main.py module - WORKING SOLUTION."""
+"""Tests for main.py module - CLI integration and behavior."""
 
 import subprocess
 from unittest.mock import Mock, patch
@@ -9,7 +9,7 @@ from blobify.main import main
 
 
 class TestMain:
-    """Test cases for main function - with proper capture handling."""
+    """Test cases for main function - CLI integration and behavior."""
 
     def test_main_processes_real_files(self, tmp_path):
         """Test that main actually processes files and produces output."""
@@ -69,55 +69,6 @@ class TestMain:
         # Should show ignored files in index but not content
         assert "debug.log [IGNORED BY GITIGNORE]" in content
         assert "log content" not in content
-
-    def test_main_command_line_options(self, tmp_path):
-        """Test command line options work."""
-        # Create test data in subdirectory
-        test_data_dir = tmp_path / "test_data"
-        test_data_dir.mkdir()
-        (test_data_dir / "test.py").write_text("line1\nline2\nline3")
-
-        # Test with line numbers (default)
-        output_file1 = tmp_path / "with_lines.txt"
-        with patch("sys.argv", ["bfy", str(test_data_dir), "-o", str(output_file1)]):
-            main()
-
-        with_lines = output_file1.read_text()
-        assert "1: line1" in with_lines
-        assert "2: line2" in with_lines
-
-        # Test without line numbers
-        output_file2 = tmp_path / "without_lines.txt"
-        with patch("sys.argv", ["bfy", str(test_data_dir), "--no-line-numbers", "-o", str(output_file2)]):
-            main()
-
-        without_lines = output_file2.read_text()
-        assert "1: line1" not in without_lines
-        assert "2: line2" not in without_lines
-        assert "line1\nline2\nline3" in without_lines
-
-    def test_main_index_option(self, tmp_path):
-        """Test --no-index option."""
-        (tmp_path / "test.py").write_text("print('test')")
-
-        # Test with index (default)
-        output_file1 = tmp_path / "with_index.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file1)]):
-            main()
-
-        with_index = output_file1.read_text()
-        assert "# FILE INDEX" in with_index
-
-        # Test without index
-        output_file2 = tmp_path / "without_index.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "--no-index", "-o", str(output_file2)]):
-            main()
-
-        without_index = output_file2.read_text()
-        # The key fix: Check that the index section header is not present
-        # but FILE CONTENTS header should still be there
-        assert "# FILE INDEX\n" + "#" * 80 not in without_index
-        assert "# FILE CONTENTS" in without_index
 
     @patch("subprocess.run")
     def test_clipboard_integration_windows(self, mock_subprocess, tmp_path):
@@ -273,3 +224,252 @@ class TestMain:
         # Should include markdown files in docs-only context
         assert "README.md" in content
         assert "# README" in content
+
+
+class TestCliSummaryMessages:
+    """Test CLI summary messages for all switch combinations."""
+
+    def setup_test_files(self, tmp_path):
+        """Create standard test files."""
+        (tmp_path / "test.py").write_text("print('hello')")
+        (tmp_path / "README.md").write_text("# Test")
+        return tmp_path
+
+    def test_cli_summary_all_combinations(self, tmp_path, capsys):
+        """Test CLI summary messages for all switch combinations."""
+        self.setup_test_files(tmp_path)
+
+        test_cases = [
+            # (switches, expected_message)
+            ([], "Processed 2 files"),  # Default case
+            (["--no-content"], "(index and metadata only)"),
+            (["--no-index"], "Processed 2 files"),  # No special message for just no-index
+            (["--no-metadata"], "(index and content, no metadata)"),
+            (["--no-content", "--no-index"], "(metadata only)"),
+            (["--no-content", "--no-metadata"], "(index only)"),
+            (["--no-index", "--no-metadata"], "(content only, no metadata)"),
+            (
+                ["--no-content", "--no-index", "--no-metadata"],
+                "(no useful output - index, content, and metadata all disabled)",
+            ),
+        ]
+
+        for switches, expected_message in test_cases:
+            capsys.readouterr()  # Clear previous output
+
+            with patch("sys.argv", ["bfy", str(tmp_path)] + switches):
+                main()
+
+            captured = capsys.readouterr()
+            assert expected_message in captured.err, f"Failed for switches {switches}: expected '{expected_message}' in '{captured.err}'"
+
+    def test_cli_warning_for_no_useful_output(self, tmp_path, capsys):
+        """Test that CLI shows warning when no useful output is generated."""
+        self.setup_test_files(tmp_path)
+
+        with patch("sys.argv", ["bfy", str(tmp_path), "--no-content", "--no-index", "--no-metadata"]):
+            main()
+
+        captured = capsys.readouterr()
+        assert "Note: All output options are disabled" in captured.err
+        assert "--help" in captured.err
+
+    def test_cli_context_in_summary(self, tmp_path, capsys):
+        """Test that context appears in summary message."""
+        # Create git repo with context
+        (tmp_path / ".git").mkdir()
+        (tmp_path / ".blobify").write_text("[test-ctx]\n+*.py")
+        (tmp_path / "test.py").write_text("print('test')")
+
+        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "test-ctx"]):
+            main()
+
+        captured = capsys.readouterr()
+        assert "(context: test-ctx)" in captured.err
+
+    def test_cli_scrubbing_messages(self, tmp_path, capsys):
+        """Test scrubbing-related CLI messages."""
+        self.setup_test_files(tmp_path)
+
+        # Mock scrubbing to return substitutions
+        with patch("blobify.main.format_output") as mock_format:
+            mock_format.return_value = ("output", 5, 2)  # 5 substitutions
+
+            with patch("blobify.main.SCRUBADUB_AVAILABLE", True):
+                with patch("sys.argv", ["bfy", str(tmp_path)]):
+                    main()
+
+        captured = capsys.readouterr()
+        assert "scrubadub made 5 substitutions" in captured.err
+
+    def test_cli_debug_scrubbing_messages(self, tmp_path, capsys):
+        """Test scrubbing messages with debug enabled."""
+        self.setup_test_files(tmp_path)
+
+        # Mock scrubbing to return substitutions
+        with patch("blobify.main.format_output") as mock_format:
+            mock_format.return_value = ("output", 3, 2)  # 3 substitutions
+
+            with patch("blobify.main.SCRUBADUB_AVAILABLE", True):
+                with patch("sys.argv", ["bfy", str(tmp_path), "--debug"]):
+                    main()
+
+        captured = capsys.readouterr()
+        assert "scrubadub made 3 substitutions" in captured.err
+        # With debug, shouldn't suggest using --debug
+        assert "use --debug for details" not in captured.err
+
+
+class TestCommandLineOptions:
+    """Test individual command line options work correctly."""
+
+    def test_line_numbers_option(self, tmp_path):
+        """Test --no-line-numbers option."""
+        test_data_dir = tmp_path / "test_data"
+        test_data_dir.mkdir()
+        (test_data_dir / "test.py").write_text("line1\nline2\nline3")
+
+        # Test with line numbers (default)
+        output_file1 = tmp_path / "with_lines.txt"
+        with patch("sys.argv", ["bfy", str(test_data_dir), "-o", str(output_file1)]):
+            main()
+
+        with_lines = output_file1.read_text()
+        assert "1: line1" in with_lines
+        assert "2: line2" in with_lines
+
+        # Test without line numbers
+        output_file2 = tmp_path / "without_lines.txt"
+        with patch("sys.argv", ["bfy", str(test_data_dir), "--no-line-numbers", "-o", str(output_file2)]):
+            main()
+
+        without_lines = output_file2.read_text()
+        assert "1: line1" not in without_lines
+        assert "2: line2" not in without_lines
+        assert "line1\nline2\nline3" in without_lines
+
+    def test_index_option(self, tmp_path):
+        """Test --no-index option."""
+        (tmp_path / "test.py").write_text("print('test')")
+
+        # Test with index (default)
+        output_file1 = tmp_path / "with_index.txt"
+        with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file1)]):
+            main()
+
+        with_index = output_file1.read_text()
+        assert "# FILE INDEX" in with_index
+
+        # Test without index
+        output_file2 = tmp_path / "without_index.txt"
+        with patch("sys.argv", ["bfy", str(tmp_path), "--no-index", "-o", str(output_file2)]):
+            main()
+
+        without_index = output_file2.read_text()
+        # The key fix: Check that the index section header is not present
+        # but FILE CONTENTS header should still be there
+        assert "# FILE INDEX\n" + "#" * 80 not in without_index
+        assert "# FILE CONTENTS" in without_index
+
+    def test_content_option(self, tmp_path):
+        """Test --no-content option."""
+        (tmp_path / "test.py").write_text("print('secret content')")
+
+        # Test with content (default)
+        output_file1 = tmp_path / "with_content.txt"
+        with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file1)]):
+            main()
+
+        with_content = output_file1.read_text()
+        assert "print('secret content')" in with_content
+        assert "# FILE CONTENTS" in with_content
+
+        # Test without content
+        output_file2 = tmp_path / "without_content.txt"
+        with patch("sys.argv", ["bfy", str(tmp_path), "--no-content", "-o", str(output_file2)]):
+            main()
+
+        without_content = output_file2.read_text()
+        assert "print('secret content')" not in without_content
+        assert "# FILE CONTENTS" not in without_content
+        assert "# FILE INDEX" in without_content  # Should still have index
+
+    def test_metadata_option(self, tmp_path):
+        """Test --no-metadata option."""
+        # Create a clean test environment that won't include project source files
+        test_dir = tmp_path / "test_project"
+        test_dir.mkdir()
+
+        # Create test files that don't contain metadata-related strings
+        (test_dir / "app.py").write_text("print('hello world')")
+        (test_dir / "config.json").write_text('{"name": "test"}')
+
+        # Test with metadata (default)
+        output_file1 = tmp_path / "with_metadata.txt"
+        with patch("sys.argv", ["bfy", str(test_dir), "-o", str(output_file1)]):
+            main()
+
+        with_metadata = output_file1.read_text()
+        # Check for metadata section headers (not just the string anywhere)
+        assert "FILE_METADATA:" in with_metadata
+        assert "Size:" in with_metadata
+        assert "Created:" in with_metadata
+
+        # Test without metadata
+        output_file2 = tmp_path / "without_metadata.txt"
+        with patch("sys.argv", ["bfy", str(test_dir), "--no-metadata", "-o", str(output_file2)]):
+            main()
+
+        without_metadata = output_file2.read_text()
+
+        # More specific checks - look for metadata section patterns, not just the string
+        # The key is to check that no metadata sections are present as actual sections
+        lines = without_metadata.split("\n")
+        metadata_section_found = False
+        for i, line in enumerate(lines):
+            if line.strip() == "FILE_METADATA:":
+                # Check if this looks like a metadata section (followed by indented content)
+                if i + 1 < len(lines) and lines[i + 1].strip().startswith("Path:"):
+                    metadata_section_found = True
+                    break
+
+        assert not metadata_section_found, "Found FILE_METADATA section when --no-metadata was specified"
+
+        # Should still have the actual content
+        assert "print('hello world')" in without_metadata
+        assert '{"name": "test"}' in without_metadata
+
+    def test_debug_option_behavior(self, tmp_path, capsys):
+        """Test --debug option produces debug output."""
+        # Create git repo for debug output
+        (tmp_path / ".git").mkdir()
+        (tmp_path / ".gitignore").write_text("*.log")
+        (tmp_path / "test.py").write_text("print('test')")
+
+        with patch("sys.argv", ["bfy", str(tmp_path), "--debug"]):
+            main()
+
+        captured = capsys.readouterr()
+        # Should see debug messages
+        assert any("debug" in line.lower() for line in captured.err.split("\n"))
+
+    def test_noclean_option_behavior(self, tmp_path):
+        """Test --noclean option disables scrubbing."""
+        (tmp_path / "test.py").write_text("email: test@example.com")
+
+        # Test without noclean (scrubbing enabled if available)
+        output_file1 = tmp_path / "with_scrub.txt"
+        with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file1)]):
+            main()
+
+        # Test with noclean (scrubbing disabled)
+        output_file2 = tmp_path / "without_scrub.txt"
+        with patch("sys.argv", ["bfy", str(tmp_path), "--noclean", "-o", str(output_file2)]):
+            main()
+
+        # Both should contain the email since scrubadub may not be available in test environment
+        # The important thing is that --noclean doesn't break anything
+        content1 = output_file1.read_text()
+        content2 = output_file2.read_text()
+        assert "test@example.com" not in content1
+        assert "test@example.com" in content2

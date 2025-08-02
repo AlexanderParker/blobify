@@ -405,7 +405,7 @@ def apply_blobify_patterns(discovery_context: Dict, directory: Path, context: Op
                             print_debug(f".blobify ALREADY ADDED: '{relative_path}' matches pattern '{pattern}' but already in list")
 
                 else:  # Exclude pattern (op == '-')
-                    # Remove from all_files if present
+                    # Mark as excluded in all_files if present
                     for file_info in all_files:
                         if file_info["relative_path"] == relative_path:
                             file_info["include_in_output"] = False
@@ -436,9 +436,17 @@ def scan_files(directory: Path, context: Optional[str] = None, debug: bool = Fal
     # Second sweep: apply .blobify patterns
     apply_blobify_patterns(discovery_context, directory, context, debug)
 
-    # Count final results
+    # Count final results - filter files properly by context patterns
     all_files = discovery_context["all_files"]
-    included_files = [f for f in all_files if f["include_in_output"]]
+
+    # Apply context filtering to determine final included files
+    if context:
+        # When using a context, only include files that match the context patterns
+        included_files = [f for f in all_files if f.get("is_blobify_included", False) and f["include_in_output"]]
+    else:
+        # Default context - include files that weren't explicitly excluded
+        included_files = [f for f in all_files if f["include_in_output"]]
+
     git_ignored_files = [f for f in all_files if f["is_git_ignored"]]
     blobify_excluded_files = [f for f in all_files if f["is_blobify_excluded"]]
 
