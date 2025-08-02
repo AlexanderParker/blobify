@@ -30,9 +30,9 @@ bfy --clip
 
 Then paste into AI with prompts like "Review this code and suggest improvements" or "Add oauth authentication to this app".
 
-**Key features:** Respects `.gitignore`, optional sensitive data scrubbing (see important notice below), includes line numbers, supports custom filtering via `.blobify` configuration, cross-platform clipboard support. Automatically excludes common build/cache directories (`.git`, `node_modules`, `__pycache__`, etc.) and binary files.
+**Key features:** Respects `.gitignore`, optional sensitive data scrubbing (see important notice below), includes line numbers, supports custom filtering via `.blobify` configuration, cross-platform clipboard support. Automatically excludes common build/cache directories (`.git`, `node_modules`, `__pycache__`, etc.) and binary files. Only includes text files automatically detected by file extension and content analysis.
 
-**⚠️ Important Notice:** The optional scrubbing feature is not guaranteed to work; it may not detect some sensitive data, it may find false positives. Consider it to be a best-effort helper feature only. Scrubbing, if installed, can be disabled with --noclean. You can opt not to install it upfront if you do not use the [scrubbing] option when installing. *This project makes no claims or guarantees of data security - you should always review the output of any tool to check for and clean up sensitive data before you use such data anywhere.*
+**⚠️ Important Notice:** The optional scrubbing feature is not guaranteed to work; it may not detect some sensitive data, it may find false positives. Consider it to be a best-effort helper feature only. Scrubbing, if installed, can be disabled with --noclean. You can opt not to install it upfront if you do not use the [scrubbing] option when installing. _This project makes no claims or guarantees of data security - you should always review the output of any tool to check for and clean up sensitive data before you use such data anywhere._
 
 ## Command Line Options
 
@@ -48,6 +48,7 @@ bfy [directory] [options]
 - `-l,`, `--no-line-numbers` - Disable line numbers in file content output
 - `-i,`, `--no-index` - Disable file index section at start of output
 - `-c,`, `--clip` - Copy output to clipboard
+- `-g,`, `--list-ignored` - List built-in ignored patterns and exit
 
 ## Examples
 
@@ -93,11 +94,17 @@ Use context with .blobify defaults:
 bfy -x docs-only --clip
 ```
 
+List built-in ignored patterns:
+
+```bash
+bfy -g
+```
+
 ## .blobify Configuration
 
 The `.blobify` file lets you customise which files are included and set default command-line options. Blobify applies filters in this order: default exclusions → gitignore → .blobify excludes → .blobify includes. This means you can override gitignore rules when needed.
 
-Create a `.blobify` file in your git root:
+Create a `.blobify` file in your project directory (git repository or otherwise):
 
 ```
 # Default switches (applied automatically)
@@ -127,9 +134,9 @@ Create a `.blobify` file in your git root:
 - `+pattern` - Include files (overrides gitignore/default exclusions)
 - `-pattern` - Exclude files
 - `[context-name]` - Define named contexts for different views
-- Supports `*` and `**` wildcards, patterns relative to git root
+- Supports `*` and `**` wildcards, patterns relative to project root
 
-**Contexts:** Use `-x context-name` to apply different file filtering rules. Contexts are independent - they don't inherit patterns from the default section. Useful for documentation-only reviews (`docs-only`), code-only analysis (`code-only`), or security audits.
+**Contexts:** Use `-x context-name` to apply different file filtering rules. Contexts are independent - they don't inherit patterns from the default section. Command line arguments take precedence over .blobify default switches. Useful for documentation-only reviews (`docs-only`), code-only analysis (`code-only`), or security audits.
 
 **Default Directory Behaviour:** When you have a `.blobify` file in your current directory, you can run `bfy` without specifying a directory argument - it will automatically use the current directory. This makes it easy to set up project-specific configurations and run blobify with just `bfy --clip` or `bfy -x context-name`.
 
@@ -171,86 +178,89 @@ You could add these example contexts to .blobify and use with: `bfy -x compact -
 ### Setup
 
 1. Clone the repository
-    ```bash
-    git clone https://github.com/AlexanderParker/blobify.git
-    ```
-    Enter the project folder:
-    ```bash
-    cd blobify
-    ```
+   ```bash
+   git clone https://github.com/AlexanderParker/blobify.git
+   ```
+   Enter the project folder:
+   ```bash
+   cd blobify
+   ```
 2. Create a virtual environment:
 
-    ```bash
-    python -m venv venv
-    ```
+   ```bash
+   python -m venv venv
+   ```
 
-2. Activate the virtual environment
+3. Activate the virtual environment
 
-    Linux, MacOS:
+   Linux, MacOS:
 
-    ```bash
-    source venv/bin/activate
-    ```
+   ```bash
+   source venv/bin/activate
+   ```
 
-    Windows:
+   Windows:
 
-    ```
-    venv\Scripts\activate
-    ```
+   ```
+   venv\Scripts\activate
+   ```
 
 4. Install with dev & scrubbing dependencies:
 
-    ```bash
-    pip install -e ".[dev,scrubbing]"
-    ```
+   ```bash
+   pip install -e ".[dev,scrubbing]"
+   ```
 
 5. Install pre-commit hooks:
-    ```bash
-    pre-commit install
-    ```
+   ```bash
+   pre-commit install
+   ```
 
 ### Run Tests
 
-* Run tests
+- Run tests
 
-    With normal CLI output:
-    ```bash
-    invoke test
-    ```
+  With normal CLI output:
 
-    Redirect to clipboard (test on windows only at this stage)
+  ```bash
+  invoke test
+  ```
 
-    ```bash
-    invoke test-to-clip
-    ```
+  Redirect to clipboard (test on windows only at this stage)
 
-    Or:
+  ```bash
+  invoke test-to-clip
+  ```
 
-    ```bash
-    invoke test | clip
-    ```
+  Or:
 
-* Run with coverage
+  ```bash
+  invoke test | clip
+  ```
 
-    ```bash
-    invoke coverage
-    ```
-* Format code
+- Run with coverage
 
-    ```bash
-    invoke format
-    ```
-* Check code quality
+  ```bash
+  invoke coverage
+  ```
 
-    ```bash
-    invoke lint
-    ```
+- Format code
 
-* Check all
+  ```bash
+  invoke format
+  ```
 
-    ```bash
-    invoke all
-    ```
+- Check code quality
+
+  ```bash
+  invoke lint
+  ```
+
+- Check all
+
+  ```bash
+  invoke all
+  ```
 
 ## License
 
