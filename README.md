@@ -223,6 +223,13 @@ You could add these example contexts to .blobify and use with: `bfy -x compact -
     ```bash
     invoke test-to-clip
     ```
+
+    Or:
+
+    ```bash
+    invoke test | clip
+    ```
+
 * Run with coverage
 
     ```bash
@@ -237,6 +244,12 @@ You could add these example contexts to .blobify and use with: `bfy -x compact -
 
     ```bash
     invoke lint
+    ```
+
+* Check all
+
+    ```bash
+    invoke all
     ```
 
 ## License
