@@ -146,6 +146,11 @@ def apply_default_switches(args: argparse.Namespace, default_switches: List[str]
                     args_dict["no_index"] = True
                     if debug:
                         print_debug("Applied default: --no-index")
+            elif switch == "no-content":
+                if not args_dict.get("no_content", False):
+                    args_dict["no_content"] = True
+                    if debug:
+                        print_debug("Applied default: --no-content")
             elif switch == "clip":
                 if not args_dict.get("clip", False):
                     args_dict["clip"] = True

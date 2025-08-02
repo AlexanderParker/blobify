@@ -15,30 +15,22 @@ def generate_header(
     scrub_data: bool,
     blobify_patterns_info: tuple,
     include_index: bool = True,
+    include_content: bool = True,
 ) -> str:
     """Generate the file header with metadata and configuration info."""
     blobify_include_patterns, blobify_exclude_patterns, default_switches = blobify_patterns_info
 
-    git_info = f"\n# Git repository: {git_root}" if git_root else "\n# Not in a git repository"
-
+    # Keep headers minimal - no verbose metadata
+    git_info = ""
     blobify_info = ""
-    if git_root and (blobify_include_patterns or blobify_exclude_patterns):
-        context_info = f" (context: {context})" if context else ""
-        blobify_info = f"\n# .blobify configuration{context_info}: {len(blobify_include_patterns)} include patterns, {len(blobify_exclude_patterns)} exclude patterns"
-    if git_root and default_switches:
-        blobify_info += f", {len(default_switches)} default switches"
-
     scrubbing_info = ""
-    if scrub_data and SCRUBADUB_AVAILABLE:
-        scrubbing_info = "\n# Content processed with scrubadub for sensitive data detection"
-        scrubbing_info += "\n# WARNING: Review output carefully - scrubadub may miss sensitive data"
-    elif not scrub_data:
-        scrubbing_info = "\n# Sensitive data scrubbing DISABLED (--noclean flag used)"
-    else:
-        scrubbing_info = "\n# Sensitive data scrubbing UNAVAILABLE (scrubadub not installed)"
 
-    # Adjust format description based on whether index is included
-    if include_index:
+    # Adjust format description based on options
+    if not include_content and not include_index:
+        format_description = """# This file contains no useful output - both file index and content have been disabled."""
+    elif not include_content:
+        format_description = """# This file contains an index of all text files found in the specified directory."""
+    elif include_index:
         format_description = """# This file contains an index and contents of all text files found in the specified directory.
 # Format:
 # 1. File listing with relative paths
@@ -78,7 +70,7 @@ def generate_header(
     return header
 
 
-def generate_index(all_files: List[Dict], gitignored_directories: List[Path]) -> str:
+def generate_index(all_files: List[Dict], gitignored_directories: List[Path], include_content: bool = True) -> str:
     """Generate the file index section."""
     index = []
 
@@ -101,16 +93,25 @@ def generate_index(all_files: List[Dict], gitignored_directories: List[Path]) ->
     # Build index section
     index_section = "# FILE INDEX\n" + "#" * 80 + "\n"
     index_section += "\n".join(index)
-    index_section += "\n\n# FILE CONTENTS\n" + "#" * 80 + "\n"
+
+    # Only add FILE CONTENTS header if content will be included
+    if include_content:
+        index_section += "\n\n# FILE CONTENTS\n" + "#" * 80 + "\n"
+    else:
+        index_section += "\n"
 
     return index_section
 
 
-def generate_content(all_files: List[Dict], scrub_data: bool, include_line_numbers: bool, debug: bool) -> tuple:
+def generate_content(all_files: List[Dict], scrub_data: bool, include_line_numbers: bool, include_content: bool, debug: bool) -> tuple:
     """
     Generate the file content section.
     Returns tuple of (content_string, total_substitutions).
     """
+    # If content is disabled, return empty string immediately
+    if not include_content:
+        return "", 0
+
     content = []
     total_substitutions = 0
 
@@ -140,13 +141,14 @@ def generate_content(all_files: List[Dict], scrub_data: bool, include_line_numbe
         elif scrub_data and SCRUBADUB_AVAILABLE:
             content.append("  Status: PROCESSED WITH SCRUBADUB")
 
-        content.append("\nFILE_CONTENT:")
-
         if is_git_ignored:
+            content.append("FILE_CONTENT:")
             content.append("[Content excluded - file ignored by .gitignore]")
         elif is_blobify_excluded:
+            content.append("FILE_CONTENT:")
             content.append("[Content excluded - file excluded by .blobify]")
         else:
+            content.append("FILE_CONTENT:")
             try:
                 if debug:
                     print_file_processing(f"Processing file: {relative_path}")
@@ -178,9 +180,9 @@ def generate_content(all_files: List[Dict], scrub_data: bool, include_line_numbe
             except Exception as e:
                 content.append(f"[Error reading file: {str(e)}]")
 
-        content.append("\nEND_FILE: {}\n".format(relative_path))
+        content.append(f"END_FILE: {relative_path}\n")
 
-    return "".join(content), total_substitutions
+    return "\n".join(content), total_substitutions
 
 
 def format_output(
@@ -190,6 +192,7 @@ def format_output(
     scrub_data: bool,
     include_line_numbers: bool,
     include_index: bool,
+    include_content: bool,
     debug: bool,
     blobify_patterns_info: tuple,
 ) -> tuple:
@@ -206,17 +209,29 @@ def format_output(
     all_files.sort(key=lambda x: str(x["relative_path"]).lower())
 
     # Generate header
-    header = generate_header(directory, git_root, context, scrub_data, blobify_patterns_info, include_index)
+    header = generate_header(directory, git_root, context, scrub_data, blobify_patterns_info, include_index, include_content)
 
     # Generate index section (if enabled)
     if include_index:
-        index_section = generate_index(all_files, gitignored_directories)
+        index_section = generate_index(all_files, gitignored_directories, include_content)
     else:
-        # No index, just file contents header
-        index_section = "\n# FILE CONTENTS\n" + "#" * 80 + "\n"
+        # No index, just file contents header (unless no content either)
+        if include_content:
+            index_section = "\n# FILE CONTENTS\n" + "#" * 80 + "\n"
+        else:
+            index_section = ""
 
-    # Generate content section
-    content_section, total_substitutions = generate_content(all_files, scrub_data, include_line_numbers, debug)
+    # Generate content section (only if content is enabled)
+    if include_content:
+        content_section, total_substitutions = generate_content(all_files, scrub_data, include_line_numbers, include_content, debug)
+    else:
+        content_section = ""
+        total_substitutions = 0
+        # Add debug output to see if this branch is being taken
+        if debug:
+            from .console import print_debug
+
+            print_debug("Skipping content generation due to --no-content flag")
 
     # Combine all sections
     result = header + index_section + content_section

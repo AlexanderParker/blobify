@@ -5,3 +5,5 @@
 +.blobify
 @clip
 @noclean
+@no-content
+@no-index

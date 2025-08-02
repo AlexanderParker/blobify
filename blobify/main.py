@@ -126,6 +126,12 @@ def main():
             help="Disable file index section at start of output",
         )
         parser.add_argument(
+            "-k",
+            "--no-content",
+            action="store_true",
+            help="Include only file index and metadata, exclude all file contents",
+        )
+        parser.add_argument(
             "-c",
             "--clip",
             action="store_true",
@@ -199,6 +205,7 @@ def main():
             scrub_data,
             include_line_numbers=not args.no_line_numbers,
             include_index=not args.no_index,
+            include_content=not args.no_content,
             debug=args.debug,
             blobify_patterns_info=blobify_patterns_info,
         )
@@ -207,7 +214,13 @@ def main():
         context_info = f" (context: {args.context})" if args.context else ""
         summary_parts = [f"Processed {file_count} files{context_info}"]
 
-        if scrub_data and SCRUBADUB_AVAILABLE and total_substitutions > 0:
+        if args.no_content and args.no_index:
+            summary_parts.append("(no useful output - both index and content disabled)")
+            # Show helpful hint in CLI when there's essentially no output
+            print_status("Note: Both --no-index and --no-content are enabled. Use --help to see output options.", style="yellow")
+        elif args.no_content:
+            summary_parts.append("(index only)")
+        elif scrub_data and SCRUBADUB_AVAILABLE and total_substitutions > 0:
             if args.debug:
                 summary_parts.append(f"scrubadub made {total_substitutions} substitutions")
             else:

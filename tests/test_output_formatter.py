@@ -61,6 +61,13 @@ class TestOutputFormatter:
         assert "File listing with relative paths" not in header
         assert "index and contents" not in header
 
+    def test_generate_header_no_content(self, tmp_path):
+        """Test generate_header with no-content flag."""
+        header = generate_header(tmp_path, None, None, False, ([], [], []), include_index=True, include_content=False)
+
+        assert "# File contents DISABLED (--no-content flag used)" in header
+        assert "File contents are excluded due to --no-content flag" in header
+
     @patch("blobify.output_formatter.SCRUBADUB_AVAILABLE", True)
     def test_generate_header_scrubbing_enabled(self, tmp_path):
         """Test generate_header with scrubbing enabled."""
@@ -107,7 +114,8 @@ class TestOutputFormatter:
 
         gitignored_directories = [Path("node_modules"), Path("build")]
 
-        index = generate_index(all_files, gitignored_directories)
+        # Test with content enabled (default)
+        index = generate_index(all_files, gitignored_directories, include_content=True)
 
         # Check structure
         assert "# FILE INDEX" in index
@@ -124,6 +132,27 @@ class TestOutputFormatter:
         assert "ignored.log [IGNORED BY GITIGNORE]" in index
         assert "included.txt [INCLUDED BY .blobify]" in index
         assert "excluded.md [EXCLUDED BY .blobify]" in index
+
+    def test_generate_index_no_content(self):
+        """Test generate_index with no content."""
+        all_files = [
+            {
+                "relative_path": Path("test.py"),
+                "is_git_ignored": False,
+                "is_blobify_excluded": False,
+                "is_blobify_included": False,
+            },
+        ]
+
+        gitignored_directories = []
+
+        # Test with content disabled
+        index = generate_index(all_files, gitignored_directories, include_content=False)
+
+        # Should have file index but no file contents header
+        assert "# FILE INDEX" in index
+        assert "# FILE CONTENTS" not in index
+        assert "test.py" in index
 
     def test_generate_content_with_real_files(self, tmp_path):
         """Test generate_content with actual files."""
@@ -152,8 +181,8 @@ class TestOutputFormatter:
             },
         ]
 
-        # Test with line numbers
-        content, substitutions = generate_content(all_files, scrub_data=False, include_line_numbers=True, debug=False)
+        # Test with line numbers and content enabled
+        content, substitutions = generate_content(all_files, scrub_data=False, include_line_numbers=True, include_content=True, debug=False)
 
         # Verify structure
         assert "START_FILE: test.py" in content
@@ -190,14 +219,35 @@ class TestOutputFormatter:
             }
         ]
 
-        # Without line numbers
-        content, *_ = generate_content(all_files, scrub_data=False, include_line_numbers=False, debug=False)
+        # Without line numbers but with content
+        content, *_ = generate_content(all_files, scrub_data=False, include_line_numbers=False, include_content=True, debug=False)
         assert "print('no lines')" in content
         assert "1: print('no lines')" not in content
 
-        # With line numbers
-        content_with_lines, *_ = generate_content(all_files, scrub_data=False, include_line_numbers=True, debug=False)
+        # With line numbers and content
+        content_with_lines, *_ = generate_content(all_files, scrub_data=False, include_line_numbers=True, include_content=True, debug=False)
         assert "1: print('no lines')" in content_with_lines
+
+    def test_generate_content_no_content(self, tmp_path):
+        """Test content generation with no-content flag."""
+        test_file = tmp_path / "test.py"
+        test_file.write_text("print('secret')")
+
+        all_files = [
+            {
+                "path": test_file,
+                "relative_path": test_file.relative_to(tmp_path),
+                "is_git_ignored": False,
+                "is_blobify_excluded": False,
+                "is_blobify_included": False,
+            }
+        ]
+
+        content, substitutions = generate_content(all_files, scrub_data=False, include_line_numbers=True, include_content=False, debug=False)
+
+        # When content is disabled, should return empty string
+        assert content == ""
+        assert substitutions == 0
 
     def test_generate_content_exclusion_handling(self, tmp_path):
         """Test different file exclusion scenarios."""
@@ -215,7 +265,7 @@ class TestOutputFormatter:
             }
         ]
 
-        content, *_ = generate_content(excluded_files, scrub_data=False, include_line_numbers=False, debug=False)
+        content, *_ = generate_content(excluded_files, scrub_data=False, include_line_numbers=False, include_content=True, debug=False)
         assert "[Content excluded - file excluded by .blobify]" in content
         assert "secret content" not in content
         assert "Status: EXCLUDED BY .blobify" in content
@@ -237,7 +287,7 @@ class TestOutputFormatter:
 
         # Should raise exception for missing files (this is correct behavior)
         with pytest.raises(FileNotFoundError):
-            generate_content(all_files, scrub_data=False, include_line_numbers=False, debug=False)
+            generate_content(all_files, scrub_data=False, include_line_numbers=False, include_content=True, debug=False)
 
     def test_format_output_end_to_end(self, tmp_path):
         """Test format_output with real files - complete integration."""
@@ -286,6 +336,7 @@ class TestOutputFormatter:
             scrub_data=False,
             include_line_numbers=True,
             include_index=True,
+            include_content=True,
             debug=False,
             blobify_patterns_info=([], [], []),
         )
@@ -347,6 +398,7 @@ class TestOutputFormatter:
             scrub_data=False,
             include_line_numbers=True,
             include_index=False,  # No index
+            include_content=True,
             debug=False,
             blobify_patterns_info=([], [], []),
         )
@@ -397,6 +449,7 @@ class TestOutputFormatter:
             scrub_data=False,
             include_line_numbers=False,
             include_index=True,
+            include_content=True,
             debug=False,
             blobify_patterns_info=(["*.py"], ["*.log"], ["debug"]),
         )
@@ -405,3 +458,53 @@ class TestOutputFormatter:
         assert "# .blobify configuration (context: dev-context): 1 include patterns, 1 exclude patterns, 1 default switches" in result
         assert "script.py [INCLUDED BY .blobify]" in result
         assert "import os" in result
+
+    def test_format_output_no_content_option(self, tmp_path):
+        """Test format_output with no-content option."""
+        py_file = tmp_path / "test.py"
+        py_file.write_text("test content")
+
+        discovery_context = {
+            "all_files": [
+                {
+                    "path": py_file,
+                    "relative_path": Path("test.py"),
+                    "is_git_ignored": False,
+                    "is_blobify_excluded": False,
+                    "is_blobify_included": False,
+                }
+            ],
+            "gitignored_directories": [],
+            "git_root": None,
+            "included_files": [
+                {
+                    "path": py_file,
+                    "relative_path": Path("test.py"),
+                    "is_git_ignored": False,
+                    "is_blobify_excluded": False,
+                    "is_blobify_included": False,
+                }
+            ],
+        }
+
+        result, substitutions, file_count = format_output(
+            discovery_context,
+            tmp_path,
+            context=None,
+            scrub_data=False,
+            include_line_numbers=True,
+            include_index=True,
+            include_content=False,  # No content
+            debug=False,
+            blobify_patterns_info=([], [], []),
+        )
+
+        # Should have index but no file contents section at all
+        assert "# FILE INDEX" in result
+        assert "# FILE CONTENTS" not in result  # This section should be completely omitted
+        assert "test.py" in result  # Still appears in index
+        assert "START_FILE: test.py" not in result  # No file sections when content disabled
+        assert "test content" not in result  # Actual content should not appear
+
+        # Header should reflect no content
+        assert "# File contents DISABLED (--no-content flag used)" in result
