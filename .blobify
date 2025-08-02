@@ -15,13 +15,68 @@
 @suppress-excluded
 
 [method-signatures]
-# Context for "good enough" method signatures
-# @suppress-excluded
-@filter=signatures:^ *(def|class)\s+
-@filter=returns:^ *return .*
+# Enhanced context for method signatures and structure analysis
+# Extracts class definitions, method signatures, type hints, decorators, and return statements
+@filter=signatures:^ *(class\s+\w+.*:|def\s+\w+.*:|@\w+.*|async\s+def\s+\w+.*:)
+@filter=returns:^ *(return\s+.*|yield\s+.*)
+@filter=imports:^ *(from\s+\w+.*import.*|import\s+\w+.*)
+@filter=docstrings:^ *""".*|^ *'''.*|^ *r?""".*|^ *r?'''.*
+@filter=type-hints:.*:\s*\w+.*->.*|.*:\s*[A-Z]\w*\[.*\]|.*:\s*(str|int|bool|float|list|dict|tuple|set|Optional|Union|Any|Callable)
 @clip
 @noclean
+@suppress-excluded
+@no-line-numbers
 +pyproject.toml
 +.pre-commit-config.yaml
 +.github\workflows\test.yml
 +.blobify
+
+[comprehensive-signatures]
+# More comprehensive signature extraction including constants and error handling
+@filter=classes:^ *class\s+\w+.*:
+@filter=functions:^ *(def\s+\w+.*:|async\s+def\s+\w+.*:)
+@filter=decorators:^ *@\w+.*
+@filter=returns:^ *(return\s+.*|yield\s+.*)
+@filter=imports:^ *(from\s+\w+.*import.*|import\s+\w+.*)
+@filter=constants:^ *[A-Z_][A-Z0-9_]*\s*=.*
+@filter=exceptions:^ *(raise\s+.*|except\s+.*:|try:|finally:)
+@filter=docstrings:^ *""".*|^ *'''.*
+@clip
+@noclean
+@suppress-excluded
+@no-line-numbers
++pyproject.toml
++.pre-commit-config.yaml
++.github\workflows\test.yml
++.blobify
+
+[api-surface]
+# Extract public API surface - classes, functions, and their signatures
+@filter=public-classes:^ *class\s+[A-Z]\w*.*:
+@filter=public-functions:^ *def\s+[a-z_]\w*.*:
+@filter=public-async:^ *async\s+def\s+[a-z_]\w*.*:
+@filter=exports:^ *__all__\s*=.*
+@filter=imports:^ *(from\s+\w+.*import.*|import\s+\w+.*)
+@filter=module-docs:^ *""".*|^ *'''.*
+@clip
+@noclean
+@suppress-excluded
+@no-line-numbers
++*.py
+-*test*.py
+-tests/**
+-conftest.py
+
+[structure-overview]
+# High-level code structure for quick understanding
+@filter=classes:^ *class\s+\w+.*:
+@filter=main-functions:^ *def\s+(main|__main__|run|execute|start).*:
+@filter=init-methods:^ *def\s+__init__.*:
+@filter=special-methods:^ *def\s+__\w+__.*:
+@filter=imports:^ *(from\s+\w+.*import.*|import\s+\w+.*)
+@filter=constants:^ *[A-Z_][A-Z0-9_]*\s*=.*
+@clip
+@noclean
+@suppress-excluded
+@no-line-numbers
++*.py
