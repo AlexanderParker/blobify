@@ -295,16 +295,11 @@ class TestCliSummaryMessages:
         self.setup_test_files(tmp_path)
 
         # Mock scrubbing to return substitutions
-        # Import sys.modules to get the actual module
-        import sys
-
-        main_module = sys.modules["blobify.main"]
-        with patch.object(main_module, "format_output") as mock_format:
+        with patch("blobify.main.format_output") as mock_format:
             mock_format.return_value = ("output", 5, 2)  # 5 substitutions
 
-            with patch.object(main_module, "SCRUBADUB_AVAILABLE", True):
-                with patch("sys.argv", ["bfy", str(tmp_path)]):
-                    main()
+            with patch("sys.argv", ["bfy", str(tmp_path)]):
+                main()
 
         captured = capsys.readouterr()
         assert "scrubadub made 5 substitutions" in captured.err
@@ -314,16 +309,11 @@ class TestCliSummaryMessages:
         self.setup_test_files(tmp_path)
 
         # Mock scrubbing to return substitutions
-        # Import sys.modules to get the actual module
-        import sys
-
-        main_module = sys.modules["blobify.main"]
-        with patch.object(main_module, "format_output") as mock_format:
+        with patch("blobify.main.format_output") as mock_format:
             mock_format.return_value = ("output", 3, 2)  # 3 substitutions
 
-            with patch.object(main_module, "SCRUBADUB_AVAILABLE", True):
-                with patch("sys.argv", ["bfy", str(tmp_path), "--debug=true"]):
-                    main()
+            with patch("sys.argv", ["bfy", str(tmp_path), "--debug=true"]):
+                main()
 
         captured = capsys.readouterr()
         assert "scrubadub made 3 substitutions" in captured.err
