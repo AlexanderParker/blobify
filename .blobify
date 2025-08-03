@@ -53,3 +53,20 @@
 @filter=special-methods:^ *def\s+__\w+__.*:
 @filter=imports:^ *(from\s+\w+.*import.*|import\s+\w+.*)
 @filter=constants:^ *[A-Z_][A-Z0-9_]*\s*=.*
+
+# Example that can be used to selectively build up a context from individual "mixins"
+
+[nothing]
+# Example context that returns nothing
+@suppress-excluded
+-**
+@no-index
+
+[test1]
++LICENSE
+
+[test2]
++README.md
+
+[test3:nothing,test1,test2]
+# Will only include LICENSE and README.md

@@ -117,7 +117,7 @@ class TestContextInheritance:
         assert excludes == []
         assert switches == ["debug"]  # Only own switches
 
-    def test_missing_parent_context(self, tmp_path, capsys):
+    def test_missing_parent_context(self, tmp_path):
         """Test handling when parent context doesn't exist."""
         blobify_file = tmp_path / ".blobify"
         blobify_file.write_text(
@@ -128,15 +128,9 @@ class TestContextInheritance:
 """
         )
 
-        includes, excludes, switches = read_blobify_config(tmp_path, "child", debug=True)
-
-        # Should still process child's own patterns
-        assert includes == ["*.py"]
-        assert switches == ["debug"]
-
-        # Check warning was issued
-        captured = capsys.readouterr()
-        assert "Parent context 'nonexistent' not found" in captured.err
+        # Should raise error for missing parent
+        with pytest.raises(ValueError, match="Parent context\\(s\\) not found: nonexistent"):
+            read_blobify_config(tmp_path, "child", debug=True)
 
     def test_inheritance_preserves_pattern_order(self, tmp_path):
         """Test that inheritance preserves the order of patterns."""
@@ -325,14 +319,14 @@ class TestContextInheritance:
         blobify_file = tmp_path / ".blobify"
         blobify_file.write_text(
             """
+[base]
++*.md
+
 [empty:]
 +*.py
 
 [normal:base]
 +*.txt
-
-[base]
-+*.md
 """
         )
 
@@ -345,6 +339,10 @@ class TestContextInheritance:
         # Test that empty parent is treated as no inheritance
         includes, excludes, switches = read_blobify_config(tmp_path, "empty")
         assert includes == ["*.py"]
+
+        # Test that normal inheritance still works
+        includes, excludes, switches = read_blobify_config(tmp_path, "normal")
+        assert includes == ["*.md", "*.txt"]
 
     def test_context_inheritance_integration_example(self, tmp_path):
         """Test the complete example from the task description."""
@@ -438,24 +436,314 @@ class TestContextInheritance:
         assert includes == ["*.py", "*.txt"]
         assert switches == ["clip"]
 
-    def test_debug_output_inheritance(self, tmp_path, capsys):
-        """Test debug output shows inheritance information."""
+    def test_cannot_redefine_default_context(self, tmp_path):
+        """Test that attempting to redefine 'default' context raises an error."""
         blobify_file = tmp_path / ".blobify"
         blobify_file.write_text(
             """
-+*.py
+# Default context
 @clip
++*.py
 
-[child:default]
+[default]
+# This should error
 +*.md
 """
         )
 
-        read_blobify_config(tmp_path, "child", debug=True)
+        with pytest.raises(ValueError, match="Cannot redefine 'default' context"):
+            read_blobify_config(tmp_path, debug=True)
+
+    def test_cannot_inherit_from_nonexistent_context(self, tmp_path):
+        """Test that inheriting from a non-existent context raises an error."""
+        blobify_file = tmp_path / ".blobify"
+        blobify_file.write_text(
+            """
+[child:nonexistent]
++*.py
+"""
+        )
+
+        with pytest.raises(ValueError, match="Parent context\\(s\\) not found: nonexistent"):
+            read_blobify_config(tmp_path, "child", debug=True)
+
+    def test_cannot_inherit_from_context_defined_later(self, tmp_path):
+        """Test that inheriting from a context defined later in file raises an error."""
+        blobify_file = tmp_path / ".blobify"
+        blobify_file.write_text(
+            """
+[early:late]
++*.py
+
+[late]
++*.md
+"""
+        )
+
+        with pytest.raises(ValueError, match="Parent context\\(s\\) not found: late"):
+            read_blobify_config(tmp_path, "early", debug=True)
+
+    def test_cannot_define_context_twice(self, tmp_path):
+        """Test that defining the same context twice raises an error."""
+        blobify_file = tmp_path / ".blobify"
+        blobify_file.write_text(
+            """
+[duplicate]
++*.py
+
+[duplicate]
++*.md
+"""
+        )
+
+        with pytest.raises(ValueError, match="Context 'duplicate' already defined"):
+            read_blobify_config(tmp_path, debug=True)
+
+    def test_multiple_inheritance_basic(self, tmp_path):
+        """Test basic multiple inheritance from two contexts."""
+        blobify_file = tmp_path / ".blobify"
+        blobify_file.write_text(
+            """
+[base1]
+@clip
++*.py
+-*.log
+
+[base2]
+@debug
++*.md
+-*.tmp
+
+[combined:base1,base2]
++*.txt
+"""
+        )
+
+        includes, excludes, switches = read_blobify_config(tmp_path, "combined")
+
+        # Should inherit from both parents
+        assert includes == ["*.py", "*.md", "*.txt"]
+        assert excludes == ["*.log", "*.tmp"]
+        assert switches == ["clip", "debug"]
+
+    def test_multiple_inheritance_complex(self, tmp_path):
+        """Test complex multiple inheritance with nested inheritance."""
+        blobify_file = tmp_path / ".blobify"
+        blobify_file.write_text(
+            """
+# Base contexts
+@clip
++base.py
+
+[docs:default]
++*.md
+@no-metadata
+
+[code:default]
++*.js
+@debug
+
+[combined:docs,code]
+# Inherits from both docs and code (which both inherit from default)
++*.txt
+@suppress-excluded
+"""
+        )
+
+        includes, excludes, switches = read_blobify_config(tmp_path, "combined")
+
+        # Should inherit: base.py (from default via docs), *.md (from docs),
+        # base.py again (from default via code), *.js (from code), *.txt (own)
+        assert includes == ["base.py", "*.md", "base.py", "*.js", "*.txt"]
+        assert switches == ["clip", "no-metadata", "clip", "debug", "suppress-excluded"]
+
+    def test_multiple_inheritance_with_duplicates(self, tmp_path):
+        """Test that multiple inheritance handles duplicate patterns gracefully."""
+        blobify_file = tmp_path / ".blobify"
+        blobify_file.write_text(
+            """
+[parent1]
+@clip
++*.py
+-*.log
+
+[parent2]
+@clip
++*.py
+-*.tmp
+
+[child:parent1,parent2]
++*.md
+"""
+        )
+
+        includes, excludes, switches = read_blobify_config(tmp_path, "child")
+
+        # Should have duplicates (implementation preserves order from parents)
+        assert includes == ["*.py", "*.py", "*.md"]
+        assert excludes == ["*.log", "*.tmp"]
+        assert switches == ["clip", "clip"]
+
+    def test_multiple_inheritance_missing_one_parent(self, tmp_path):
+        """Test error when one of multiple parents doesn't exist."""
+        blobify_file = tmp_path / ".blobify"
+        blobify_file.write_text(
+            """
+[existing]
++*.py
+
+[child:existing,missing]
++*.md
+"""
+        )
+
+        with pytest.raises(ValueError, match="Parent context\\(s\\) not found: missing"):
+            read_blobify_config(tmp_path, "child", debug=True)
+
+    def test_multiple_inheritance_missing_multiple_parents(self, tmp_path):
+        """Test error when multiple parents don't exist."""
+        blobify_file = tmp_path / ".blobify"
+        blobify_file.write_text(
+            """
+[child:missing1,missing2,missing3]
++*.md
+"""
+        )
+
+        with pytest.raises(ValueError, match="Parent context\\(s\\) not found: missing1, missing2, missing3"):
+            read_blobify_config(tmp_path, "child", debug=True)
+
+    def test_multiple_inheritance_order_preserved(self, tmp_path):
+        """Test that multiple inheritance preserves the order of parents."""
+        blobify_file = tmp_path / ".blobify"
+        blobify_file.write_text(
+            """
+[first]
++first.py
+@first-switch
+
+[second]
++second.py
+@second-switch
+
+[third]
++third.py
+@third-switch
+
+[combined:first,second,third]
++combined.py
+@combined-switch
+"""
+        )
+
+        includes, excludes, switches = read_blobify_config(tmp_path, "combined")
+
+        # Should preserve parent order
+        assert includes == ["first.py", "second.py", "third.py", "combined.py"]
+        assert switches == ["first-switch", "second-switch", "third-switch", "combined-switch"]
+
+    def test_multiple_inheritance_display_in_list(self, tmp_path, capsys):
+        """Test that list_available_contexts shows multiple inheritance."""
+        # Create git repo
+        (tmp_path / ".git").mkdir()
+
+        blobify_file = tmp_path / ".blobify"
+        blobify_file.write_text(
+            """
+[base1]
++*.py
+
+[base2]
++*.md
+
+[combined:base1,base2]
++*.txt
+"""
+        )
+
+        list_available_contexts(tmp_path)
 
         captured = capsys.readouterr()
-        assert "Created context 'child' inheriting from 'default'" in captured.err
-        assert "Final context 'child'" in captured.err
+        assert "combined (inherits from base1,base2)" in captured.out
+
+    def test_multiple_inheritance_help_text(self, tmp_path, capsys):
+        """Test that help text includes multiple inheritance examples."""
+        # Create git repo
+        (tmp_path / ".git").mkdir()
+
+        # Create empty .blobify
+        (tmp_path / ".blobify").write_text("")
+
+        list_available_contexts(tmp_path)
+
+        captured = capsys.readouterr()
+        assert "Multiple inheritance:" in captured.out
+        assert "[combined:base,docs]" in captured.out
+        assert "# Inherits from both base and docs contexts" in captured.out
+
+    def test_edge_case_empty_parent_list(self, tmp_path):
+        """Test handling of malformed syntax with empty parent list."""
+        blobify_file = tmp_path / ".blobify"
+        blobify_file.write_text(
+            """
+[empty:]
++*.py
+
+[empty_with_commas:,]
++*.md
+
+[normal]
++*.txt
+"""
+        )
+
+        # Should handle empty parent lists gracefully
+        includes, excludes, switches = read_blobify_config(tmp_path, "empty")
+        assert includes == ["*.py"]
+
+        includes, excludes, switches = read_blobify_config(tmp_path, "empty_with_commas")
+        assert includes == ["*.md"]
+
+    def test_multiple_inheritance_integration_with_blobify(self, tmp_path):
+        """Test multiple inheritance works with actual blobify file processing."""
+        # Create git repo
+        (tmp_path / ".git").mkdir()
+
+        blobify_file = tmp_path / ".blobify"
+        blobify_file.write_text(
+            """
+# Default excludes all
+-**
+
+[python:default]
++*.py
+
+[docs:default]
++*.md
+
+[combined:python,docs]
+# Inherits exclusion and both file types
+@suppress-excluded
+"""
+        )
+
+        # Create test files
+        (tmp_path / "app.py").write_text("print('app')")
+        (tmp_path / "README.md").write_text("# README")
+        (tmp_path / "config.xml").write_text("<config/>")
+
+        output_file = tmp_path / "output.txt"
+        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "combined", "-o", str(output_file)]):
+            main()
+
+        content = output_file.read_text(encoding="utf-8")
+
+        # Should include Python and Markdown (from multiple inheritance)
+        assert "print('app')" in content
+        assert "# README" in content
+
+        # Should exclude XML file (from inherited exclusion)
+        assert "<config/>" not in content
 
 
 if __name__ == "__main__":

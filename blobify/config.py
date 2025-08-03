@@ -60,33 +60,54 @@ def _parse_contexts_with_inheritance(blobify_file: Path, debug: bool = False) ->
             if not line or line.startswith("#"):
                 continue
 
-            # Check for context headers [context-name] or [context-name:parent]
+            # Check for context headers [context-name] or [context-name:parent] or [context-name:parent1,parent2]
             if line.startswith("[") and line.endswith("]"):
                 context_header = line[1:-1]  # Remove brackets
 
                 if ":" in context_header:
-                    context_name, parent_context = context_header.split(":", 1)
+                    context_name, parents_str = context_header.split(":", 1)
                     context_name = context_name.strip()
-                    parent_context = parent_context.strip()
+                    parent_contexts = [p.strip() for p in parents_str.split(",") if p.strip()]
                 else:
                     context_name = context_header.strip()
-                    parent_context = None
+                    parent_contexts = []
+
+                # Error if trying to redefine default context
+                if context_name == "default":
+                    if debug:
+                        print_error(f".blobify line {line_num}: Cannot redefine 'default' context")
+                    raise ValueError(f"Line {line_num}: Cannot redefine 'default' context")
+
+                # Error if context already exists
+                if context_name in contexts:
+                    if debug:
+                        print_error(f".blobify line {line_num}: Context '{context_name}' already defined")
+                    raise ValueError(f"Line {line_num}: Context '{context_name}' already defined")
 
                 # Create new context
-                if parent_context:
-                    if parent_context in contexts:
-                        # Copy parent context as starting point
-                        contexts[context_name] = {
-                            "include_patterns": contexts[parent_context]["include_patterns"].copy(),
-                            "exclude_patterns": contexts[parent_context]["exclude_patterns"].copy(),
-                            "default_switches": contexts[parent_context]["default_switches"].copy(),
-                        }
+                if parent_contexts:
+                    # Check all parents exist
+                    missing_parents = [p for p in parent_contexts if p not in contexts]
+                    if missing_parents:
+                        missing_str = ", ".join(missing_parents)
                         if debug:
-                            print_debug(f".blobify line {line_num}: Created context '{context_name}' inheriting from '{parent_context}'")
-                    else:
-                        if debug:
-                            print_warning(f".blobify line {line_num}: Parent context '{parent_context}' not found, creating empty context '{context_name}'")
-                        contexts[context_name] = {"include_patterns": [], "exclude_patterns": [], "default_switches": []}
+                            print_error(f".blobify line {line_num}: Parent context(s) not found: {missing_str}")
+                        raise ValueError(f"Line {line_num}: Parent context(s) not found: {missing_str}")
+
+                    # Merge all parent contexts
+                    merged_config = {"include_patterns": [], "exclude_patterns": [], "default_switches": []}
+
+                    for parent_context in parent_contexts:
+                        parent_config = contexts[parent_context]
+                        merged_config["include_patterns"].extend(parent_config["include_patterns"])
+                        merged_config["exclude_patterns"].extend(parent_config["exclude_patterns"])
+                        merged_config["default_switches"].extend(parent_config["default_switches"])
+
+                    contexts[context_name] = merged_config
+
+                    if debug:
+                        parents_str = ", ".join(parent_contexts)
+                        print_debug(f".blobify line {line_num}: Created context '{context_name}' inheriting from {parents_str}")
                 else:
                     # No parent specified, create empty context
                     contexts[context_name] = {"include_patterns": [], "exclude_patterns": [], "default_switches": []}
@@ -160,7 +181,7 @@ def get_available_contexts(git_root: Path, debug: bool = False) -> List[str]:
                 if not line or line.startswith("#"):
                     continue
 
-                # Check for context headers [context-name] or [context-name:parent]
+                # Check for context headers [context-name] or [context-name:parent] or [context-name:parent1,parent2]
                 if line.startswith("[") and line.endswith("]"):
                     context_header = line[1:-1]  # Remove brackets
                     if ":" in context_header:
@@ -210,7 +231,7 @@ def get_context_descriptions(git_root: Path) -> Dict[str, str]:
                         pending_comments.append(comment_text)
                     continue
 
-                # Check for context headers [context-name] or [context-name:parent]
+                # Check for context headers [context-name] or [context-name:parent] or [context-name:parent1,parent2]
                 if line.startswith("[") and line.endswith("]"):
                     context_header = line[1:-1]  # Remove brackets
                     if ":" in context_header:
@@ -269,6 +290,11 @@ def list_available_contexts(directory: Path):
         print("[extended:base]")
         print("# Inherits @clip and +*.py from base")
         print("+*.md")
+        print("")
+        print("Multiple inheritance:")
+        print("[combined:base,docs]")
+        print("# Inherits from both base and docs contexts")
+        print("+*.txt")
         return
 
     print("Available contexts:")
@@ -308,8 +334,8 @@ def _get_context_inheritance_info(git_root: Path) -> Dict[str, str]:
                 if line.startswith("[") and line.endswith("]"):
                     context_header = line[1:-1]
                     if ":" in context_header:
-                        context_name, parent_context = context_header.split(":", 1)
-                        inheritance_info[context_name.strip()] = parent_context.strip()
+                        context_name, parents_str = context_header.split(":", 1)
+                        inheritance_info[context_name.strip()] = parents_str.strip()
     except OSError:
         pass
 

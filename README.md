@@ -51,7 +51,7 @@ bfy . --filter "signatures:^(def|class)\s+" --clip
 bfy -x docs-only --clip
 ```
 
-**Key features:** Respects `.gitignore`, optional sensitive data scrubbing, includes line numbers, supports custom filtering via `.blobify` configuration, content filters for extracting specific patterns, context listing for easy discovery, cross-platform clipboard support.
+**Key features:** Respects `.gitignore`, optional sensitive data scrubbing, includes line numbers, supports custom filtering via `.blobify` configuration, content filters for extracting specific patterns, context listing for easy discovery, cross-platform clipboard support, **context inheritance** for reusable configurations.
 
 **⚠️ Important Notice:** The optional scrubbing feature is not guaranteed to work; it may not detect some sensitive data. Consider it a best-effort helper only. Always review output before sharing.
 
@@ -102,6 +102,8 @@ Filters use `name:regex` format. If you omit the name, the regex becomes the nam
 
 Create a `.blobify` file in your project directory for custom configurations. When a `.blobify` file exists in your current directory, you can run `bfy` without specifying a directory argument.
 
+### Basic Configuration
+
 ```
 # Default switches
 @clip
@@ -138,6 +140,71 @@ Create a `.blobify` file in your project directory for custom configurations. Wh
 +**
 ```
 
+### Context Inheritance
+
+**NEW:** Contexts can now inherit from other contexts, allowing for powerful reusable configurations:
+
+```
+# Base configuration
+@clip
+@debug
++*.py
+-*.pyc
+
+[backend:default]
+# Inherits @clip, @debug, +*.py, -*.pyc from default
++*.sql
++migrations/**
+@filter=functions:^def
+
+[frontend:default]
+# Also inherits from default
++*.js
++*.vue
++*.css
+
+[full:backend,frontend]
+# Multiple inheritance - combines backend + frontend
++*.md
++docs/**
+@suppress-excluded
+```
+
+**Inheritance Rules:**
+
+- Use `[context:parent]` for single inheritance
+- Use `[context:parent1,parent2]` for multiple inheritance
+- Contexts can only inherit from contexts defined earlier in the file
+- Child contexts inherit all patterns and switches from parents, then add their own
+- Cannot redefine the `default` context - it's automatically created
+- Inheritance order is preserved: parent1 → parent2 → child
+
+**Multiple Inheritance Example:**
+
+```
+[nothing]
+# Example context that returns nothing - overrides default greedy behavior
+@suppress-excluded
+-**
+@no-index
+
+[license]
++LICENSE
+
+[readme]
++README.md
+
+[both:nothing,license,readme]
+# Will only include LICENSE and README.md
+
+```
+
+The `complete` context gets:
+
+- **Includes**: `*.py`, `*.md`, `docs/**`, `test_*.py`, `tests/**`, `**`
+- **Excludes**: `__pycache__/**`
+- **Switches**: `clip`, `debug`, `no-metadata`, `suppress-excluded`
+
 ### Context Discovery
 
 List available contexts before using them:
@@ -151,8 +218,8 @@ bfy --context
 # Available contexts:
 # ====================
 #   docs-only: Documentation review context
-#   signatures: Code structure analysis
-#   todos: Find all TODOs and FIXMEs
+#   backend (inherits from default): Server-side code context
+#   full (inherits from backend,frontend): Complete codebase
 #
 # Use with: bfy -x <context-name>
 ```
@@ -165,6 +232,8 @@ bfy --context
 - `+pattern` - Include files (overrides gitignore)
 - `-pattern` - Exclude files
 - `[context-name]` - Define named contexts
+- `[context-name:parent]` - Define context with single inheritance
+- `[context-name:parent1,parent2]` - Define context with multiple inheritance
 - Supports `*` and `**` wildcards
 
 ## Common Use Cases
@@ -174,6 +243,10 @@ bfy --context
 bfy . --clip                              # Copy project to clipboard
 bfy -x                                    # List available contexts
 bfy -x docs-only --clip                   # Use docs context
+
+# Context inheritance
+bfy -x backend --clip                     # Use backend context (inherits from default)
+bfy -x full --clip                        # Use full context (inherits from multiple parents)
 
 # Content filtering
 bfy . --filter "sigs:^def" --clip         # Extract function definitions
@@ -202,6 +275,9 @@ bfy . --filter "errors:(except|Error)" --suppress-excluded --clip
 # Documentation only
 bfy -x docs-only --clip
 
+# Backend code only (with inheritance)
+bfy -x backend --clip
+
 # Clean summary
 bfy . --filter "sigs:^(def|class)" --no-line-numbers --suppress-excluded --clip
 ```
@@ -214,26 +290,26 @@ bfy . --filter "sigs:^(def|class)" --no-line-numbers --suppress-excluded --clip
 
 1 - Clone and enter directory:
 
-   ```bash
-   git clone https://github.com/AlexanderParker/blobify.git
-   cd blobify
-   ```
+```bash
+git clone https://github.com/AlexanderParker/blobify.git
+cd blobify
+```
 
 2 - Create and activate virtual environment:
 
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # Linux/macOS
-   # or
-   venv\Scripts\activate     # Windows
-   ```
+```bash
+python -m venv venv
+source venv/bin/activate  # Linux/macOS
+# or
+venv\Scripts\activate     # Windows
+```
 
 3 - Install with dev dependencies:
 
-   ```bash
-   pip install -e ".[dev,scrubbing]"
-   pre-commit install
-   ```
+```bash
+pip install -e ".[dev,scrubbing]"
+pre-commit install
+```
 
 ### Run Tests
 
