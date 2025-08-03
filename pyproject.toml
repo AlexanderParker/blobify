@@ -6,8 +6,9 @@ build-backend = "setuptools.build_meta"
 name = "blobify"
 version = "1.0.0"
 authors = [{ name = "Alexander Parker", email = "pypi@parker.im" }]
+license = { file = "LICENSE" }
 description = "Package your entire codebase into a single text file for AI consumption"
-readme = "README.md"
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
 dependencies = ["rich>=14.1.0"]
 classifiers = [
