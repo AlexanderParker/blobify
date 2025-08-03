@@ -1,5 +1,6 @@
 """Tests for the --filter functionality."""
 
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -13,34 +14,47 @@ class TestFilterParsing:
 
     def test_parse_named_filters_basic(self):
         """Test basic named filter parsing."""
-        filter_args = ["functions:^def", "classes:^class"]  # Removed trailing spaces
+        filter_args = ["functions:^def", "classes:^class"]
         filters, names = parse_named_filters(filter_args)
 
-        assert filters == {"functions": "^def", "classes": "^class"}
+        expected_filters = {"functions": ("^def", "*"), "classes": ("^class", "*")}
+        assert filters == expected_filters
         assert names == ["functions", "classes"]
+
+    def test_parse_named_filters_with_file_patterns(self):
+        """Test parsing filters with file patterns."""
+        filter_args = ["py-functions:^def:*.py", "js-functions:^function:*.js"]
+        filters, names = parse_named_filters(filter_args)
+
+        expected_filters = {"py-functions": ("^def", "*.py"), "js-functions": ("^function", "*.js")}
+        assert filters == expected_filters
+        assert names == ["py-functions", "js-functions"]
 
     def test_parse_named_filters_with_colon_in_regex(self):
         """Test parsing filters that contain colons in the regex pattern."""
-        filter_args = ["urls:https?://\\S+", "times:\\d{2}:\\d{2}"]
+        filter_args = ["urls:https?://\\S+:*.md", "times:\\d{2}:\\d{2}:*.log"]
         filters, names = parse_named_filters(filter_args)
 
-        assert filters == {"urls": "https?://\\S+", "times": "\\d{2}:\\d{2}"}
+        expected_filters = {"urls": ("https?://\\S+", "*.md"), "times": ("\\d{2}:\\d{2}", "*.log")}
+        assert filters == expected_filters
         assert names == ["urls", "times"]
 
     def test_parse_named_filters_fallback_no_name(self):
         """Test fallback behavior when no name is provided."""
-        filter_args = ["^def", "^class"]  # Removed trailing spaces
+        filter_args = ["^def", "^class"]
         filters, names = parse_named_filters(filter_args)
 
-        assert filters == {"^def": "^def", "^class": "^class"}
+        expected_filters = {"^def": ("^def", "*"), "^class": ("^class", "*")}
+        assert filters == expected_filters
         assert names == ["^def", "^class"]
 
     def test_parse_named_filters_mixed(self):
         """Test mixing named and unnamed filters."""
-        filter_args = ["functions:^def", "^class", "imports:^import"]  # Removed trailing spaces
+        filter_args = ["functions:^def", "^class", "imports:^import:*.py"]
         filters, names = parse_named_filters(filter_args)
 
-        assert filters == {"functions": "^def", "^class": "^class", "imports": "^import"}
+        expected_filters = {"functions": ("^def", "*"), "^class": ("^class", "*"), "imports": ("^import", "*.py")}
+        assert filters == expected_filters
         assert names == ["functions", "^class", "imports"]
 
     def test_parse_named_filters_empty(self):
@@ -62,15 +76,33 @@ class TestFilterContentLines:
     def test_filter_content_lines_single_match(self):
         """Test filtering with a single matching pattern."""
         content = "def hello():\n    print('world')\nclass MyClass:\n    pass"
-        filters = {"functions": "^def"}  # Removed trailing space
+        filters = {"functions": ("^def", "*")}
 
         result = filter_content_lines(content, filters)
         assert result == "def hello():"
 
+    def test_filter_content_lines_with_file_path_matching(self):
+        """Test filtering with file path that matches pattern."""
+        content = "def hello():\n    print('world')\nclass MyClass:\n    pass"
+        filters = {"functions": ("^def", "*.py")}
+        file_path = Path("test.py")
+
+        result = filter_content_lines(content, filters, file_path)
+        assert result == "def hello():"
+
+    def test_filter_content_lines_with_file_path_not_matching(self):
+        """Test filtering with file path that doesn't match pattern."""
+        content = "def hello():\n    print('world')\nclass MyClass:\n    pass"
+        filters = {"functions": ("^def", "*.py")}
+        file_path = Path("test.js")
+
+        result = filter_content_lines(content, filters, file_path)
+        assert result == ""  # No applicable filters
+
     def test_filter_content_lines_multiple_matches(self):
         """Test filtering with multiple matching patterns."""
         content = "def hello():\n    print('world')\nclass MyClass:\n    pass\ndef goodbye():\n    return"
-        filters = {"functions": "^def", "classes": "^class"}  # Removed trailing spaces
+        filters = {"functions": ("^def", "*"), "classes": ("^class", "*")}
 
         result = filter_content_lines(content, filters)
         assert result == "def hello():\nclass MyClass:\ndef goodbye():"
@@ -78,7 +110,7 @@ class TestFilterContentLines:
     def test_filter_content_lines_no_matches(self):
         """Test filtering when no lines match."""
         content = "some random text\nmore text\nno matches here"
-        filters = {"functions": "^def", "classes": "^class"}  # Removed trailing spaces
+        filters = {"functions": ("^def", "*"), "classes": ("^class", "*")}
 
         result = filter_content_lines(content, filters)
         assert result == ""
@@ -86,7 +118,7 @@ class TestFilterContentLines:
     def test_filter_content_lines_or_logic(self):
         """Test that filters use OR logic (line included if ANY filter matches)."""
         content = "def func():\nimport os\nclass Test:\nsome text"
-        filters = {"functions": "^def", "imports": "^import"}  # Removed trailing spaces
+        filters = {"functions": ("^def", "*"), "imports": ("^import", "*")}
 
         result = filter_content_lines(content, filters)
         assert result == "def func():\nimport os"
@@ -94,7 +126,7 @@ class TestFilterContentLines:
     def test_filter_content_lines_regex_patterns(self):
         """Test filtering with complex regex patterns."""
         content = "return True\nreturn False\nreturn 42\nprint('hello')"
-        filters = {"returns": "^return .*"}
+        filters = {"returns": ("^return .*", "*")}
 
         result = filter_content_lines(content, filters)
         assert result == "return True\nreturn False\nreturn 42"
@@ -102,7 +134,7 @@ class TestFilterContentLines:
     def test_filter_content_lines_invalid_regex(self):
         """Test handling of invalid regex patterns."""
         content = "def hello():\nclass Test:\nsome text"
-        filters = {"invalid": "[invalid", "valid": "^def"}  # Removed trailing space
+        filters = {"invalid": ("[invalid", "*"), "valid": ("^def", "*")}
 
         # Should skip invalid regex and process valid ones
         result = filter_content_lines(content, filters, debug=True)
@@ -118,10 +150,25 @@ class TestFilterContentLines:
     def test_filter_content_lines_case_sensitive(self):
         """Test that filtering is case sensitive by default."""
         content = "def hello():\nDEF WORLD():\nclass Test:"
-        filters = {"functions": "^def"}  # Removed trailing space
+        filters = {"functions": ("^def", "*")}
 
         result = filter_content_lines(content, filters)
         assert result == "def hello():"  # Should not match uppercase DEF
+
+    def test_filter_content_lines_file_pattern_with_directory(self):
+        """Test file patterns that include directory paths."""
+        content = "SELECT * FROM users;\nINSERT INTO table;"
+        filters = {"migrations": ("^SELECT", "migrations/*.sql")}
+
+        # File in migrations directory should match
+        migration_file = Path("migrations/001_init.sql")
+        result1 = filter_content_lines(content, filters, migration_file)
+        assert result1 == "SELECT * FROM users;"
+
+        # File not in migrations directory should not match
+        other_file = Path("queries/select.sql")
+        result2 = filter_content_lines(content, filters, other_file)
+        assert result2 == ""
 
 
 class TestFilterIntegration:
@@ -195,6 +242,40 @@ const x = 42;
 
         # Should show filter exclusions in index
         assert "config.json [FILE CONTENTS EXCLUDED BY FILTERS]" in content
+
+    def test_filter_file_targeted_extraction(self, tmp_path):
+        """Test file-targeted filter extraction."""
+        self.setup_test_files(tmp_path)
+        output_file = tmp_path / "output.txt"
+
+        with patch(
+            "sys.argv",
+            [
+                "bfy",
+                str(tmp_path),
+                "--filter",
+                "py-functions:^def:*.py",
+                "--filter",
+                "js-functions:^function:*.js",
+                "--output-filename",
+                str(output_file),
+            ],
+        ):
+            main()
+
+        content = output_file.read_text(encoding="utf-8")
+
+        # Should show filters with file patterns in header
+        assert "py-functions: ^def (files: *.py)" in content
+        assert "js-functions: ^function (files: *.js)" in content
+
+        # Should include targeted content
+        assert "def hello():" in content
+        assert "function greet() {" in content
+
+        # Should exclude other content
+        assert 'print("world")' not in content
+        assert "const x = 42;" not in content
 
     def test_filter_multiple_patterns(self, tmp_path):
         """Test filtering with multiple named patterns."""
@@ -518,6 +599,42 @@ class TestFilterBlobifyIntegration:
         assert "import os" in content
         assert "print('world')" not in content
 
+    def test_filter_default_switch_with_file_patterns_in_blobify(self, tmp_path):
+        """Test setting file-targeted filters as default options in .blobify."""
+        # Create git repo
+        (tmp_path / ".git").mkdir()
+
+        # Create .blobify with file-targeted filter defaults
+        (tmp_path / ".blobify").write_text(
+            """
+@filter=py-functions:^def:*.py
+@filter=js-functions:^function:*.js
++*.py
++*.js
+"""
+        )
+
+        py_file = tmp_path / "test.py"
+        py_file.write_text("def hello():\n    print('world')")
+
+        js_file = tmp_path / "test.js"
+        js_file.write_text("function greet() {\n    console.log('hello');\n}")
+
+        output_file = tmp_path / "output.txt"
+
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-filename", str(output_file)]):
+            main()
+
+        content = output_file.read_text(encoding="utf-8")
+
+        # Should apply default file-targeted filters
+        assert "py-functions: ^def (files: *.py)" in content
+        assert "js-functions: ^function (files: *.js)" in content
+        assert "def hello():" in content
+        assert "function greet() {" in content
+        assert "print('world')" not in content
+        assert "console.log('hello')" not in content
+
     def test_filter_command_line_override_blobify(self, tmp_path):
         """Test that command line filters add to .blobify defaults."""
         # Create git repo
@@ -565,14 +682,23 @@ class TestFilterBlobifyIntegration:
 @output-line-numbers=false
 +*.py
 
-[imports]
-@filter=imports:^import
+[py-imports]
+@filter=imports:^import:*.py
 +*.py
++*.js
+
+[js-functions]
+@filter=js-funcs:^function:*.js
++*.py
++*.js
 """
         )
 
         py_file = tmp_path / "test.py"
         py_file.write_text("def hello():\nclass Test:\nimport os\nprint('test')")
+
+        js_file = tmp_path / "test.js"
+        js_file.write_text("function greet() {}\nconst x = 1;")
 
         # Test signatures context
         output_file1 = tmp_path / "signatures.txt"
@@ -585,16 +711,27 @@ class TestFilterBlobifyIntegration:
         assert "class Test:" in content1
         assert "import os" not in content1
 
-        # Test imports context
+        # Test py-imports context (file-targeted)
         output_file2 = tmp_path / "imports.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "imports", "--output-filename", str(output_file2)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "py-imports", "--output-filename", str(output_file2)]):
             main()
 
         content2 = output_file2.read_text(encoding="utf-8")
-        assert "imports: ^import" in content2
+        assert "imports: ^import (files: *.py)" in content2
         assert "import os" in content2
         assert "def hello():" not in content2
-        assert "class Test:" not in content2
+        assert "function greet() {}" not in content2  # JS file not matched by filter
+
+        # Test js-functions context (file-targeted)
+        output_file3 = tmp_path / "js-funcs.txt"
+        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "js-functions", "--output-filename", str(output_file3)]):
+            main()
+
+        content3 = output_file3.read_text(encoding="utf-8")
+        assert "js-funcs: ^function (files: *.js)" in content3
+        assert "function greet() {}" in content3
+        assert "def hello():" not in content3  # Python file not matched by filter
+        assert "const x = 1;" not in content3
 
 
 if __name__ == "__main__":

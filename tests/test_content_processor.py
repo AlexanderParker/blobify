@@ -1,6 +1,14 @@
 """Tests for content_processor.py module."""
 
-from blobify.content_processor import get_file_metadata, is_text_file, scrub_content
+from pathlib import Path
+
+from blobify.content_processor import (
+    filter_content_lines,
+    get_file_metadata,
+    is_text_file,
+    parse_named_filters,
+    scrub_content,
+)
 
 
 class TestContentProcessor:
@@ -193,3 +201,133 @@ class TestContentProcessor:
         assert "admin@mycompany.com" not in result
         # Passwords in URLs are often detected
         assert "password123" not in result or "{{" in result or "***" in result
+
+    def test_parse_named_filters_with_file_patterns_comprehensive(self):
+        """Test comprehensive parsing of filters with file patterns."""
+        filter_args = [
+            "py-functions:^def:*.py",
+            "js-functions:^function:*.js",
+            "css-selectors:^[.#]:*.css",
+            "sql-queries:^(SELECT|INSERT):migrations/*.sql",
+            "config-keys:^[A-Z_]+\s*=:config/*.py",
+            "all-imports:^import",  # No file pattern
+        ]
+        filters, names = parse_named_filters(filter_args)
+
+        expected_filters = {
+            "py-functions": ("^def", "*.py"),
+            "js-functions": ("^function", "*.js"),
+            "css-selectors": ("^[.#]", "*.css"),
+            "sql-queries": ("^(SELECT|INSERT)", "migrations/*.sql"),
+            "config-keys": ("^[A-Z_]+\s*=", "config/*.py"),
+            "all-imports": ("^import", "*"),  # Default to all files
+        }
+
+        assert filters == expected_filters
+        assert names == ["py-functions", "js-functions", "css-selectors", "sql-queries", "config-keys", "all-imports"]
+
+    def test_filter_content_lines_file_targeting_debug(self):
+        """Test filter content lines with file targeting and debug output."""
+        content = "def hello():\nfunction greet() {\nclass Test:\nconst x = 1;"
+        filters = {
+            "py-functions": ("^def", "*.py"),
+            "js-functions": ("^function", "*.js"),
+            "all-classes": ("^class", "*"),
+        }
+
+        # Test with Python file
+        py_result = filter_content_lines(content, filters, Path("test.py"), debug=True)
+        assert py_result == "def hello():\nclass Test:"  # py-functions and all-classes apply
+
+        # Test with JavaScript file
+        js_result = filter_content_lines(content, filters, Path("test.js"), debug=True)
+        assert js_result == "function greet() {\nclass Test:"  # js-functions and all-classes apply
+
+        # Test with other file type
+        other_result = filter_content_lines(content, filters, Path("test.txt"), debug=True)
+        assert other_result == "class Test:"  # Only all-classes applies
+
+    def test_filter_content_lines_complex_file_patterns(self):
+        """Test filtering with complex file patterns including directories."""
+        content = "CREATE TABLE users;\nSELECT * FROM users;\nINSERT INTO users;\nUPDATE users SET;"
+        filters = {
+            "migration-ddl": ("^CREATE", "migrations/*.sql"),
+            "migration-dml": ("^(SELECT|INSERT)", "migrations/*.sql"),
+            "all-updates": ("^UPDATE", "*.sql"),
+        }
+
+        # Test migration file - all migration filters should apply
+        migration_result = filter_content_lines(content, filters, Path("migrations/001_init.sql"))
+        assert "CREATE TABLE users;" in migration_result
+        assert "SELECT * FROM users;" in migration_result
+        assert "INSERT INTO users;" in migration_result
+        assert "UPDATE users SET;" in migration_result  # all-updates also applies
+
+        # Test regular SQL file - only all-updates should apply
+        sql_result = filter_content_lines(content, filters, Path("queries/users.sql"))
+        assert "CREATE TABLE users;" not in sql_result
+        assert "SELECT * FROM users;" not in sql_result
+        assert "INSERT INTO users;" not in sql_result
+        assert "UPDATE users SET;" in sql_result
+
+    def test_filter_content_lines_nested_directory_patterns(self):
+        """Test file patterns with nested directory structures."""
+        content = "import React from 'react';\nconst Component = () => {};\nexport default Component;"
+        filters = {
+            "component-imports": ("^import", "src/components/*.jsx"),
+            "exports": ("^export", "src/**/*.js*"),  # Matches .js and .jsx in any subdirectory
+        }
+
+        # Test component file
+        component_result = filter_content_lines(content, filters, Path("src/components/Button.jsx"))
+        assert "import React from 'react';" in component_result
+        assert "export default Component;" in component_result
+
+        # Test utility file in nested directory
+        util_result = filter_content_lines(content, filters, Path("src/utils/helpers.js"))
+        assert "import React from 'react';" not in util_result  # component-imports doesn't apply
+        assert "export default Component;" in util_result  # exports applies to all js files in src/
+
+    def test_filter_content_lines_edge_cases(self):
+        """Test edge cases for file pattern matching."""
+        content = "test line"
+        filters = {"test": ("test", "*.py")}
+
+        # Test with None file path
+        result_none = filter_content_lines(content, filters, None)
+        assert result_none == "test line"  # Should apply all filters when no file path
+
+        # Test with empty filters
+        result_empty = filter_content_lines(content, {}, Path("test.py"))
+        assert result_empty == "test line"  # Should return original content
+
+        # Test with file path that's just a filename (no directory)
+        result_filename = filter_content_lines(content, filters, Path("test.py"))
+        assert result_filename == "test line"
+
+    def test_filter_content_lines_glob_pattern_matching(self):
+        """Test various glob pattern matching scenarios."""
+        content = "function test() {}\nconst api = 'https://api.com';\nclass Test {}"
+
+        test_cases = [
+            # (filter_pattern, file_path, should_match)
+            ("*.js", Path("app.js"), True),
+            ("*.js", Path("app.ts"), False),
+            ("test*.js", Path("test-utils.js"), True),
+            ("test*.js", Path("utils.js"), False),
+            ("**/*.jsx", Path("src/components/Button.jsx"), True),
+            ("**/*.jsx", Path("components/Button.jsx"), True),
+            ("**/*.jsx", Path("Button.jsx"), True),
+            ("src/**", Path("src/components/Button.jsx"), True),
+            ("src/**", Path("components/Button.jsx"), False),
+            ("**/test*", Path("src/test-utils.js"), True),
+            ("**/test*", Path("src/utils.js"), False),
+        ]
+
+        for pattern, file_path, should_match in test_cases:
+            filters = {"test": ("function", pattern)}
+            result = filter_content_lines(content, filters, file_path)
+            if should_match:
+                assert "function test() {}" in result, f"Pattern {pattern} should match {file_path}"
+            else:
+                assert result == "", f"Pattern {pattern} should not match {file_path}"

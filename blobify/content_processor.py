@@ -59,36 +59,45 @@ def parse_named_filters(filter_args: list) -> tuple:
     Parse named filters and return (filters dict, filter_names list).
 
     Args:
-        filter_args: List of "name:regex" strings
+        filter_args: List of "name:regex" or "name:regex:filepattern" strings
 
     Returns:
         Tuple of (filters dict, filter_names list)
+        filters dict contains: {name: (regex, filepattern)}
     """
     filters = {}
     filter_names = []
 
     for filter_arg in filter_args or []:
         if ":" in filter_arg:
-            name, pattern = filter_arg.split(":", 1)
-            name = name.strip()
-            pattern = pattern.strip()
-            filters[name] = pattern
+            parts = filter_arg.split(":", 2)  # Split into max 3 parts
+            name = parts[0].strip()
+            pattern = parts[1].strip()
+
+            # Check if filepattern is provided
+            if len(parts) >= 3:
+                filepattern = parts[2].strip()
+            else:
+                filepattern = "*"  # Default to all files
+
+            filters[name] = (pattern, filepattern)
             filter_names.append(name)
         else:
-            # Fallback: use pattern as both name and pattern
-            filters[filter_arg] = filter_arg
+            # Fallback: use pattern as both name and pattern, apply to all files
+            filters[filter_arg] = (filter_arg, "*")
             filter_names.append(filter_arg)
 
     return filters, filter_names
 
 
-def filter_content_lines(content: str, filters: dict, debug: bool = False) -> str:
+def filter_content_lines(content: str, filters: dict, file_path: Path = None, debug: bool = False) -> str:
     """
     Filter content using named regex patterns (OR logic).
 
     Args:
         content: The file content to filter
-        filters: Dict of {name: regex_pattern}
+        filters: Dict of {name: (regex_pattern, file_pattern)}
+        file_path: Path of the file being filtered (for file pattern matching)
         debug: Whether to show debug output
 
     Returns:
@@ -97,14 +106,32 @@ def filter_content_lines(content: str, filters: dict, debug: bool = False) -> st
     if not filters:
         return content
 
+    import fnmatch
     import re
 
     lines = content.split("\n")
     filtered_lines = []
     total_matches = 0
 
+    # Get applicable filters for this file
+    applicable_filters = {}
+    if file_path:
+        for name, (pattern, filepattern) in filters.items():
+            if fnmatch.fnmatch(file_path.name, filepattern) or fnmatch.fnmatch(str(file_path), filepattern):
+                applicable_filters[name] = pattern
+                if debug:
+                    print_debug(f"Filter '{name}' applies to file '{file_path}' (pattern: {filepattern})")
+            elif debug:
+                print_debug(f"Filter '{name}' does not apply to file '{file_path}' (pattern: {filepattern})")
+    else:
+        # If no file path provided, extract just the regex patterns
+        applicable_filters = {name: pattern for name, (pattern, _) in filters.items()}
+
+    if debug and file_path:
+        print_debug(f"Applying {len(applicable_filters)} filters to {file_path}")
+
     for line in lines:
-        for name, pattern in filters.items():
+        for name, pattern in applicable_filters.items():
             try:
                 if re.search(pattern, line):
                     filtered_lines.append(line)

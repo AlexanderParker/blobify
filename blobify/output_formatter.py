@@ -30,7 +30,12 @@ def generate_header(
     # Add filter information
     filter_info = ""
     if filters:
-        filter_lines = [f"# * {name}: {pattern}" for name, pattern in filters.items()]
+        filter_lines = []
+        for name, (pattern, filepattern) in filters.items():
+            if filepattern == "*":
+                filter_lines.append(f"# * {name}: {pattern}")
+            else:
+                filter_lines.append(f"# * {name}: {pattern} (files: {filepattern})")
         filter_info = "\n#\n# Content filters applied:\n" + "\n".join(filter_lines)
 
     # Adjust format description based on options
@@ -269,7 +274,7 @@ def generate_content(
                     if filters:
                         from .content_processor import filter_content_lines
 
-                        processed_content = filter_content_lines(processed_content, filters, debug)
+                        processed_content = filter_content_lines(processed_content, filters, relative_path, debug)
 
                     if debug and substitutions > 0:
                         print_debug(f"File had {substitutions} substitutions, total now: {total_substitutions}")
@@ -338,7 +343,7 @@ def format_output(
                 # Apply filters to check if content would be excluded
                 from .content_processor import filter_content_lines
 
-                filtered_content = filter_content_lines(file_content, filters, debug)
+                filtered_content = filter_content_lines(file_content, filters, file_info["relative_path"], debug)
 
                 # Mark as filter-excluded if no content remains
                 if filtered_content.strip() == "" and file_content.strip() != "":
