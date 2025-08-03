@@ -212,14 +212,14 @@ bfy . --filter "sigs:^(def|class)" --no-line-numbers --suppress-excluded --clip
 
 ### Setup
 
-1. Clone and enter directory:
+1 - Clone and enter directory:
 
    ```bash
    git clone https://github.com/AlexanderParker/blobify.git
    cd blobify
    ```
 
-2. Create and activate virtual environment:
+2 - Create and activate virtual environment:
 
    ```bash
    python -m venv venv
@@ -228,7 +228,8 @@ bfy . --filter "sigs:^(def|class)" --no-line-numbers --suppress-excluded --clip
    venv\Scripts\activate     # Windows
    ```
 
-3. Install with dev dependencies:
+3 - Install with dev dependencies:
+
    ```bash
    pip install -e ".[dev,scrubbing]"
    pre-commit install
