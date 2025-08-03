@@ -4,6 +4,7 @@
 +.github\workflows\test.yml
 +.blobify
 +misc\blobify-dark.svg
+LICENSE
 @clip
 @noclean
 @suppress-excluded
