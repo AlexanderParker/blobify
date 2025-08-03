@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "blobify"
 version = "1.0.1"
 authors = [{ name = "Alexander Parker", email = "pypi@parker.im" }]
+maintainers = [{ name = "Alexander Parker", email = "pypi@parker.im" }]
 license = "MIT"
 description = "Package your entire codebase into a single text file for AI consumption"
 readme = { file = "README.md", content-type = "text/markdown" }
@@ -14,8 +15,13 @@ dependencies = ["rich>=14.1.0", "scrubadub>=2.0.1"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
     "Topic :: Software Development :: Documentation",
+    "Topic :: Software Development :: Workflow",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Artificial Intelligence :: Preprocessing",
     "Topic :: Text Processing :: General",
+    "Topic :: Utilities",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -23,6 +29,8 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Operating System :: OS Independent",
     "Environment :: Console",
+    "Natural Language :: English",
+    "Typing :: Typed",
 ]
 keywords = [
     "ai",
@@ -61,8 +69,10 @@ bfy = "blobify.main:main"
 
 [project.urls]
 "Author" = "https://parker.im"
+"Documentation" = "https://github.com/AlexanderParker/blobify#readme"
+"Repository" = "https://github.com/AlexanderParker/blobify"
 "Bug Reports" = "https://github.com/AlexanderParker/blobify/issues"
-"Source" = "https://github.com/AlexanderParker/blobify"
+"Feature Requests" = "https://github.com/AlexanderParker/blobify/issues"
 
 [tool.setuptools.packages.find]
 # Automatically find packages
