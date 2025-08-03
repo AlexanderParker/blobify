@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "blobify"
 version = "1.0.1"
 authors = [{ name = "Alexander Parker", email = "pypi@parker.im" }]
-license = { file = "LICENSE" }
+license = "MIT"
 description = "Package your entire codebase into a single text file for AI consumption"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
@@ -16,7 +16,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Documentation",
     "Topic :: Text Processing :: General",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -27,13 +26,19 @@ classifiers = [
 ]
 keywords = [
     "ai",
-    "code",
-    "analysis",
+    "llm",
+    "chatgpt",
+    "claude",
     "codebase",
-    "text",
-    "file",
-    "extraction",
-    "git",
+    "code-analysis",
+    "text-processing",
+    "file-aggregation",
+    "developer-tools",
+    "automation",
+    "documentation",
+    "code-review",
+    "refactoring",
+    "context-engineering",
 ]
 
 [project.optional-dependencies]
@@ -55,7 +60,7 @@ dev = [
 bfy = "blobify.main:main"
 
 [project.urls]
-Homepage = "https://github.com/AlexanderParker/blobify"
+"Author" = "https://parker.im"
 "Bug Reports" = "https://github.com/AlexanderParker/blobify/issues"
 "Source" = "https://github.com/AlexanderParker/blobify"
 
