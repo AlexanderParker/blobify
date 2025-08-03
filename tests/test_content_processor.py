@@ -270,15 +270,16 @@ class TestContentProcessor:
 
     def test_parse_named_filters_csv_quotes_in_regex(self):
         """Test parsing filters with quotes in regex patterns."""
+        # For CSV, to include a quote in a quoted field, you double the quote
         filter_args = [
-            r'"strings","\".*\"","*.py"',  # Match quoted strings
-            r'"print-calls","print\(.*\)","*.py"',  # Match print calls
+            '"strings",""".*""","*.py"',  # CSV standard: double quotes to escape
+            '"print-calls","print\\(.*\\)","*.py"',  # Regular backslash escaping works fine
         ]
         filters, names = parse_named_filters(filter_args)
 
         expected_filters = {
-            "strings": (r'".*"', "*.py"),
-            "print-calls": (r"print\(.*\)", "*.py"),
+            "strings": ('".*"', "*.py"),  # Results in regex pattern with quotes
+            "print-calls": ("print\\(.*\\)", "*.py"),  # Results in regex pattern with escaped parens
         }
 
         assert filters == expected_filters

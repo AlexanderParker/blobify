@@ -92,6 +92,7 @@ def parse_named_filters(filter_args: list) -> tuple:
                 pattern = row[1].strip()
                 filepattern = row[2].strip() if len(row) >= 3 else "*"
 
+                # Don't modify the pattern - CSV parser already handles escaped quotes correctly
                 filters[name] = (pattern, filepattern)
                 filter_names.append(name)
             elif len(row) == 1:

@@ -8,7 +8,7 @@
 @copy-to-clipboard=true
 @show-excluded=false
 @enable-scrubbing=false
-@output-line-numbers=false
+@output-line-numbers=true
 @output-index=false
 
 [docs-only]
