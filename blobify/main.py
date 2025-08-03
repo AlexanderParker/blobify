@@ -8,6 +8,10 @@ import sys
 import tempfile
 from pathlib import Path
 
+__version__ = "1.0.0"
+__author__ = "Alexander Parker"
+__email__ = "pypi@parker.im"
+
 from .config import apply_default_switches, list_available_contexts, read_blobify_config
 from .console import print_debug, print_error, print_phase, print_status, print_success
 from .content_processor import parse_named_filters
@@ -95,6 +99,11 @@ def list_ignored_patterns():
                 print(f"  {pattern}")
 
 
+def show_version():
+    """Print version information and exit."""
+    print(f"blobify {__version__}")
+
+
 def main():
     # Fix Windows Unicode output by replacing stdout with UTF-8 wrapper
     # Only do this when running in a real terminal, not under pytest or when redirected
@@ -122,6 +131,12 @@ def main():
             nargs="?",  # Make the value optional
             const="__list__",  # Default value when flag is provided without argument
             help="Use specific context from .blobify file, or list available contexts if no name provided",
+        )
+        parser.add_argument(
+            "-v",
+            "--version",
+            action="store_true",
+            help="Show version information and exit",
         )
         parser.add_argument(
             "--debug",
@@ -184,6 +199,11 @@ def main():
             help="List patterns and exit: 'ignored' shows built-in patterns, 'contexts' shows available contexts (default: none)",
         )
         args = parser.parse_args()
+
+        # Handle version flag first
+        if args.version:
+            show_version()
+            return
 
         # Handle --list-patterns option
         if args.list_patterns == "ignored":
