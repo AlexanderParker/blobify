@@ -15,10 +15,10 @@ class TestFileTargetedFilters:
     def test_parse_named_filters_with_file_patterns(self):
         """Test parsing filters with file patterns."""
         filter_args = [
-            "py-functions:^def:*.py",
-            "js-functions:^function:*.js",
-            "all-imports:^import:*",
-            "css-selectors:^\\..*:*.css",
+            '"py-functions","^def","*.py"',
+            '"js-functions","^function","*.js"',
+            '"all-imports","^import","*"',
+            '"css-selectors","^\\..*","*.css"',
         ]
         filters, names = parse_named_filters(filter_args)
 
@@ -34,7 +34,11 @@ class TestFileTargetedFilters:
 
     def test_parse_named_filters_mixed_with_and_without_file_patterns(self):
         """Test parsing mix of filters with and without file patterns."""
-        filter_args = ["py-functions:^def:*.py", "all-classes:^class", "js-errors:catch:*.js"]  # No file pattern
+        filter_args = [
+            '"py-functions","^def","*.py"',
+            '"all-classes","^class"',
+            '"js-errors","catch","*.js"',
+        ]  # No file pattern
         filters, names = parse_named_filters(filter_args)
 
         expected_filters = {
@@ -49,12 +53,12 @@ class TestFileTargetedFilters:
     def test_parse_named_filters_fallback_with_colons_in_regex(self):
         """Test parsing filters with colons in regex patterns."""
         filter_args = [
-            "urls:https?\\://\\S+:*.md",  # URL pattern with colon (escaped)
-            "times:\\d{2}\\:\\d{2}:*.log",  # Time pattern with colons (escaped)
+            '"urls","https?://\\S+","*.md"',  # URL pattern with colon
+            '"times","\\d{2}:\\d{2}","*.log"',  # Time pattern with colons
         ]
         filters, names = parse_named_filters(filter_args)
 
-        expected_filters = {"urls": ("https?\\://\\S+", "*.md"), "times": ("\\d{2}\\:\\d{2}", "*.log")}
+        expected_filters = {"urls": ("https?://\\S+", "*.md"), "times": ("\\d{2}:\\d{2}", "*.log")}
 
         assert filters == expected_filters
 
@@ -224,9 +228,9 @@ SELECT * FROM users WHERE name = 'admin';
                 "bfy",
                 str(tmp_path),
                 "--filter",
-                "py-functions:^def:*.py",
+                '"py-functions","^def","*.py"',
                 "--filter",
-                "py-classes:^class:*.py",
+                '"py-classes","^class","*.py"',
                 "--output-filename",
                 str(output_file),
             ],
@@ -262,11 +266,11 @@ SELECT * FROM users WHERE name = 'admin';
                 "bfy",
                 str(tmp_path),
                 "--filter",
-                "js-functions:^function:*.js",
+                '"js-functions","^function","*.js"',
                 "--filter",
-                "js-classes:^class:*.js",
+                '"js-classes","^class","*.js"',
                 "--filter",
-                "js-constants:^const:*.js",
+                '"js-constants","^const","*.js"',
                 "--output-filename",
                 str(output_file),
             ],
@@ -292,7 +296,14 @@ SELECT * FROM users WHERE name = 'admin';
 
         with patch(
             "sys.argv",
-            ["bfy", str(tmp_path), "--filter", "css-selectors:^[.#]:*.css", "--output-filename", str(output_file)],
+            [
+                "bfy",
+                str(tmp_path),
+                "--filter",
+                '"css-selectors","^[.#]","*.css"',
+                "--output-filename",
+                str(output_file),
+            ],
         ):
             main()
 
@@ -318,9 +329,9 @@ SELECT * FROM users WHERE name = 'admin';
                 "bfy",
                 str(tmp_path),
                 "--filter",
-                "sql-ddl:^(CREATE|ALTER):migrations/*.sql",
+                '"sql-ddl","^(CREATE|ALTER)","migrations/*.sql"',
                 "--filter",
-                "sql-dml:^(INSERT|SELECT):migrations/*.sql",
+                '"sql-dml","^(INSERT|SELECT)","migrations/*.sql"',
                 "--output-filename",
                 str(output_file),
             ],
@@ -349,11 +360,11 @@ SELECT * FROM users WHERE name = 'admin';
                 "bfy",
                 str(tmp_path),
                 "--filter",
-                "backend-functions:^def:*.py",
+                '"backend-functions","^def","*.py"',
                 "--filter",
-                "frontend-functions:^function:*.js",
+                '"frontend-functions","^function","*.js"',
                 "--filter",
-                "styles:^[.#]:*.css",
+                '"styles","^[.#]","*.css"',
                 "--output-filename",
                 str(output_file),
             ],
@@ -387,9 +398,9 @@ SELECT * FROM users WHERE name = 'admin';
                 "bfy",
                 str(tmp_path),
                 "--filter",
-                "migration-sql:^(CREATE|INSERT):migrations/*.sql",
+                '"migration-sql","^(CREATE|INSERT)","migrations/*.sql"',
                 "--filter",
-                "all-sql:^SELECT:*.sql",
+                '"all-sql","^SELECT","*.sql"',
                 "--output-filename",
                 str(output_file),
             ],
@@ -413,7 +424,7 @@ SELECT * FROM users WHERE name = 'admin';
 
         with patch(
             "sys.argv",
-            ["bfy", str(tmp_path), "--filter", "py-only:^def:*.py", "--output-filename", str(output_file)],
+            ["bfy", str(tmp_path), "--filter", '"py-only","^def","*.py"', "--output-filename", str(output_file)],
         ):
             main()
 
@@ -438,9 +449,9 @@ SELECT * FROM users WHERE name = 'admin';
         # Create .blobify with file-targeted filters
         (tmp_path / ".blobify").write_text(
             """
-@filter=py-functions:^def:*.py
-@filter=js-functions:^function:*.js
-@filter=css-selectors:^[.#]:*.css
+@filter="py-functions","^def","*.py"
+@filter="js-functions","^function","*.js"
+@filter="css-selectors","^[.#]","*.css"
 +*.py
 +*.js
 +*.css
@@ -473,7 +484,7 @@ SELECT * FROM users WHERE name = 'admin';
         # Create .blobify with default filter
         (tmp_path / ".blobify").write_text(
             """
-@filter=all-functions:^(def|function)
+@filter="all-functions","^(def|function)"
 +*.py
 +*.js
 """
@@ -482,7 +493,10 @@ SELECT * FROM users WHERE name = 'admin';
         self.setup_multi_language_project(tmp_path)
         output_file = tmp_path / "output.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--filter", "py-only:^def:*.py", "--output-filename", str(output_file)]):
+        with patch(
+            "sys.argv",
+            ["bfy", str(tmp_path), "--filter", '"py-only","^def","*.py"', "--output-filename", str(output_file)],
+        ):
             main()
 
         content = output_file.read_text(encoding="utf-8")

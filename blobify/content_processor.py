@@ -1,6 +1,8 @@
 """Content processing and scrubbing utilities."""
 
+import csv
 import datetime
+import io
 import mimetypes
 from pathlib import Path
 from typing import Tuple
@@ -59,7 +61,7 @@ def parse_named_filters(filter_args: list) -> tuple:
     Parse named filters and return (filters dict, filter_names list).
 
     Args:
-        filter_args: List of "name:regex" or "name:regex:filepattern" strings
+        filter_args: List of CSV strings like "name","regex","filepattern" or "name","regex"
 
     Returns:
         Tuple of (filters dict, filter_names list)
@@ -69,30 +71,26 @@ def parse_named_filters(filter_args: list) -> tuple:
     filter_names = []
 
     for filter_arg in filter_args or []:
-        if ":" in filter_arg:
-            # Split into max 3 parts to handle colons in regex
-            parts = filter_arg.split(":", 2)
-            name = parts[0].strip()
+        try:
+            # Use CSV parser to handle quoted, comma-separated values
+            csv_reader = csv.reader(io.StringIO(filter_arg))
+            row = next(csv_reader)
 
-            if len(parts) == 3:
-                # name:regex:filepattern format
-                pattern = parts[1].strip()
-                filepattern = parts[2].strip()
-            elif len(parts) == 2:
-                # name:regex format (no file pattern)
-                pattern = parts[1].strip()
-                filepattern = "*"  # Default to all files
-            else:
-                # Should not happen with the split limit, but handle gracefully
-                pattern = parts[1].strip() if len(parts) > 1 else filter_arg
-                filepattern = "*"
+            if len(row) >= 2:
+                name = row[0].strip()
+                pattern = row[1].strip()
+                filepattern = row[2].strip() if len(row) >= 3 else "*"
 
-            filters[name] = (pattern, filepattern)
-            filter_names.append(name)
-        else:
-            # Fallback: use pattern as both name and pattern, apply to all files
-            filters[filter_arg] = (filter_arg, "*")
-            filter_names.append(filter_arg)
+                filters[name] = (pattern, filepattern)
+                filter_names.append(name)
+            elif len(row) == 1:
+                # Single value - use as both name and pattern
+                value = row[0].strip()
+                filters[value] = (value, "*")
+                filter_names.append(value)
+        except (csv.Error, StopIteration, IndexError) as e:
+            print_warning(f"Invalid filter format: '{filter_arg}' - {e}")
+            continue
 
     return filters, filter_names
 

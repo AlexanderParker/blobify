@@ -202,15 +202,12 @@ class TestContentProcessor:
         # Passwords in URLs are often detected
         assert "password123" not in result or "{{" in result or "***" in result
 
-    def test_parse_named_filters_with_file_patterns_comprehensive(self):
-        """Test comprehensive parsing of filters with file patterns."""
+    def test_parse_named_filters_csv_format(self):
+        """Test parsing filters with new CSV format."""
         filter_args = [
-            "py-functions:^def:*.py",
-            "js-functions:^function:*.js",
-            "css-selectors:^[.#]:*.css",
-            "sql-queries:^(SELECT|INSERT):migrations/*.sql",
-            "config-keys:^[A-Z_]+\\s*=:config/*.py",
-            "all-imports:^import",  # No file pattern
+            '"py-functions","^def","*.py"',
+            '"js-functions","^function","*.js"',
+            '"css-selectors","^[.#]","*.css"',
         ]
         filters, names = parse_named_filters(filter_args)
 
@@ -218,13 +215,105 @@ class TestContentProcessor:
             "py-functions": ("^def", "*.py"),
             "js-functions": ("^function", "*.js"),
             "css-selectors": ("^[.#]", "*.css"),
-            "sql-queries": ("^(SELECT|INSERT)", "migrations/*.sql"),
-            "config-keys": ("^[A-Z_]+\\s*=", "config/*.py"),
-            "all-imports": ("^import", "*"),  # Default to all files
         }
 
         assert filters == expected_filters
-        assert names == ["py-functions", "js-functions", "css-selectors", "sql-queries", "config-keys", "all-imports"]
+        assert names == ["py-functions", "js-functions", "css-selectors"]
+
+    def test_parse_named_filters_csv_with_commas_in_regex(self):
+        """Test parsing filters with commas in regex patterns."""
+        filter_args = [
+            '"sql-queries","^(SELECT|INSERT,UPDATE)","migrations/*.sql"',
+            '"complex-regex","[a-z,A-Z]+","*.txt"',
+        ]
+        filters, names = parse_named_filters(filter_args)
+
+        expected_filters = {
+            "sql-queries": ("^(SELECT|INSERT,UPDATE)", "migrations/*.sql"),
+            "complex-regex": ("[a-z,A-Z]+", "*.txt"),
+        }
+
+        assert filters == expected_filters
+        assert names == ["sql-queries", "complex-regex"]
+
+    def test_parse_named_filters_csv_two_values(self):
+        """Test parsing filters with only name and regex (no file pattern)."""
+        filter_args = [
+            '"all-imports","^import"',
+            '"functions","^def"',
+        ]
+        filters, names = parse_named_filters(filter_args)
+
+        expected_filters = {
+            "all-imports": ("^import", "*"),
+            "functions": ("^def", "*"),
+        }
+
+        assert filters == expected_filters
+        assert names == ["all-imports", "functions"]
+
+    def test_parse_named_filters_csv_single_value(self):
+        """Test parsing filters with single value (regex only)."""
+        filter_args = [
+            '"^def"',
+            '"^class"',
+        ]
+        filters, names = parse_named_filters(filter_args)
+
+        expected_filters = {
+            "^def": ("^def", "*"),
+            "^class": ("^class", "*"),
+        }
+
+        assert filters == expected_filters
+        assert names == ["^def", "^class"]
+
+    def test_parse_named_filters_csv_quotes_in_regex(self):
+        """Test parsing filters with quotes in regex patterns."""
+        filter_args = [
+            r'"strings","\".*\"","*.py"',  # Match quoted strings
+            r'"print-calls","print\(.*\)","*.py"',  # Match print calls
+        ]
+        filters, names = parse_named_filters(filter_args)
+
+        expected_filters = {
+            "strings": (r'".*"', "*.py"),
+            "print-calls": (r"print\(.*\)", "*.py"),
+        }
+
+        assert filters == expected_filters
+        assert names == ["strings", "print-calls"]
+
+    def test_parse_named_filters_csv_malformed(self):
+        """Test parsing malformed CSV filter arguments."""
+        filter_args = [
+            '"valid","^def","*.py"',  # Valid
+            "invalid format",  # Invalid - no quotes
+            '"unclosed quote,"^class"',  # Invalid - malformed CSV
+            '"valid2","^import"',  # Valid
+        ]
+        filters, names = parse_named_filters(filter_args)
+
+        # Should only parse valid entries
+        expected_filters = {
+            "valid": ("^def", "*.py"),
+            "valid2": ("^import", "*"),
+        }
+
+        assert filters == expected_filters
+        assert names == ["valid", "valid2"]
+
+    def test_parse_named_filters_empty(self):
+        """Test parsing empty filter list."""
+        filters, names = parse_named_filters([])
+        assert filters == {}
+        assert names == []
+
+    def test_parse_named_filters_none(self):
+        """Test parsing None filter list."""
+        filters, names = parse_named_filters(None)
+        assert filters == {}
+        assert names == []
 
     def test_filter_content_lines_file_targeting_debug(self):
         """Test filter content lines with file targeting and debug output."""

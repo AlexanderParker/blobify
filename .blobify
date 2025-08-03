@@ -21,44 +21,44 @@
 
 [method-signatures:default]
 # Enhanced context for method signatures and structure analysis
-# Extracts class definitions, method signatures, type hints, decorators, and return statements
-@filter=signatures:^ *(class\s+\w+.*:|def\s+\w+.*:|@\w+.*|async\s+def\s+\w+.*:)
-@filter=returns:^ *(return\s+.*|yield\s+.*)
-@filter=imports:^ *(from\s+\w+.*import.*|import\s+\w+.*)
-@filter=docstrings:^ *""".*|^ *'''.*|^ *r?""".*|^ *r?'''.*
-@filter=type-hints:.*:\s*\w+.*->.*|.*:\s*[A-Z]\w*\[.*\]|.*:\s*(str|int|bool|float|list|dict|tuple|set|Optional|Union|Any|Callable)
+# Extracts class definitions, method signatures, type hints, decorators, and return statements from Python files
+@filter="signatures","^ *(class\s+\w+.*:|def\s+\w+.*:|@\w+.*|async\s+def\s+\w+.*:)","*.py"
+@filter="returns","^ *(return\s+.*|yield\s+.*)","*.py"
+@filter="imports","^ *(from\s+\w+.*import.*|import\s+\w+.*)","*.py"
+@filter="docstrings","^ *\"\"\".*|^ *'''.*|^ *r?\"\"\".*|^ *r?'''.*","*.py"
+@filter="type-hints",".*:\s*\w+.*->.*|.*:\s*[A-Z]\w*\[.*\]|.*:\s*(str|int|bool|float|list|dict|tuple|set|Optional|Union|Any|Callable)","*.py"
 @output-line-numbers=false
 
 [comprehensive-signatures:default]
-# More comprehensive signature extraction including constants and error handling
-@filter=classes:^ *class\s+\w+.*:
-@filter=functions:^ *(def\s+\w+.*:|async\s+def\s+\w+.*:)
-@filter=decorators:^ *@\w+.*
-@filter=returns:^ *(return\s+.*|yield\s+.*)
-@filter=imports:^ *(from\s+\w+.*import.*|import\s+\w+.*)
-@filter=constants:^ *[A-Z_][A-Z0-9_]*\s*=.*
-@filter=exceptions:^ *(raise\s+.*|except\s+.*:|try:|finally:)
-@filter=docstrings:^ *""".*|^ *'''.*
+# More comprehensive signature extraction including constants and error handling from Python files
+@filter="classes","^ *class\s+\w+.*:","*.py"
+@filter="functions","^ *(def\s+\w+.*:|async\s+def\s+\w+.*:)","*.py"
+@filter="decorators","^ *@\w+.*","*.py"
+@filter="returns","^ *(return\s+.*|yield\s+.*)","*.py"
+@filter="imports","^ *(from\s+\w+.*import.*|import\s+\w+.*)","*.py"
+@filter="constants","^ *[A-Z_][A-Z0-9_]*\s*=.*","*.py"
+@filter="exceptions","^ *(raise\s+.*|except\s+.*:|try:|finally:)","*.py"
+@filter="docstrings","^ *\"\"\".*|^ *'''.*","*.py"
 @output-line-numbers=false
 
 [api-surface:default]
-# Extract public API surface - classes, functions, and their signatures
-@filter=public-classes:^ *class\s+[A-Z]\w*.*:
-@filter=public-functions:^ *def\s+[a-z_]\w*.*:
-@filter=public-async:^ *async\s+def\s+[a-z_]\w*.*:
-@filter=exports:^ *__all__\s*=.*
-@filter=imports:^ *(from\s+\w+.*import.*|import\s+\w+.*)
-@filter=module-docs:^ *""".*|^ *'''.*
+# Extract public API surface - classes, functions, and their signatures from Python files
+@filter="public-classes","^ *class\s+[A-Z]\w*.*:","*.py"
+@filter="public-functions","^ *def\s+[a-z_]\w*.*:","*.py"
+@filter="public-async","^ *async\s+def\s+[a-z_]\w*.*:","*.py"
+@filter="exports","^ *__all__\s*=.*","*.py"
+@filter="imports","^ *(from\s+\w+.*import.*|import\s+\w+.*)","*.py"
+@filter="module-docs","^ *\"\"\".*|^ *'''.*","*.py"
 @output-line-numbers=false
 
 [structure-overview:default]
 # High-level code structure for quick understanding
-@filter=classes:^ *class\s+\w+.*:
-@filter=main-functions:^ *def\s+(main|__main__|run|execute|start).*:
-@filter=init-methods:^ *def\s+__init__.*:
-@filter=special-methods:^ *def\s+__\w+__.*:
-@filter=imports:^ *(from\s+\w+.*import.*|import\s+\w+.*)
-@filter=constants:^ *[A-Z_][A-Z0-9_]*\s*=.*
+@filter="classes","^ *class\s+\w+.*:","*.py"
+@filter="main-functions","^ *def\s+(main|__main__|run|execute|start).*:","*.py"
+@filter="init-methods","^ *def\s+__init__.*:","*.py"
+@filter="special-methods","^ *def\s+__\w+__.*:","*.py"
+@filter="imports","^ *(from\s+\w+.*import.*|import\s+\w+.*)","*.py"
+@filter="constants","^ *[A-Z_][A-Z0-9_]*\s*=.*","*.py"
 @output-line-numbers=false
 
 # Example that can be used to selectively build up a context from individual "mixins"
@@ -104,9 +104,26 @@
 @output-metadata=true
 
 [todo-finder]
-# Find all TODOs, FIXMEs, and similar markers
-@filter=todos:(TODO|FIXME|XXX|HACK|NOTE|WARNING)
+# Find all TODOs, FIXMEs, and similar markers across all file types
+@filter="todos","(TODO|FIXME|XXX|HACK|NOTE|WARNING)"
 @show-excluded=false
 @output-line-numbers=true
 @copy-to-clipboard=true
 +**
+
+[yaml-config]
+# Extract YAML configuration patterns
+@filter="yaml-keys","^\\s*[a-zA-Z][a-zA-Z0-9_-]*\\s*:","*.yml"
+@filter="yaml-keys","^\\s*[a-zA-Z][a-zA-Z0-9_-]*\\s*:","*.yaml"
+@show-excluded=false
+@output-line-numbers=false
++*.yml
++*.yaml
+
+[python-only:default]
+# Python-specific analysis
+@filter="functions","^\\s*(def|async def)\\s+","*.py"
+@filter="classes","^\\s*class\\s+","*.py"
+@filter="imports","^\\s*(import|from)\\s+","*.py"
+@show-excluded=false
++*.py

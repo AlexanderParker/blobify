@@ -352,6 +352,43 @@ class TestShowExcluded:
         assert "debug.log [FILE CONTENTS IGNORED BY GITIGNORE]" in content
         assert "secret.txt [FILE CONTENTS EXCLUDED BY .blobify]" in content
 
+    def test_show_excluded_with_filters(self, tmp_path):
+        """Test show-excluded works with content filters."""
+        # Create git repo
+        (tmp_path / ".git").mkdir()
+
+        # Create files
+        (tmp_path / "app.py").write_text("def main():\n    print('app')\nclass MyClass:\n    pass")
+        (tmp_path / "test.js").write_text("function test() {}\nconst x = 1;")
+
+        output_file = tmp_path / "output_filters.txt"
+
+        with patch(
+            "sys.argv",
+            [
+                "bfy",
+                str(tmp_path),
+                "--filter",
+                '"py-functions","^def","*.py"',
+                "--show-excluded=false",
+                "--output-filename",
+                str(output_file),
+            ],
+        ):
+            main()
+
+        content = output_file.read_text(encoding="utf-8")
+
+        # Should show files with matching content
+        assert "START_FILE: app.py" in content
+        assert "def main():" in content
+
+        # Should NOT show files excluded by filters
+        assert "START_FILE: test.js" not in content
+
+        # Should show filter exclusions in index
+        assert "test.js [FILE CONTENTS EXCLUDED BY FILTERS]" in content
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

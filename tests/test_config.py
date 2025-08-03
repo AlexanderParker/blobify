@@ -111,6 +111,20 @@ class TestBlobifyConfig:
         assert excludes == []
         assert switches == ["debug=true", "copy-to-clipboard=true"]
 
+    def test_read_blobify_config_csv_filters(self, blobify_file):
+        """Test reading CSV format filters from .blobify file."""
+        blobify_file.write_text(
+            """
+@filter="functions","^def","*.py"
+@filter="imports","^import"
++*.py
+"""
+        )
+        includes, excludes, switches = read_blobify_config(blobify_file.parent)
+        assert includes == ["*.py"]
+        assert excludes == []
+        assert switches == ['filter="functions","^def","*.py"', 'filter="imports","^import"']
+
     def test_read_blobify_config_invalid_patterns(self, blobify_file):
         """Test handling of invalid patterns."""
         blobify_file.write_text(
@@ -178,8 +192,15 @@ invalid_line
         assert result.output_line_numbers is False
         assert result.output_index is False
 
-    def test_apply_default_switches_filter_handling(self):
-        """Test handling of filter options."""
+    def test_apply_default_switches_filter_handling_csv(self):
+        """Test handling of CSV format filter options."""
+        args = argparse.Namespace(filter=None)
+        switches = ['filter="functions","^def"', 'filter="classes","^class","*.py"']
+        result = apply_default_switches(args, switches)
+        assert result.filter == ['"functions","^def"', '"classes","^class","*.py"']
+
+    def test_apply_default_switches_filter_handling_legacy(self):
+        """Test handling of legacy format filter options."""
         args = argparse.Namespace(filter=None)
         switches = ["filter=functions:^def", "filter=classes:^class"]
         result = apply_default_switches(args, switches)

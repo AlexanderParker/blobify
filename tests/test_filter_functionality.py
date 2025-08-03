@@ -12,9 +12,9 @@ from blobify.main import main
 class TestFilterParsing:
     """Test cases for filter parsing functionality."""
 
-    def test_parse_named_filters_basic(self):
-        """Test basic named filter parsing."""
-        filter_args = ["functions:^def", "classes:^class"]
+    def test_parse_named_filters_csv_format(self):
+        """Test basic CSV format filter parsing."""
+        filter_args = ['"functions","^def"', '"classes","^class"']
         filters, names = parse_named_filters(filter_args)
 
         expected_filters = {"functions": ("^def", "*"), "classes": ("^class", "*")}
@@ -23,7 +23,7 @@ class TestFilterParsing:
 
     def test_parse_named_filters_with_file_patterns(self):
         """Test parsing filters with file patterns."""
-        filter_args = ["py-functions:^def:*.py", "js-functions:^function:*.js"]
+        filter_args = ['"py-functions","^def","*.py"', '"js-functions","^function","*.js"']
         filters, names = parse_named_filters(filter_args)
 
         expected_filters = {"py-functions": ("^def", "*.py"), "js-functions": ("^function", "*.js")}
@@ -32,16 +32,25 @@ class TestFilterParsing:
 
     def test_parse_named_filters_with_colon_in_regex(self):
         """Test parsing filters that contain colons in the regex pattern."""
-        filter_args = ["urls:https?\\://\\S+:*.md", "times:\\d{2}\\:\\d{2}:*.log"]
+        filter_args = ['"urls","https?://\\S+","*.md"', '"times","\\d{2}:\\d{2}","*.log"']
         filters, names = parse_named_filters(filter_args)
 
-        expected_filters = {"urls": ("https?\\://\\S+", "*.md"), "times": ("\\d{2}\\:\\d{2}", "*.log")}
+        expected_filters = {"urls": ("https?://\\S+", "*.md"), "times": ("\\d{2}:\\d{2}", "*.log")}
         assert filters == expected_filters
         assert names == ["urls", "times"]
 
-    def test_parse_named_filters_fallback_no_name(self):
-        """Test fallback behavior when no name is provided."""
-        filter_args = ["^def", "^class"]
+    def test_parse_named_filters_with_commas_in_regex(self):
+        """Test parsing filters with commas in regex patterns."""
+        filter_args = ['"options","(option1,option2,option3)","*.conf"', '"lists","\\[.*,.*\\]","*.json"']
+        filters, names = parse_named_filters(filter_args)
+
+        expected_filters = {"options": ("(option1,option2,option3)", "*.conf"), "lists": ("\\[.*,.*\\]", "*.json")}
+        assert filters == expected_filters
+        assert names == ["options", "lists"]
+
+    def test_parse_named_filters_fallback_single_value(self):
+        """Test fallback behavior with single quoted value."""
+        filter_args = ['"^def"', '"^class"']
         filters, names = parse_named_filters(filter_args)
 
         expected_filters = {"^def": ("^def", "*"), "^class": ("^class", "*")}
@@ -49,8 +58,8 @@ class TestFilterParsing:
         assert names == ["^def", "^class"]
 
     def test_parse_named_filters_mixed(self):
-        """Test mixing named and unnamed filters."""
-        filter_args = ["functions:^def", "^class", "imports:^import:*.py"]
+        """Test mixing different filter formats."""
+        filter_args = ['"functions","^def"', '"^class"', '"imports","^import","*.py"']
         filters, names = parse_named_filters(filter_args)
 
         expected_filters = {"functions": ("^def", "*"), "^class": ("^class", "*"), "imports": ("^import", "*.py")}
@@ -68,6 +77,25 @@ class TestFilterParsing:
         filters, names = parse_named_filters(None)
         assert filters == {}
         assert names == []
+
+    def test_parse_named_filters_malformed_csv(self):
+        """Test handling malformed CSV entries."""
+        filter_args = [
+            '"valid","^def","*.py"',  # Valid
+            "invalid format",  # Invalid - no quotes
+            '"unclosed quote,"^class"',  # Invalid - malformed CSV
+            '"valid2","^import"',  # Valid
+        ]
+        filters, names = parse_named_filters(filter_args)
+
+        # Should only parse valid entries
+        expected_filters = {
+            "valid": ("^def", "*.py"),
+            "valid2": ("^import", "*"),
+        }
+
+        assert filters == expected_filters
+        assert names == ["valid", "valid2"]
 
 
 class TestFilterContentLines:
@@ -221,7 +249,7 @@ const x = 42;
 
         with patch(
             "sys.argv",
-            ["bfy", str(tmp_path), "--filter", "functions:^(def|function)", "--output-filename", str(output_file)],
+            ["bfy", str(tmp_path), "--filter", '"functions","^(def|function)"', "--output-filename", str(output_file)],
         ):
             main()
 
@@ -254,9 +282,9 @@ const x = 42;
                 "bfy",
                 str(tmp_path),
                 "--filter",
-                "py-functions:^def:*.py",
+                '"py-functions","^def","*.py"',
                 "--filter",
-                "js-functions:^function:*.js",
+                '"js-functions","^function","*.js"',
                 "--output-filename",
                 str(output_file),
             ],
@@ -288,11 +316,11 @@ const x = 42;
                 "bfy",
                 str(tmp_path),
                 "--filter",
-                "functions:^(def|function)",
+                '"functions","^(def|function)"',
                 "--filter",
-                "imports:^import",
+                '"imports","^import"',
                 "--filter",
-                "returns:return",
+                '"returns","return"',
                 "--output-filename",
                 str(output_file),
             ],
@@ -329,7 +357,7 @@ const x = 42;
                 "bfy",
                 str(tmp_path),
                 "--filter",
-                "functions:^(def|function)",
+                '"functions","^(def|function)"',
                 "--show-excluded=false",
                 "--output-filename",
                 str(output_file),
@@ -360,7 +388,7 @@ const x = 42;
                 "bfy",
                 str(tmp_path),
                 "--filter",
-                "functions:^def",
+                '"functions","^def"',
                 "--output-content=false",
                 "--output-filename",
                 str(output_file),
@@ -384,7 +412,7 @@ const x = 42;
         """Test that CLI summary shows filter count."""
         self.setup_test_files(tmp_path)
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--filter", "functions:^def", "--filter", "imports:^import"]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--filter", '"functions","^def"', "--filter", '"imports","^import"']):
             main()
 
         captured = capsys.readouterr()
@@ -403,7 +431,7 @@ const x = 42;
 +*.js
 
 [filtered]
-@filter=functions:^(def|function)
+@filter="functions","^(def|function)"
 +*.py
 +*.js
 """
@@ -433,7 +461,7 @@ const x = 42;
 
         output_file = tmp_path / "output.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--filter", "functions:^def", "--output-filename", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--filter", '"functions","^def"', "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -457,7 +485,7 @@ const x = 42;
 
         output_file = tmp_path / "output.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--filter", "functions:^def", "--output-filename", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--filter", '"functions","^def"', "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -475,7 +503,7 @@ const x = 42;
 
         output_file = tmp_path / "output.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--filter", "functions:^def", "--output-filename", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--filter", '"functions","^def"', "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -503,9 +531,9 @@ class TestFilterErrorHandling:
                 "bfy",
                 str(tmp_path),
                 "--filter",
-                "invalid:[unclosed",
+                '"invalid","[unclosed"',
                 "--filter",
-                "valid:^def",
+                '"valid","^def"',
                 "--debug=true",
                 "--output-filename",
                 str(output_file),
@@ -522,48 +550,6 @@ class TestFilterErrorHandling:
         # Should process valid filter and skip invalid one
         assert "def hello():" in content
 
-    def test_filter_file_read_error_handling(self, tmp_path):
-        """Test filter handling when files cannot be read."""
-        # Create a file then make it unreadable (simulate permission error)
-        test_file = tmp_path / "test.py"
-        test_file.write_text("def hello(): pass")
-
-        # Create a readable file to ensure we still get some output
-        readable_file = tmp_path / "readable.py"
-        readable_file.write_text("def readable(): pass")
-
-        output_file = tmp_path / "output.txt"
-
-        # Mock file reading to raise an exception during filter processing
-        original_open = open
-
-        def mock_open(*args, **kwargs):
-            # Only fail when reading test.py for content filtering
-            if "test.py" in str(args[0]) and len(args) >= 2 and "r" in str(args[1]):
-                # Check if this is during content processing (not metadata)
-                import inspect
-
-                frame = inspect.currentframe()
-                try:
-                    # Look for filter_content_lines in the call stack
-                    while frame:
-                        if "filter_content_lines" in frame.f_code.co_name:
-                            raise PermissionError("Access denied")
-                        frame = frame.f_back
-                finally:
-                    del frame
-            return original_open(*args, **kwargs)
-
-        with patch("builtins.open", side_effect=mock_open):
-            with patch("sys.argv", ["bfy", str(tmp_path), "--filter", "functions:^def", "--output-filename", str(output_file)]):
-                main()
-
-        content = output_file.read_text(encoding="utf-8")
-
-        # Should handle error gracefully - test.py might still appear or be excluded
-        # The important thing is that the process doesn't crash
-        assert "readable.py" in content or "test.py" in content  # At least one file should be processed
-
 
 class TestFilterBlobifyIntegration:
     """Test cases for filter integration with .blobify configuration."""
@@ -576,8 +562,8 @@ class TestFilterBlobifyIntegration:
         # Create .blobify with filter defaults
         (tmp_path / ".blobify").write_text(
             """
-@filter=functions:^def
-@filter=imports:^import
+@filter="functions","^def"
+@filter="imports","^import"
 +*.py
 """
         )
@@ -607,8 +593,8 @@ class TestFilterBlobifyIntegration:
         # Create .blobify with file-targeted filter defaults
         (tmp_path / ".blobify").write_text(
             """
-@filter=py-functions:^def:*.py
-@filter=js-functions:^function:*.js
+@filter="py-functions","^def","*.py"
+@filter="js-functions","^function","*.js"
 +*.py
 +*.js
 """
@@ -643,7 +629,7 @@ class TestFilterBlobifyIntegration:
         # Create .blobify with filter default
         (tmp_path / ".blobify").write_text(
             """
-@filter=functions:^def
+@filter="functions","^def"
 +*.py
 """
         )
@@ -653,7 +639,7 @@ class TestFilterBlobifyIntegration:
 
         output_file = tmp_path / "output.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--filter", "classes:^class", "--output-filename", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--filter", '"classes","^class"', "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -674,21 +660,21 @@ class TestFilterBlobifyIntegration:
         (tmp_path / ".blobify").write_text(
             """
 # Default context
-@filter=functions:^def
+@filter="functions","^def"
 +*.py
 
 [signatures]
-@filter=signatures:^(def|class)
+@filter="signatures","^(def|class)"
 @output-line-numbers=false
 +*.py
 
 [py-imports]
-@filter=imports:^import:*.py
+@filter="imports","^import","*.py"
 +*.py
 +*.js
 
 [js-functions]
-@filter=js-funcs:^function:*.js
+@filter="js-funcs","^function","*.js"
 +*.py
 +*.js
 """

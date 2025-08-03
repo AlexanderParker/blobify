@@ -175,7 +175,7 @@ def main():
             "-f",
             "--filter",
             action="append",
-            help="Content filter: name:regex pattern (can be used multiple times)",
+            help='Content filter: "name","regex","filepattern" or "name","regex" (can be used multiple times)',
         )
         parser.add_argument(
             "--list-patterns",

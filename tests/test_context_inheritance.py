@@ -266,11 +266,11 @@ class TestContextInheritance:
         blobify_file.write_text(
             """
 # Default with filter
-@filter=functions:^def
+@filter="functions","^def"
 +*.py
 
 [enhanced:default]
-@filter=classes:^class
+@filter="classes","^class"
 +*.js
 """
         )

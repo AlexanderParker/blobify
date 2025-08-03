@@ -25,7 +25,7 @@ class TestContextListing:
 
 [signatures]
 # Function signatures context
-@filter=sigs:^def
+@filter="sigs","^def"
 +*.py
 
 [test-context]
@@ -92,7 +92,7 @@ class TestContextListing:
 # Extract function signatures and imports
 # This context is useful for code analysis
 [signatures]
-@filter=sigs:^def
+@filter="sigs","^def"
 +*.py
 
 [no-description]
@@ -160,7 +160,7 @@ class TestContextListing:
 
 # Code structure analysis
 [signatures]
-@filter=sigs:^(def|class)
+@filter="sigs","^(def|class)"
 +*.py
 
 [minimal]
@@ -199,6 +199,8 @@ class TestContextListing:
         assert "To create contexts, add sections like this" in captured.out
         assert "[docs-only]" in captured.out
         assert "[signatures]" in captured.out
+        # Should show new CSV filter format in examples
+        assert '@filter="signatures","^(def|class)\\s+"' in captured.out
 
     def test_list_available_contexts_no_git_repo(self, tmp_path, capsys):
         """Test list_available_contexts when not in git repository."""

@@ -440,6 +440,44 @@ class TestConfigurationOptionsWithContext:
         # Should show appropriate exclusion status
         assert "[FILE CONTENTS EXCLUDED BY .blobify]" in content  # For the excluded files
 
+    def test_context_with_filters_csv_format(self, tmp_path):
+        """Test context with filters using new CSV format."""
+        # Create git repo
+        (tmp_path / ".git").mkdir()
+
+        # Create .blobify with context using CSV filter format
+        (tmp_path / ".blobify").write_text(
+            """
+[filtered]
+@filter="functions","^(def|function)"
+@filter="py-only","^def","*.py"
++*.py
++*.js
+"""
+        )
+
+        (tmp_path / "test.py").write_text("def python_func():\n    print('py')\nclass PyClass:\n    pass")
+        (tmp_path / "test.js").write_text("function js_func() {\n    console.log('js');\n}\nconst x = 1;")
+
+        output_file = tmp_path / "output.txt"
+        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "filtered", "--output-filename", str(output_file)]):
+            main()
+
+        content = output_file.read_text(encoding="utf-8")
+
+        # Should apply filters from context
+        assert "functions: ^(def|function)" in content
+        assert "py-only: ^def (files: *.py)" in content
+
+        # Should include content matching filters
+        assert "def python_func():" in content  # Matches both filters
+        assert "function js_func() {" in content  # Matches first filter only
+
+        # Should exclude non-matching content
+        assert "print('py')" not in content
+        assert "console.log('js')" not in content
+        assert "const x = 1;" not in content
+
 
 class TestConfigurationOptionDefaults:
     """Test configuration handling for option defaults in .blobify files."""
@@ -511,3 +549,35 @@ class TestConfigurationOptionDefaults:
         assert "FILE_METADATA:" not in content  # output-metadata=false applied
         assert "FILE_CONTENT:" not in content  # output-content=false applied
         assert "print('should not appear')" not in content
+
+    def test_blobify_filter_defaults_csv_format(self, tmp_path):
+        """Test that filter defaults in .blobify use CSV format."""
+        # Create git repo
+        (tmp_path / ".git").mkdir()
+
+        # Create .blobify with filter defaults in CSV format
+        (tmp_path / ".blobify").write_text(
+            """
+@filter="functions","^def"
+@filter="py-functions","^def","*.py"
++*.py
++*.js
+"""
+        )
+
+        (tmp_path / "test.py").write_text("def python_func():\n    print('hello')")
+        (tmp_path / "test.js").write_text("function js_func() {\n    console.log('hello');\n}")
+
+        output_file = tmp_path / "output.txt"
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-filename", str(output_file)]):
+            main()
+
+        content = output_file.read_text(encoding="utf-8")
+
+        # Should apply filter defaults
+        assert "functions: ^def" in content
+        assert "py-functions: ^def (files: *.py)" in content
+        assert "def python_func():" in content
+        assert "print('hello')" not in content
+        assert "function js_func()" not in content  # Excluded by py-functions filter
+        assert "console.log('hello')" not in content

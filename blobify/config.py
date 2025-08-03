@@ -1,6 +1,8 @@
 """Configuration handling for .blobify files."""
 
 import argparse
+import csv
+import io
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -316,7 +318,7 @@ def list_available_contexts(directory: Path):
         print("")
         print("[signatures]")
         print("# Context for extracting function signatures")
-        print("@filter=signatures:^(def|class)\\s+")
+        print('@filter="signatures","^(def|class)\\s+"')
         print("@output-line-numbers=false")
         print("+*.py")
         print("")
@@ -413,9 +415,24 @@ def apply_default_switches(args: argparse.Namespace, default_switches: List[str]
         if key == "filter":
             if not args_dict.get("filter"):
                 args_dict["filter"] = []
-            args_dict["filter"].append(value)
-            if debug:
-                print_debug(f"Applied default: --{key}={value}")
+            # Parse CSV format for filters
+            try:
+                csv_reader = csv.reader(io.StringIO(value))
+                row = next(csv_reader)
+                if len(row) >= 2:
+                    # Convert back to CSV format for consistency with command line
+                    formatted_filter = ",".join(f'"{field}"' for field in row)
+                    args_dict["filter"].append(formatted_filter)
+                    if debug:
+                        print_debug(f"Applied default: --{key}={formatted_filter}")
+                else:
+                    args_dict["filter"].append(value)
+                    if debug:
+                        print_debug(f"Applied default: --{key}={value}")
+            except (csv.Error, StopIteration):
+                args_dict["filter"].append(value)
+                if debug:
+                    print_debug(f"Applied default: --{key}={value}")
             continue
 
         # For non-filter options, only apply if not already set by command line

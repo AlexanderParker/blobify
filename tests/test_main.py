@@ -477,3 +477,35 @@ class TestCommandLineOptions:
         content2 = output_file2.read_text()
         assert "test@example.com" not in content1
         assert "test@example.com" in content2
+
+    def test_filter_option_with_csv_format(self, tmp_path):
+        """Test --filter option with new CSV format."""
+        py_file = tmp_path / "test.py"
+        py_file.write_text("def hello():\n    print('world')\nclass Test:\n    pass")
+
+        output_file = tmp_path / "output.txt"
+
+        with patch("sys.argv", ["bfy", str(tmp_path), "--filter", '"functions","^def"', "--output-filename", str(output_file)]):
+            main()
+
+        content = output_file.read_text()
+        assert "def hello():" in content
+        assert "print('world')" not in content
+        assert "class Test:" not in content
+
+    def test_filter_option_with_file_pattern(self, tmp_path):
+        """Test --filter option with file pattern in CSV format."""
+        (tmp_path / "test.py").write_text("def python_func():\n    pass")
+        (tmp_path / "test.js").write_text("function js_func() {\n    return true;\n}")
+
+        output_file = tmp_path / "output.txt"
+
+        with patch(
+            "sys.argv",
+            ["bfy", str(tmp_path), "--filter", '"py-functions","^def","*.py"', "--output-filename", str(output_file)],
+        ):
+            main()
+
+        content = output_file.read_text()
+        assert "def python_func():" in content
+        assert "function js_func()" not in content  # Should be excluded by file pattern
