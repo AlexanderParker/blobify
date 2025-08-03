@@ -53,8 +53,8 @@ class TestConsoleOutput:
     def test_print_phase_with_rich(self, mock_console):
         """Test print_phase with rich console."""
         print_phase("test phase")
-        # The actual characters used are em dash (—) which is \u2500
-        expected = "\n[bold magenta]──── TEST PHASE ────[/bold magenta]"
+        # Now using ASCII dashes instead of Unicode
+        expected = "\n[bold magenta]------ TEST PHASE ------[/bold magenta]"
         mock_console.print.assert_called_once_with(expected)
 
     @patch("blobify.console.console", None)

@@ -153,11 +153,15 @@ def _parse_contexts_with_inheritance(blobify_file: Path, debug: bool = False) ->
                         key = switch_line
                         switch_entry = f"{key}=true"
 
-                    # Implement "last value wins" - remove any previous entries for this key
-                    current_config["default_switches"] = [s for s in current_config["default_switches"] if not s.startswith(f"{key}=")]
-
-                    # Add the new entry
-                    current_config["default_switches"].append(switch_entry)
+                    # For filter options, allow multiple entries; for others, "last value wins"
+                    if key == "filter":
+                        # Allow multiple filter entries
+                        current_config["default_switches"].append(switch_entry)
+                    else:
+                        # Implement "last value wins" - remove any previous entries for this key
+                        current_config["default_switches"] = [s for s in current_config["default_switches"] if not s.startswith(f"{key}=")]
+                        # Add the new entry
+                        current_config["default_switches"].append(switch_entry)
 
                     if debug:
                         context_info = f" (context: {current_context})"
@@ -387,6 +391,7 @@ def apply_default_switches(args: argparse.Namespace, default_switches: List[str]
     # Convert args to dict for easier manipulation
     args_dict = vars(args)
 
+    # Process default switches and combine with command line
     for switch_line in default_switches:
         if debug:
             print_debug(f"Processing default option: '{switch_line}'")
@@ -404,7 +409,16 @@ def apply_default_switches(args: argparse.Namespace, default_switches: List[str]
         # Convert key to argument name (handle dashes/underscores)
         arg_name = key.replace("-", "_")
 
-        # Only apply if not already set by command line (check for default values)
+        # Handle filter options specially - always accumulate them
+        if key == "filter":
+            if not args_dict.get("filter"):
+                args_dict["filter"] = []
+            args_dict["filter"].append(value)
+            if debug:
+                print_debug(f"Applied default: --{key}={value}")
+            continue
+
+        # For non-filter options, only apply if not already set by command line
         if arg_name in args_dict:
             current_value = args_dict[arg_name]
 
@@ -425,21 +439,12 @@ def apply_default_switches(args: argparse.Namespace, default_switches: List[str]
                 is_default_value = current_value == expected_defaults.get(arg_name, current_value)
             elif current_value == "none":  # list_patterns default
                 is_default_value = True
-            elif current_value is None:  # output_filename, filter, context defaults
-                is_default_value = True
-            elif isinstance(current_value, list) and not current_value:  # empty filter list
+            elif current_value is None:  # output_filename, context defaults
                 is_default_value = True
 
             if is_default_value:
                 try:
-                    if key == "filter":
-                        # Handle filter options - can have multiple filters
-                        if not args_dict.get("filter"):
-                            args_dict["filter"] = []
-                        args_dict["filter"].append(value)
-                        if debug:
-                            print_debug(f"Applied default: --{key}={value}")
-                    elif key in ["output-filename", "output_filename"]:
+                    if key in ["output-filename", "output_filename"]:
                         # Handle output filename
                         args_dict["output_filename"] = value
                         if debug:
