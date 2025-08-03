@@ -9,93 +9,142 @@ from .console import print_debug, print_error, print_warning
 
 def read_blobify_config(git_root: Path, context: Optional[str] = None, debug: bool = False) -> Tuple[List[str], List[str], List[str]]:
     """
-    Read .blobify configuration file from git root.
+    Read .blobify configuration file from git root with context inheritance support.
     Returns tuple of (include_patterns, exclude_patterns, default_switches).
-    If context is provided, uses patterns from that context section instead of defaults.
+    If context is provided, uses patterns from that context section with inheritance.
+
+    Context inheritance syntax: [context-name:parent-context]
     """
     blobify_file = git_root / ".blobify"
-    include_patterns = []
-    exclude_patterns = []
-    default_switches = []
 
     if not blobify_file.exists():
         if debug:
             print_debug("No .blobify file found")
-        return include_patterns, exclude_patterns, default_switches
+        return [], [], []
 
     try:
-        with open(blobify_file, "r", encoding="utf-8", errors="ignore") as f:
-            current_context = None  # None means default context
-            target_context = context  # Context we're looking for
-            in_target_section = target_context is None  # Start in target if no context specified
+        contexts = _parse_contexts_with_inheritance(blobify_file, debug)
 
-            for line_num, line in enumerate(f, 1):
-                line = line.strip()
-                # Skip empty lines and comments
-                if not line or line.startswith("#"):
-                    continue
+        # Get the target context (default to "default")
+        target_context = context if context is not None else "default"
 
-                # Check for context headers [context-name]
-                if line.startswith("[") and line.endswith("]"):
-                    current_context = line[1:-1]
-                    in_target_section = target_context == current_context
-                    if debug:
-                        if in_target_section:
-                            print_debug(f".blobify line {line_num}: Entering context '{current_context}'")
-                        else:
-                            print_debug(f".blobify line {line_num}: Skipping context '{current_context}'")
-                    continue
-
-                # Only process lines if we're in the target context section
-                if not in_target_section:
-                    continue
-
-                if line.startswith("@"):
-                    # Default switch pattern - can be boolean or key=value
-                    switch_line = line[1:].strip()
-                    if switch_line:
-                        default_switches.append(switch_line)
-                        context_info = f" (context: {current_context})" if current_context else " (default)"
-                        if debug:
-                            print_debug(f".blobify line {line_num}: Default switch '{switch_line}'{context_info}")
-                elif line.startswith("+"):
-                    # Include pattern
-                    pattern = line[1:].strip()
-                    if pattern:
-                        include_patterns.append(pattern)
-                        context_info = f" (context: {current_context})" if current_context else " (default)"
-                        if debug:
-                            print_debug(f".blobify line {line_num}: Include pattern '{pattern}'{context_info}")
-                elif line.startswith("-"):
-                    # Exclude pattern
-                    pattern = line[1:].strip()
-                    if pattern:
-                        exclude_patterns.append(pattern)
-                        context_info = f" (context: {current_context})" if current_context else " (default)"
-                        if debug:
-                            print_debug(f".blobify line {line_num}: Exclude pattern '{pattern}'{context_info}")
-                else:
-                    if debug:
-                        print_debug(f".blobify line {line_num}: Ignoring invalid pattern '{line}' (must start with +, -, or @)")
-
-        context_info = f" for context '{context}'" if context else " (default context)"
-        if debug:
-            print_debug(
-                f"Loaded .blobify config{context_info}: {len(include_patterns)} include patterns, "
-                f"{len(exclude_patterns)} exclude patterns, {len(default_switches)} default switches"
-            )
+        if target_context in contexts:
+            config = contexts[target_context]
+            return config["include_patterns"], config["exclude_patterns"], config["default_switches"]
+        else:
+            if debug and context is not None:
+                print_warning(f"Context '{context}' not found")
+            return [], [], []
 
     except OSError as e:
         if debug:
             print_error(f"Error reading .blobify file: {e}")
+        return [], [], []
 
-    return include_patterns, exclude_patterns, default_switches
+
+def _parse_contexts_with_inheritance(blobify_file: Path, debug: bool = False) -> Dict[str, Dict]:
+    """
+    Parse .blobify file and build contexts with inheritance.
+    Processes file sequentially, building inherited contexts as we go.
+    """
+    # Initialize with empty default context
+    contexts = {"default": {"include_patterns": [], "exclude_patterns": [], "default_switches": []}}
+
+    current_context = "default"
+
+    with open(blobify_file, "r", encoding="utf-8", errors="ignore") as f:
+        for line_num, line in enumerate(f, 1):
+            line = line.strip()
+
+            # Skip empty lines and comments
+            if not line or line.startswith("#"):
+                continue
+
+            # Check for context headers [context-name] or [context-name:parent]
+            if line.startswith("[") and line.endswith("]"):
+                context_header = line[1:-1]  # Remove brackets
+
+                if ":" in context_header:
+                    context_name, parent_context = context_header.split(":", 1)
+                    context_name = context_name.strip()
+                    parent_context = parent_context.strip()
+                else:
+                    context_name = context_header.strip()
+                    parent_context = None
+
+                # Create new context
+                if parent_context:
+                    if parent_context in contexts:
+                        # Copy parent context as starting point
+                        contexts[context_name] = {
+                            "include_patterns": contexts[parent_context]["include_patterns"].copy(),
+                            "exclude_patterns": contexts[parent_context]["exclude_patterns"].copy(),
+                            "default_switches": contexts[parent_context]["default_switches"].copy(),
+                        }
+                        if debug:
+                            print_debug(f".blobify line {line_num}: Created context '{context_name}' inheriting from '{parent_context}'")
+                    else:
+                        if debug:
+                            print_warning(f".blobify line {line_num}: Parent context '{parent_context}' not found, creating empty context '{context_name}'")
+                        contexts[context_name] = {"include_patterns": [], "exclude_patterns": [], "default_switches": []}
+                else:
+                    # No parent specified, create empty context
+                    contexts[context_name] = {"include_patterns": [], "exclude_patterns": [], "default_switches": []}
+                    if debug:
+                        print_debug(f".blobify line {line_num}: Created context '{context_name}' with no inheritance")
+
+                current_context = context_name
+                continue
+
+            # Process patterns and switches for current context
+            current_config = contexts[current_context]
+
+            if line.startswith("@"):
+                # Default switch pattern
+                switch_line = line[1:].strip()
+                if switch_line:
+                    current_config["default_switches"].append(switch_line)
+                    if debug:
+                        context_info = f" (context: {current_context})"
+                        print_debug(f".blobify line {line_num}: Default switch '{switch_line}'{context_info}")
+
+            elif line.startswith("+"):
+                # Include pattern
+                pattern = line[1:].strip()
+                if pattern:
+                    current_config["include_patterns"].append(pattern)
+                    if debug:
+                        context_info = f" (context: {current_context})"
+                        print_debug(f".blobify line {line_num}: Include pattern '{pattern}'{context_info}")
+
+            elif line.startswith("-"):
+                # Exclude pattern
+                pattern = line[1:].strip()
+                if pattern:
+                    current_config["exclude_patterns"].append(pattern)
+                    if debug:
+                        context_info = f" (context: {current_context})"
+                        print_debug(f".blobify line {line_num}: Exclude pattern '{pattern}'{context_info}")
+            else:
+                if debug:
+                    print_debug(f".blobify line {line_num}: Ignoring invalid pattern '{line}' (must start with +, -, or @)")
+
+    if debug:
+        for ctx_name, config in contexts.items():
+            print_debug(
+                f"Final context '{ctx_name}': "
+                f"{len(config['include_patterns'])} include, "
+                f"{len(config['exclude_patterns'])} exclude, "
+                f"{len(config['default_switches'])} switches"
+            )
+
+    return contexts
 
 
 def get_available_contexts(git_root: Path, debug: bool = False) -> List[str]:
     """
     Get list of available contexts from .blobify file.
-    Returns list of context names found in the file.
+    Returns list of context names found in the file (excluding default).
     """
     blobify_file = git_root / ".blobify"
     contexts = []
@@ -111,9 +160,14 @@ def get_available_contexts(git_root: Path, debug: bool = False) -> List[str]:
                 if not line or line.startswith("#"):
                     continue
 
-                # Check for context headers [context-name]
+                # Check for context headers [context-name] or [context-name:parent]
                 if line.startswith("[") and line.endswith("]"):
-                    context_name = line[1:-1]
+                    context_header = line[1:-1]  # Remove brackets
+                    if ":" in context_header:
+                        context_name = context_header.split(":", 1)[0].strip()
+                    else:
+                        context_name = context_header.strip()
+
                     if context_name and context_name not in contexts:
                         contexts.append(context_name)
                         if debug:
@@ -156,9 +210,14 @@ def get_context_descriptions(git_root: Path) -> Dict[str, str]:
                         pending_comments.append(comment_text)
                     continue
 
-                # Check for context headers [context-name]
+                # Check for context headers [context-name] or [context-name:parent]
                 if line.startswith("[") and line.endswith("]"):
-                    current_context = line[1:-1]
+                    context_header = line[1:-1]  # Remove brackets
+                    if ":" in context_header:
+                        current_context = context_header.split(":", 1)[0].strip()
+                    else:
+                        current_context = context_header.strip()
+
                     if current_context and pending_comments:
                         # Use the last meaningful comment as description
                         descriptions[current_context] = pending_comments[-1]
@@ -201,22 +260,60 @@ def list_available_contexts(directory: Path):
         print("@filter=signatures:^(def|class)\\s+")
         print("@no-line-numbers")
         print("+*.py")
+        print("")
+        print("Context inheritance:")
+        print("[base]")
+        print("@clip")
+        print("+*.py")
+        print("")
+        print("[extended:base]")
+        print("# Inherits @clip and +*.py from base")
+        print("+*.md")
         return
 
     print("Available contexts:")
     print("=" * 20)
 
-    # Try to read context descriptions from comments
+    # Try to read context descriptions and inheritance info
     context_descriptions = get_context_descriptions(git_root)
+    context_inheritance = _get_context_inheritance_info(git_root)
 
     for context in sorted(contexts):
         description = context_descriptions.get(context, "")
+        inheritance = context_inheritance.get(context, "")
+
+        output_parts = [f"  {context}"]
+        if inheritance:
+            output_parts.append(f" (inherits from {inheritance})")
         if description:
-            print(f"  {context}: {description}")
-        else:
-            print(f"  {context}")
+            output_parts.append(f": {description}")
+
+        print("".join(output_parts))
 
     print("\nUse with: bfy -x <context-name> or bfy --context=<context-name>")
+
+
+def _get_context_inheritance_info(git_root: Path) -> Dict[str, str]:
+    """Get inheritance information for contexts for display purposes."""
+    blobify_file = git_root / ".blobify"
+    inheritance_info = {}
+
+    if not blobify_file.exists():
+        return inheritance_info
+
+    try:
+        with open(blobify_file, "r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("[") and line.endswith("]"):
+                    context_header = line[1:-1]
+                    if ":" in context_header:
+                        context_name, parent_context = context_header.split(":", 1)
+                        inheritance_info[context_name.strip()] = parent_context.strip()
+    except OSError:
+        pass
+
+    return inheritance_info
 
 
 def apply_default_switches(args: argparse.Namespace, default_switches: List[str], debug: bool = False) -> argparse.Namespace:
