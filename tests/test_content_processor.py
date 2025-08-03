@@ -209,7 +209,7 @@ class TestContentProcessor:
             "js-functions:^function:*.js",
             "css-selectors:^[.#]:*.css",
             "sql-queries:^(SELECT|INSERT):migrations/*.sql",
-            "config-keys:^[A-Z_]+\s*=:config/*.py",
+            "config-keys:^[A-Z_]+\\s*=:config/*.py",
             "all-imports:^import",  # No file pattern
         ]
         filters, names = parse_named_filters(filter_args)
@@ -219,7 +219,7 @@ class TestContentProcessor:
             "js-functions": ("^function", "*.js"),
             "css-selectors": ("^[.#]", "*.css"),
             "sql-queries": ("^(SELECT|INSERT)", "migrations/*.sql"),
-            "config-keys": ("^[A-Z_]+\s*=", "config/*.py"),
+            "config-keys": ("^[A-Z_]+\\s*=", "config/*.py"),
             "all-imports": ("^import", "*"),  # Default to all files
         }
 

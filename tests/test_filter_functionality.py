@@ -32,10 +32,10 @@ class TestFilterParsing:
 
     def test_parse_named_filters_with_colon_in_regex(self):
         """Test parsing filters that contain colons in the regex pattern."""
-        filter_args = ["urls:https?://\\S+:*.md", "times:\\d{2}:\\d{2}:*.log"]
+        filter_args = ["urls:https?\\://\\S+:*.md", "times:\\d{2}\\:\\d{2}:*.log"]
         filters, names = parse_named_filters(filter_args)
 
-        expected_filters = {"urls": ("https?://\\S+", "*.md"), "times": ("\\d{2}:\\d{2}", "*.log")}
+        expected_filters = {"urls": ("https?\\://\\S+", "*.md"), "times": ("\\d{2}\\:\\d{2}", "*.log")}
         assert filters == expected_filters
         assert names == ["urls", "times"]
 

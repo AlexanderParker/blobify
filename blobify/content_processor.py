@@ -70,15 +70,22 @@ def parse_named_filters(filter_args: list) -> tuple:
 
     for filter_arg in filter_args or []:
         if ":" in filter_arg:
-            parts = filter_arg.split(":", 2)  # Split into max 3 parts
+            # Split into max 3 parts to handle colons in regex
+            parts = filter_arg.split(":", 2)
             name = parts[0].strip()
-            pattern = parts[1].strip()
 
-            # Check if filepattern is provided
-            if len(parts) >= 3:
+            if len(parts) == 3:
+                # name:regex:filepattern format
+                pattern = parts[1].strip()
                 filepattern = parts[2].strip()
-            else:
+            elif len(parts) == 2:
+                # name:regex format (no file pattern)
+                pattern = parts[1].strip()
                 filepattern = "*"  # Default to all files
+            else:
+                # Should not happen with the split limit, but handle gracefully
+                pattern = parts[1].strip() if len(parts) > 1 else filter_arg
+                filepattern = "*"
 
             filters[name] = (pattern, filepattern)
             filter_names.append(name)
@@ -117,7 +124,51 @@ def filter_content_lines(content: str, filters: dict, file_path: Path = None, de
     applicable_filters = {}
     if file_path:
         for name, (pattern, filepattern) in filters.items():
-            if fnmatch.fnmatch(file_path.name, filepattern) or fnmatch.fnmatch(str(file_path), filepattern):
+            # Convert Path to string for pattern matching
+            file_str = str(file_path)
+            file_name = file_path.name
+
+            # Try different matching approaches for robustness
+            matches = False
+
+            # Direct filename match
+            if fnmatch.fnmatch(file_name, filepattern):
+                matches = True
+            # Full path match (for patterns like "src/**")
+            elif fnmatch.fnmatch(file_str, filepattern):
+                matches = True
+            # Unix-style path matching (replace backslashes)
+            elif "\\" in file_str:
+                unix_path = file_str.replace("\\", "/")
+                if fnmatch.fnmatch(unix_path, filepattern):
+                    matches = True
+            # Relative path matching from current directory
+            else:
+                try:
+                    # Try to get relative path and match against that
+                    from pathlib import Path as PathlibPath
+
+                    current_dir = PathlibPath.cwd()
+                    if file_path.is_absolute():
+                        try:
+                            rel_path = file_path.relative_to(current_dir)
+                            rel_path_str = str(rel_path).replace("\\", "/")
+                            if fnmatch.fnmatch(rel_path_str, filepattern):
+                                matches = True
+                        except ValueError:
+                            pass
+                except Exception:
+                    pass
+
+            # Additional check for ** patterns that should match any depth
+            if not matches and "**" in filepattern:
+                # For patterns like **/*.jsx, check if filename matches the end pattern
+                if filepattern.startswith("**/"):
+                    end_pattern = filepattern[3:]  # Remove **/ prefix
+                    if fnmatch.fnmatch(file_name, end_pattern):
+                        matches = True
+
+            if matches:
                 applicable_filters[name] = pattern
                 if debug:
                     print_debug(f"Filter '{name}' applies to file '{file_path}' (pattern: {filepattern})")
