@@ -30,7 +30,7 @@ def test_to_clip(c):
 @task
 def install_dev(c):
     """Install development dependencies."""
-    c.run("pip install -e .[dev,scrubbing]")
+    c.run("pip install -e .[dev]")
     c.run("pre-commit install")
 
 

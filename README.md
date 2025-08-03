@@ -20,16 +20,10 @@ Feed your project to Claude, ChatGPT, or other AI assistants for code analysis, 
 
 ## Quick Start
 
-Install (basic):
+Install:
 
 ```bash
 pip install git+https://github.com/AlexanderParker/blobify.git
-```
-
-Install (with sensitive data scrubbing):
-
-```bash
-pip install "blobify[scrubbing] @ git+https://github.com/AlexanderParker/blobify.git"
 ```
 
 Basic usage:
@@ -51,9 +45,9 @@ bfy . --filter "signatures:^(def|class)\s+" --copy-to-clipboard=true
 bfy -x docs-only --copy-to-clipboard=true
 ```
 
-**Key features:** Respects `.gitignore`, optional sensitive data scrubbing, includes line numbers, supports custom filtering via `.blobify` configuration, content filters for extracting specific patterns, context listing for easy discovery, cross-platform clipboard support, **context inheritance** for reusable configurations.
+**Key features:** Respects `.gitignore`, automatic sensitive data scrubbing, includes line numbers, supports custom filtering via `.blobify` configuration, content filters for extracting specific patterns, context listing for easy discovery, cross-platform clipboard support, **context inheritance** for reusable configurations.
 
-**⚠️ Important Notice:** The optional scrubbing feature is not guaranteed to work; it may not detect some sensitive data. Consider it a best-effort helper only. Always review output before sharing.
+**⚠️ Important Notice:** The scrubbing feature is not guaranteed to work; it may not detect some sensitive data. Consider it a best-effort helper only. Always review output before sharing.
 
 ## Command Line Options
 
@@ -312,7 +306,7 @@ venv\Scripts\activate     # Windows
 3 - Install with dev dependencies:
 
 ```bash
-pip install -e ".[dev,scrubbing]"
+pip install -e ".[dev]"
 pre-commit install
 ```
 

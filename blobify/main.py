@@ -10,7 +10,7 @@ from pathlib import Path
 
 from .config import apply_default_switches, list_available_contexts, read_blobify_config
 from .console import print_debug, print_error, print_phase, print_status, print_success
-from .content_processor import SCRUBADUB_AVAILABLE, parse_named_filters
+from .content_processor import parse_named_filters
 from .file_scanner import get_built_in_ignored_patterns, scan_files
 from .git_utils import is_git_repository
 from .output_formatter import format_output
@@ -270,10 +270,11 @@ def main():
 
         # Check scrubbing configuration
         scrub_data = args.enable_scrubbing
-        if scrub_data and not SCRUBADUB_AVAILABLE:
-            if args.debug:
-                print_debug("scrubadub not installed - sensitive data will NOT be processed")
-            scrub_data = False
+        if args.debug:
+            if scrub_data:
+                print_debug("scrubadub processing is enabled")
+            else:
+                print_debug("scrubadub processing is disabled")
 
         # Scan files
         discovery_context = scan_files(directory, context=args.context, debug=args.debug)
@@ -323,7 +324,7 @@ def main():
             summary_parts.append("(content only, no metadata)")
         elif not args.output_metadata:
             summary_parts.append("(index and content, no metadata)")
-        elif scrub_data and SCRUBADUB_AVAILABLE and total_substitutions > 0:
+        elif scrub_data and total_substitutions > 0:
             if args.debug:
                 summary_parts.append(f"scrubadub made {total_substitutions} substitutions")
             else:

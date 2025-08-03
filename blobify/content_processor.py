@@ -5,14 +5,9 @@ import mimetypes
 from pathlib import Path
 from typing import Tuple
 
+import scrubadub
+
 from .console import print_debug, print_warning
-
-try:
-    import scrubadub
-
-    SCRUBADUB_AVAILABLE = True
-except ImportError:
-    SCRUBADUB_AVAILABLE = False
 
 
 def scrub_content(content: str, enabled: bool = True, debug: bool = False) -> Tuple[str, int]:
@@ -31,7 +26,7 @@ def scrub_content(content: str, enabled: bool = True, debug: bool = False) -> Tu
     Returns:
         Tuple of (scrubbed content, number of substitutions made)
     """
-    if not enabled or not SCRUBADUB_AVAILABLE:
+    if not enabled:
         return content, 0
 
     try:

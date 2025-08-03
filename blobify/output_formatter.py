@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Dict, List
 
 from .console import print_debug, print_file_processing
-from .content_processor import SCRUBADUB_AVAILABLE, get_file_metadata, scrub_content
+from .content_processor import get_file_metadata, scrub_content
 
 
 def generate_header(
@@ -236,7 +236,7 @@ def generate_content(
                         content.append("  Status: EXCLUDED BY .blobify")
                     elif is_filter_excluded:
                         content.append("  Status: EXCLUDED BY FILTERS")
-                    elif scrub_data and SCRUBADUB_AVAILABLE:
+                    elif scrub_data:
                         content.append("  Status: PROCESSED WITH SCRUBADUB")
             except OSError as e:
                 # If we can't get metadata, add an error message

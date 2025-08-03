@@ -4,7 +4,7 @@
 +.github\workflows\test.yml
 +.blobify
 +misc\blobify-dark.svg
-LICENSE
++LICENSE
 @copy-to-clipboard=true
 @show-excluded=false
 @enable-scrubbing=false
@@ -13,7 +13,7 @@ LICENSE
 # Context for documentation review (use with -x docs-only or --context=docs-only)
 -**
 +*.md
-@copy-to-clipboard=true
+@copy-to-clipboard=false
 @show-excluded=false
 @output-metadata=false
 

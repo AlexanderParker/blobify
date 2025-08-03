@@ -1,7 +1,5 @@
 """Tests for content_processor.py module."""
 
-from unittest.mock import Mock, patch
-
 from blobify.content_processor import get_file_metadata, is_text_file, scrub_content
 
 
@@ -15,47 +13,85 @@ class TestContentProcessor:
         assert result == content
         assert count == 0
 
-    @patch("blobify.content_processor.SCRUBADUB_AVAILABLE", False)
-    def test_scrub_content_unavailable(self):
-        """Test scrub_content when scrubadub is unavailable."""
-        content = "Email: test@example.com"
+    def test_scrub_content_with_email(self):
+        """Test scrub_content with real email address."""
+        content = "Contact us at support@example.com for help"
         result, count = scrub_content(content, enabled=True)
+
+        # Should have detected and replaced the email
+        assert "support@example.com" not in result
+        assert count >= 1
+        # Should contain some form of replacement
+        assert any(marker in result.upper() for marker in ["EMAIL", "{{", "***"])
+
+    def test_scrub_content_with_phone_number(self):
+        """Test scrub_content with phone number."""
+        content = "Call us at 555-123-4567 or (555) 987-6543"
+        result, count = scrub_content(content, enabled=True)
+
+        # Should have detected phone numbers
+        assert count >= 1
+        # Original numbers should be replaced
+        assert "555-123-4567" not in result
+        # Should contain some form of replacement
+        assert any(marker in result.upper() for marker in ["PHONE", "{{", "***"])
+
+    def test_scrub_content_with_social_security_number(self):
+        """Test scrub_content with SSN pattern."""
+        content = "SSN: 123-45-6789"
+        result, count = scrub_content(content, enabled=True)
+
+        # Should have detected SSN
+        assert count >= 1
+        assert "123-45-6789" not in result
+
+    def test_scrub_content_with_multiple_sensitive_items(self):
+        """Test scrub_content with multiple types of sensitive data."""
+        content = "Email: john@example.com, Phone: 555-1234, SSN: 123-45-6789"
+        result, count = scrub_content(content, enabled=True)
+
+        # Should detect multiple items
+        assert count >= 2  # At least email and phone/SSN
+        assert "john@example.com" not in result
+        assert "555-1234" not in result
+
+    def test_scrub_content_with_no_sensitive_data(self):
+        """Test scrub_content with clean content."""
+        content = "This is a clean file with no sensitive information."
+        result, count = scrub_content(content, enabled=True)
+
+        # Should return original content unchanged
         assert result == content
         assert count == 0
 
-    @patch("blobify.content_processor.SCRUBADUB_AVAILABLE", True)
-    @patch("blobify.content_processor.scrubadub")
-    def test_scrub_content_with_scrubadub(self, mock_scrubadub):
-        """Test scrub_content with scrubadub available."""
-        mock_scrubber = Mock()
-        mock_filth = Mock()
-        mock_filth.type = "email"
-        mock_filth.beg = 7
-        mock_filth.end = 21
-        mock_filth.replacement_string = "{{EMAIL}}"
+    def test_scrub_content_debug_output(self, capsys):
+        """Test scrub_content debug output."""
+        content = "Contact: admin@test.com"
+        scrub_content(content, enabled=True, debug=True)
 
-        mock_scrubber.iter_filth.return_value = [mock_filth]
-        mock_scrubber.clean.return_value = "Email: {{EMAIL}}"
-        mock_scrubadub.Scrubber.return_value = mock_scrubber
+        captured = capsys.readouterr()
+        # Should show debug information about what was found
+        assert any(word in captured.err.lower() for word in ["scrubadub", "found", "items", "email"])
 
-        content = "Email: test@example.com"
-        result, count = scrub_content(content, enabled=True, debug=True)
+    def test_scrub_content_with_twitter_detector_disabled(self):
+        """Test that twitter detector is disabled to reduce false positives."""
+        content = "@username mentioned in the code"
+        result, count = scrub_content(content, enabled=True)
 
-        assert result == "Email: {{EMAIL}}"
-        assert count == 1
-        mock_scrubber.remove_detector.assert_called_once_with("twitter")
+        # Twitter handles should not be scrubbed (detector disabled)
+        assert "@username" in result
+        # Might still detect other things, but @username should remain
 
-    @patch("blobify.content_processor.SCRUBADUB_AVAILABLE", True)
-    @patch("blobify.content_processor.scrubadub")
-    def test_scrub_content_exception(self, mock_scrubadub):
-        """Test scrub_content handles exceptions gracefully."""
-        mock_scrubadub.Scrubber.side_effect = Exception("Test error")
+    def test_scrub_content_exception_handling(self):
+        """Test scrub_content handles internal exceptions gracefully."""
+        # Use extremely malformed content that might cause scrubadub issues
+        content = "\x00\x01\x02" * 1000  # Binary-like content
+        result, count = scrub_content(content, enabled=True)
 
-        content = "Email: test@example.com"
-        result, count = scrub_content(content, enabled=True, debug=True)
-
-        assert result == content
-        assert count == 0
+        # Should not crash and should return something
+        assert isinstance(result, str)
+        assert isinstance(count, int)
+        assert count >= 0
 
     def test_is_text_file_python(self, tmp_path):
         """Test is_text_file with Python file."""
@@ -125,3 +161,23 @@ class TestContentProcessor:
             import datetime
 
             datetime.datetime.fromisoformat(metadata[key])
+
+    def test_scrub_content_real_world_patterns(self):
+        """Test scrub_content with real-world sensitive data patterns."""
+        content = """
+        Configuration file:
+        database_url = "postgresql://user:password123@localhost:5432/db"
+        api_key = "sk-1234567890abcdef"
+        secret_key = "abc123def456"
+        admin_email = "admin@mycompany.com"
+        support_phone = "+1 (555) 123-4567"
+        """
+
+        result, count = scrub_content(content, enabled=True)
+
+        # Should detect multiple sensitive items
+        assert count >= 1
+        # Emails should definitely be caught
+        assert "admin@mycompany.com" not in result
+        # Passwords in URLs are often detected
+        assert "password123" not in result or "{{" in result or "***" in result

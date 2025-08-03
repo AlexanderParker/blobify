@@ -10,7 +10,7 @@ license = { file = "LICENSE" }
 description = "Package your entire codebase into a single text file for AI consumption"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
-dependencies = ["rich>=14.1.0"]
+dependencies = ["rich>=14.1.0", "scrubadub>=2.0.1"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -37,7 +37,6 @@ keywords = [
 ]
 
 [project.optional-dependencies]
-scrubbing = ["scrubadub>=2.0.1"]
 dev = [
     "invoke>=2.2.0",
     "black>=25.1.0",
