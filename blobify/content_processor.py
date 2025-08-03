@@ -143,8 +143,8 @@ def filter_content_lines(content: str, filters: dict, file_path: Path = None, de
     applicable_filters = {}
     if file_path:
         for name, (pattern, filepattern) in filters.items():
-            # Convert Path to string for pattern matching
-            file_str = str(file_path)
+            # Convert Path to string for pattern matching, always use forward slashes
+            file_str = str(file_path).replace("\\", "/")
             file_name = file_path.name
 
             # Try different matching approaches for robustness
@@ -156,28 +156,20 @@ def filter_content_lines(content: str, filters: dict, file_path: Path = None, de
             # Full path match (for patterns like "src/**")
             elif fnmatch.fnmatch(file_str, filepattern):
                 matches = True
-            # Unix-style path matching (replace backslashes)
-            elif "\\" in file_str:
-                unix_path = file_str.replace("\\", "/")
-                if fnmatch.fnmatch(unix_path, filepattern):
-                    matches = True
-            # Relative path matching from current directory
-            else:
-                try:
-                    # Try to get relative path and match against that
-                    from pathlib import Path as PathlibPath
+            # For directory patterns like "migrations/*.sql"
+            elif "/" in filepattern:
+                # Split the pattern into directory and file parts
+                pattern_parts = filepattern.split("/")
+                file_parts = file_str.split("/")
 
-                    current_dir = PathlibPath.cwd()
-                    if file_path.is_absolute():
-                        try:
-                            rel_path = file_path.relative_to(current_dir)
-                            rel_path_str = str(rel_path).replace("\\", "/")
-                            if fnmatch.fnmatch(rel_path_str, filepattern):
-                                matches = True
-                        except ValueError:
-                            pass
-                except Exception:
-                    pass
+                # Check if the file path contains the directory structure
+                # For example, "migrations/*.sql" should match "path/to/migrations/001.sql"
+                for i in range(len(file_parts) - len(pattern_parts) + 1):
+                    # Get a slice of the file path with the same number of parts as the pattern
+                    file_slice = "/".join(file_parts[i : i + len(pattern_parts)])
+                    if fnmatch.fnmatch(file_slice, filepattern):
+                        matches = True
+                        break
 
             # Additional check for ** patterns that should match any depth
             if not matches and "**" in filepattern:

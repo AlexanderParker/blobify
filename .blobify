@@ -8,8 +8,9 @@
 @copy-to-clipboard=true
 @show-excluded=false
 @enable-scrubbing=false
-@output-line-numbers=true
+@output-line-numbers=false
 @output-index=false
+@output-metadata=false
 
 [docs-only]
 # Context for documentation review (use with -x docs-only or --context=docs-only)
