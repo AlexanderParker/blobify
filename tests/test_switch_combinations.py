@@ -1,15 +1,15 @@
-"""Tests for all switch combinations - comprehensive coverage of --no-content, --no-index, --no-metadata."""
+"""Tests for all switch combinations - comprehensive coverage of configuration options."""
 
 from unittest.mock import patch
 
 from blobify.main import main
 
 
-class TestSwitchCombinations:
-    """Test all meaningful combinations of --no-content, --no-index, --no-metadata switches."""
+class TestConfigurationOptionCombinations:
+    """Test all meaningful combinations of configuration options."""
 
     def setup_test_files(self, tmp_path):
-        """Create standard test files for switch combination tests."""
+        """Create standard test files for configuration option tests."""
         # Create git repo
         (tmp_path / ".git").mkdir()
 
@@ -32,7 +32,7 @@ class TestSwitchCombinations:
         self.setup_test_files(tmp_path)
         output_file = tmp_path / "output.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -51,12 +51,12 @@ class TestSwitchCombinations:
         assert "[FILE CONTENTS IGNORED BY GITIGNORE]" in content
         assert "[FILE CONTENTS INCLUDED BY .blobify]" in content
 
-    def test_no_content_only(self, tmp_path):
-        """Test --no-content: index + metadata, no content."""
+    def test_output_content_false_only(self, tmp_path):
+        """Test --output-content=false: index + metadata, no content."""
         self.setup_test_files(tmp_path)
         output_file = tmp_path / "output.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--no-content", "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-content=false", "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -75,12 +75,12 @@ class TestSwitchCombinations:
         assert "[FILE CONTENTS IGNORED BY GITIGNORE]" not in content  # No status labels in index
         assert "[FILE CONTENTS INCLUDED BY .blobify]" not in content
 
-    def test_no_index_only(self, tmp_path):
-        """Test --no-index: content + metadata, no index."""
+    def test_output_index_false_only(self, tmp_path):
+        """Test --output-index=false: content + metadata, no index."""
         self.setup_test_files(tmp_path)
         output_file = tmp_path / "output.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--no-index", "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-index=false", "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -94,12 +94,12 @@ class TestSwitchCombinations:
         assert "print('hello world')" in content
         assert "Status:" in content
 
-    def test_no_metadata_only(self, tmp_path):
-        """Test --no-metadata: index + content, no metadata."""
+    def test_output_metadata_false_only(self, tmp_path):
+        """Test --output-metadata=false: index + content, no metadata."""
         self.setup_test_files(tmp_path)
         output_file = tmp_path / "output.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--no-metadata", "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-metadata=false", "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -116,12 +116,22 @@ class TestSwitchCombinations:
         assert "Size:" not in content
         assert "Created:" not in content
 
-    def test_no_content_no_index_metadata_only(self, tmp_path):
-        """Test --no-content --no-index: metadata only."""
+    def test_output_content_false_output_index_false_metadata_only(self, tmp_path):
+        """Test --output-content=false --output-index=false: metadata only."""
         self.setup_test_files(tmp_path)
         output_file = tmp_path / "output.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--no-content", "--no-index", "-o", str(output_file)]):
+        with patch(
+            "sys.argv",
+            [
+                "bfy",
+                str(tmp_path),
+                "--output-content=false",
+                "--output-index=false",
+                "--output-filename",
+                str(output_file),
+            ],
+        ):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -141,12 +151,22 @@ class TestSwitchCombinations:
         # Header should describe metadata output
         assert "This file contains metadata of all text files" in content
 
-    def test_no_content_no_metadata_index_only(self, tmp_path):
-        """Test --no-content --no-metadata: index only."""
+    def test_output_content_false_output_metadata_false_index_only(self, tmp_path):
+        """Test --output-content=false --output-metadata=false: index only."""
         self.setup_test_files(tmp_path)
         output_file = tmp_path / "output.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--no-content", "--no-metadata", "-o", str(output_file)]):
+        with patch(
+            "sys.argv",
+            [
+                "bfy",
+                str(tmp_path),
+                "--output-content=false",
+                "--output-metadata=false",
+                "--output-filename",
+                str(output_file),
+            ],
+        ):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -159,12 +179,22 @@ class TestSwitchCombinations:
         assert "FILE_CONTENT:" not in content
         assert "print('hello world')" not in content
 
-    def test_no_index_no_metadata_content_only(self, tmp_path):
-        """Test --no-index --no-metadata: content only."""
+    def test_output_index_false_output_metadata_false_content_only(self, tmp_path):
+        """Test --output-index=false --output-metadata=false: content only."""
         self.setup_test_files(tmp_path)
         output_file = tmp_path / "output.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--no-index", "--no-metadata", "-o", str(output_file)]):
+        with patch(
+            "sys.argv",
+            [
+                "bfy",
+                str(tmp_path),
+                "--output-index=false",
+                "--output-metadata=false",
+                "--output-filename",
+                str(output_file),
+            ],
+        ):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -181,11 +211,22 @@ class TestSwitchCombinations:
         assert "Size:" not in content
 
     def test_all_disabled_no_useful_output(self, tmp_path):
-        """Test --no-content --no-index --no-metadata: no useful output."""
+        """Test --output-content=false --output-index=false --output-metadata=false: no useful output."""
         self.setup_test_files(tmp_path)
         output_file = tmp_path / "output.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--no-content", "--no-index", "--no-metadata", "-o", str(output_file)]):
+        with patch(
+            "sys.argv",
+            [
+                "bfy",
+                str(tmp_path),
+                "--output-content=false",
+                "--output-index=false",
+                "--output-metadata=false",
+                "--output-filename",
+                str(output_file),
+            ],
+        ):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -208,19 +249,19 @@ class TestSwitchCombinations:
         test_cases = [
             # (switches, expected_description)
             ([], "index and contents of all text files"),
-            (["--no-metadata"], "index and contents of all text files"),  # Still has index and content
-            (["--no-content"], "index and metadata of all text files"),
-            (["--no-index"], "contents of all text files"),
-            (["--no-content", "--no-metadata"], "index of all text files"),
-            (["--no-content", "--no-index"], "metadata of all text files"),
-            (["--no-index", "--no-metadata"], "contents of all text files"),
-            (["--no-content", "--no-index", "--no-metadata"], "no useful output"),
+            (["--output-metadata=false"], "index and contents of all text files"),  # Still has index and content
+            (["--output-content=false"], "index and metadata of all text files"),
+            (["--output-index=false"], "contents of all text files"),
+            (["--output-content=false", "--output-metadata=false"], "index of all text files"),
+            (["--output-content=false", "--output-index=false"], "metadata of all text files"),
+            (["--output-index=false", "--output-metadata=false"], "contents of all text files"),
+            (["--output-content=false", "--output-index=false", "--output-metadata=false"], "no useful output"),
         ]
 
         for switches, expected_desc in test_cases:
-            output_file = tmp_path / f"output_{'_'.join(switches)}.txt"
+            output_file = tmp_path / f"output_{'_'.join(s.replace('--', '').replace('=', '_') for s in switches)}.txt"
 
-            with patch("sys.argv", ["bfy", str(tmp_path)] + switches + ["-o", str(output_file)]):
+            with patch("sys.argv", ["bfy", str(tmp_path)] + switches + ["--output-filename", str(output_file)]):
                 main()
 
             content = output_file.read_text(encoding="utf-8")
@@ -232,7 +273,7 @@ class TestSwitchCombinations:
 
         # With content: should show status labels in index and metadata
         output_file = tmp_path / "with_content.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -242,7 +283,7 @@ class TestSwitchCombinations:
 
         # Without content: should NOT show status labels anywhere
         output_file2 = tmp_path / "no_content.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "--no-content", "-o", str(output_file2)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-content=false", "--output-filename", str(output_file2)]):
             main()
 
         content2 = output_file2.read_text(encoding="utf-8")
@@ -255,30 +296,30 @@ class TestSwitchCombinations:
         self.setup_test_files(tmp_path)
 
         output_file = tmp_path / "with_lines.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
         assert "1: print('hello world')" in content
 
-    def test_no_line_numbers_flag_disables_line_numbers(self, tmp_path):
-        """Test that --no-line-numbers flag disables line numbers in content."""
+    def test_output_line_numbers_false_disables_line_numbers(self, tmp_path):
+        """Test that --output-line-numbers=false flag disables line numbers in content."""
         self.setup_test_files(tmp_path)
 
         output_file = tmp_path / "no_line_numbers.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "--no-line-numbers", "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-line-numbers=false", "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
         assert "print('hello world')" in content  # Content present
         assert "1: print('hello world')" not in content  # No line numbers
 
-    def test_no_content_flag_excludes_all_content_and_line_numbers(self, tmp_path):
-        """Test that --no-content flag excludes all file content including line numbers."""
+    def test_output_content_false_excludes_all_content_and_line_numbers(self, tmp_path):
+        """Test that --output-content=false flag excludes all file content including line numbers."""
         self.setup_test_files(tmp_path)
 
         output_file = tmp_path / "no_content.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "--no-content", "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-content=false", "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -286,11 +327,11 @@ class TestSwitchCombinations:
         assert "print('hello world')" not in content  # No content at all
 
 
-class TestSwitchCombinationsWithContext:
-    """Test switch combinations work correctly with .blobify contexts."""
+class TestConfigurationOptionsWithContext:
+    """Test configuration options work correctly with .blobify contexts."""
 
-    def test_context_with_no_content(self, tmp_path):
-        """Test that contexts work with --no-content."""
+    def test_context_with_output_content_false(self, tmp_path):
+        """Test that contexts work with --output-content=false."""
         # Create git repo
         (tmp_path / ".git").mkdir()
 
@@ -311,7 +352,10 @@ class TestSwitchCombinationsWithContext:
         (tmp_path / "README.md").write_text("# README")
 
         output_file = tmp_path / "output.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "docs-only", "--no-content", "-o", str(output_file)]):
+        with patch(
+            "sys.argv",
+            ["bfy", str(tmp_path), "-x", "docs-only", "--output-content=false", "--output-filename", str(output_file)],
+        ):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -320,22 +364,22 @@ class TestSwitchCombinationsWithContext:
         assert "README.md" in content
         assert "app.py" in content  # All files appear in index
 
-        # Should not show content (due to --no-content) or status labels
+        # Should not show content (due to --output-content=false) or status labels
         assert "# README" not in content
         assert "print('app')" not in content
-        assert "[FILE CONTENTS EXCLUDED BY .blobify]" not in content  # No status labels when --no-content
+        assert "[FILE CONTENTS EXCLUDED BY .blobify]" not in content  # No status labels when --output-content=false
 
-    def test_context_with_all_switches(self, tmp_path):
-        """Test context works with various switch combinations."""
+    def test_context_with_all_options(self, tmp_path):
+        """Test context works with various configuration option combinations."""
         # Create git repo
         (tmp_path / ".git").mkdir()
 
-        # Create .blobify with context and default switches
+        # Create .blobify with context and default options
         (tmp_path / ".blobify").write_text(
             """
 [minimal]
-@no-content
-@no-metadata
+@output-content=false
+@output-metadata=false
 -**
 +*.py
 +*.md
@@ -347,7 +391,7 @@ class TestSwitchCombinationsWithContext:
         (tmp_path / "config.xml").write_text("<config/>")
 
         output_file = tmp_path / "output.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "minimal", "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "minimal", "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -357,9 +401,9 @@ class TestSwitchCombinationsWithContext:
         assert "README.md" in content
         assert "config.xml" in content  # All files appear in index
 
-        # Default switches should apply
-        assert "# FILE CONTENTS" not in content  # no-content applied
-        assert "FILE_METADATA:" not in content  # no-metadata applied
+        # Default options should apply
+        assert "# FILE CONTENTS" not in content  # output-content=false applied
+        assert "FILE_METADATA:" not in content  # output-metadata=false applied
         assert "# FILE INDEX" in content  # Index still enabled
 
     def test_context_with_content_filtering(self, tmp_path):
@@ -380,7 +424,7 @@ class TestSwitchCombinationsWithContext:
         (tmp_path / "README.md").write_text("# README content")
 
         output_file = tmp_path / "output.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "docs-only", "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "docs-only", "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -397,73 +441,73 @@ class TestSwitchCombinationsWithContext:
         assert "[FILE CONTENTS EXCLUDED BY .blobify]" in content  # For the excluded files
 
 
-class TestConfigSwitchDefaults:
-    """Test configuration handling for switch defaults in .blobify files."""
+class TestConfigurationOptionDefaults:
+    """Test configuration handling for option defaults in .blobify files."""
 
-    def test_apply_default_switches_no_content(self):
-        """Test applying no-content default switch."""
+    def test_apply_default_options_output_content_false(self):
+        """Test applying output-content=false default option."""
         import argparse
 
         from blobify.config import apply_default_switches
 
-        args = argparse.Namespace(no_content=False)
-        switches = ["no-content"]
+        args = argparse.Namespace(output_content=True)
+        switches = ["output-content=false"]
         result = apply_default_switches(args, switches)
-        assert result.no_content is True
+        assert result.output_content is False
 
-    def test_apply_default_switches_no_metadata(self):
-        """Test applying no-metadata default switch."""
+    def test_apply_default_options_output_metadata_false(self):
+        """Test applying output-metadata=false default option."""
         import argparse
 
         from blobify.config import apply_default_switches
 
-        args = argparse.Namespace(no_metadata=False)
-        switches = ["no-metadata"]
+        args = argparse.Namespace(output_metadata=True)
+        switches = ["output-metadata=false"]
         result = apply_default_switches(args, switches)
-        assert result.no_metadata is True
+        assert result.output_metadata is False
 
-    def test_apply_default_switches_no_index(self):
-        """Test applying no-index default switch."""
+    def test_apply_default_options_output_index_false(self):
+        """Test applying output-index=false default option."""
         import argparse
 
         from blobify.config import apply_default_switches
 
-        args = argparse.Namespace(no_index=False)
-        switches = ["no-index"]
+        args = argparse.Namespace(output_index=True)
+        switches = ["output-index=false"]
         result = apply_default_switches(args, switches)
-        assert result.no_index is True
+        assert result.output_index is False
 
-    def test_apply_default_switches_precedence(self):
-        """Test that command line switches take precedence over defaults."""
+    def test_apply_default_options_precedence(self):
+        """Test that command line options take precedence over defaults."""
         import argparse
 
         from blobify.config import apply_default_switches
 
-        # Command line already has --no-content set
-        args = argparse.Namespace(no_content=True, no_metadata=False)
-        switches = ["no-content", "no-metadata"]  # Both in defaults
+        # Command line already has --output-content=false set
+        args = argparse.Namespace(output_content=False, output_metadata=True)
+        switches = ["output-content=false", "output-metadata=false"]  # Both in defaults
         result = apply_default_switches(args, switches)
 
-        assert result.no_content is True  # Should remain True from command line
-        assert result.no_metadata is True  # Should be set by default
+        assert result.output_content is False  # Should remain False from command line
+        assert result.output_metadata is False  # Should be set by default
 
-    def test_blobify_default_switches_integration(self, tmp_path):
-        """Test that default switches from .blobify file are applied."""
+    def test_blobify_default_options_integration(self, tmp_path):
+        """Test that default options from .blobify file are applied."""
         # Create git repo
         (tmp_path / ".git").mkdir()
 
-        # Create .blobify with default switches
-        (tmp_path / ".blobify").write_text("@no-content\n@no-metadata\n+*.py\n")
+        # Create .blobify with default options
+        (tmp_path / ".blobify").write_text("@output-content=false\n@output-metadata=false\n+*.py\n")
         (tmp_path / "test.py").write_text("print('should not appear')")
 
         output_file = tmp_path / "output.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
 
-        # Default switches should be applied
+        # Default options should be applied
         assert "# FILE INDEX" in content  # Index still enabled
-        assert "FILE_METADATA:" not in content  # no-metadata applied
-        assert "FILE_CONTENT:" not in content  # no-content applied
+        assert "FILE_METADATA:" not in content  # output-metadata=false applied
+        assert "FILE_CONTENT:" not in content  # output-content=false applied
         assert "print('should not appear')" not in content

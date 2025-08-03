@@ -45,14 +45,29 @@ class TestBlobifyConfig:
 +docs/**
 -*.log
 -temp/
-@debug
-@output=test.txt
+@debug=true
+@output-filename=test.txt
 """
         )
         includes, excludes, switches = read_blobify_config(blobify_file.parent)
         assert includes == ["*.py", "docs/**"]
         assert excludes == ["*.log", "temp/"]
-        assert switches == ["debug", "output=test.txt"]
+        assert switches == ["debug=true", "output-filename=test.txt"]
+
+    def test_read_blobify_config_legacy_boolean_switches(self, blobify_file):
+        """Test reading legacy boolean switches (converted to key=true)."""
+        blobify_file.write_text(
+            """
+# Test config with legacy boolean switches
++*.py
+@debug
+@copy-to-clipboard
+"""
+        )
+        includes, excludes, switches = read_blobify_config(blobify_file.parent)
+        assert includes == ["*.py"]
+        assert excludes == []
+        assert switches == ["debug=true", "copy-to-clipboard=true"]
 
     def test_read_blobify_config_with_context(self, blobify_file):
         """Test reading config with specific context."""
@@ -64,7 +79,7 @@ class TestBlobifyConfig:
 [test-context]
 +context.py
 -context.log
-@clip
+@copy-to-clipboard=true
 """
         )
         # Default context
@@ -77,7 +92,24 @@ class TestBlobifyConfig:
         includes, excludes, switches = read_blobify_config(blobify_file.parent, "test-context")
         assert includes == ["context.py"]
         assert excludes == ["context.log"]
-        assert switches == ["clip"]
+        assert switches == ["copy-to-clipboard=true"]
+
+    def test_read_blobify_config_last_value_wins(self, blobify_file):
+        """Test that last value wins for duplicate keys."""
+        blobify_file.write_text(
+            """
+# Test duplicate keys - last value should win
+@debug=false
+@copy-to-clipboard=false
+@debug=true
+@copy-to-clipboard=true
++*.py
+"""
+        )
+        includes, excludes, switches = read_blobify_config(blobify_file.parent)
+        assert includes == ["*.py"]
+        assert excludes == []
+        assert switches == ["debug=true", "copy-to-clipboard=true"]
 
     def test_read_blobify_config_invalid_patterns(self, blobify_file):
         """Test handling of invalid patterns."""
@@ -102,46 +134,74 @@ invalid_line
 
     def test_apply_default_switches_no_switches(self):
         """Test applying empty default switches."""
-        args = argparse.Namespace(debug=False, output=None)
+        args = argparse.Namespace(debug=False, output_filename=None)
         result = apply_default_switches(args, [])
         assert result.debug is False
-        assert result.output is None
+        assert result.output_filename is None
 
     def test_apply_default_switches_boolean_switches(self):
         """Test applying boolean default switches."""
-        args = argparse.Namespace(debug=False, noclean=False, clip=False)
-        switches = ["debug", "noclean", "clip"]
+        args = argparse.Namespace(debug=False, enable_scrubbing=True, copy_to_clipboard=False)
+        switches = ["debug=true", "enable-scrubbing=false", "copy-to-clipboard=true"]
         result = apply_default_switches(args, switches)
         assert result.debug is True
-        assert result.noclean is True
-        assert result.clip is True
+        assert result.enable_scrubbing is False
+        assert result.copy_to_clipboard is True
 
     def test_apply_default_switches_key_value_switches(self):
         """Test applying key=value default switches."""
-        args = argparse.Namespace(output=None)
-        switches = ["output=default.txt"]
+        args = argparse.Namespace(output_filename=None)
+        switches = ["output-filename=default.txt"]
         result = apply_default_switches(args, switches)
-        assert result.output == "default.txt"
+        assert result.output_filename == "default.txt"
 
     def test_apply_default_switches_precedence(self):
         """Test that command line args take precedence over defaults."""
-        args = argparse.Namespace(debug=True, output="cmdline.txt")
-        switches = ["debug", "output=default.txt"]
+        args = argparse.Namespace(debug=True, output_filename="cmdline.txt")
+        switches = ["debug=false", "output-filename=default.txt"]
         result = apply_default_switches(args, switches)
         assert result.debug is True  # Should remain True
-        assert result.output == "cmdline.txt"  # Should remain cmdline value
+        assert result.output_filename == "cmdline.txt"  # Should remain cmdline value
 
     def test_apply_default_switches_unknown_switches(self):
         """Test handling of unknown default switches."""
         args = argparse.Namespace(debug=False)
-        switches = ["unknown-switch", "unknown=value"]
+        switches = ["unknown-switch=true", "unknown=value"]
         result = apply_default_switches(args, switches, debug=True)
         assert result.debug is False
 
     def test_apply_default_switches_dash_underscore_conversion(self):
         """Test handling of dash/underscore conversion in switches."""
-        args = argparse.Namespace(no_line_numbers=False, no_index=False)
-        switches = ["no-line-numbers", "no-index"]
+        args = argparse.Namespace(output_line_numbers=True, output_index=True)
+        switches = ["output-line-numbers=false", "output-index=false"]
         result = apply_default_switches(args, switches)
-        assert result.no_line_numbers is True
-        assert result.no_index is True
+        assert result.output_line_numbers is False
+        assert result.output_index is False
+
+    def test_apply_default_switches_filter_handling(self):
+        """Test handling of filter options."""
+        args = argparse.Namespace(filter=None)
+        switches = ["filter=functions:^def", "filter=classes:^class"]
+        result = apply_default_switches(args, switches)
+        assert result.filter == ["functions:^def", "classes:^class"]
+
+    def test_apply_default_switches_list_patterns(self):
+        """Test handling of list-patterns option."""
+        args = argparse.Namespace(list_patterns="none")
+        switches = ["list-patterns=ignored"]
+        result = apply_default_switches(args, switches)
+        assert result.list_patterns == "ignored"
+
+    def test_apply_default_switches_invalid_boolean_value(self):
+        """Test handling of invalid boolean values in defaults."""
+        args = argparse.Namespace(debug=False)
+        switches = ["debug=invalid"]
+        result = apply_default_switches(args, switches, debug=True)
+        assert result.debug is False  # Should remain unchanged due to invalid value
+
+    def test_apply_default_switches_invalid_list_patterns_value(self):
+        """Test handling of invalid list-patterns values in defaults."""
+        args = argparse.Namespace(list_patterns="none")
+        switches = ["list-patterns=invalid"]
+        result = apply_default_switches(args, switches, debug=True)
+        assert result.list_patterns == "none"  # Should remain unchanged due to invalid value

@@ -395,7 +395,7 @@ def format_output(
         if debug:
             from .console import print_debug
 
-            print_debug("Skipping content generation due to --no-content and --no-metadata flags")
+            print_debug("Skipping content generation due to --output-content=false and --output-metadata=false flags")
 
     # Combine all sections
     result = header + index_section + content_section

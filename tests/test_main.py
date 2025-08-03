@@ -19,7 +19,7 @@ class TestMain:
 
         # Use file output to avoid capture issues
         output_file = tmp_path / "output.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-filename", str(output_file)]):
             main()
 
         # Check real output was produced
@@ -37,7 +37,7 @@ class TestMain:
         output_file = tmp_path / "output.txt"
 
         # Run main with output file
-        with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-filename", str(output_file)]):
             main()
 
         # Check file was created with real content
@@ -59,7 +59,7 @@ class TestMain:
 
         # Use file output
         output_file = tmp_path / "output.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -80,7 +80,7 @@ class TestMain:
         mock_subprocess.return_value = None
 
         # Run with clipboard option on Windows
-        with patch("sys.argv", ["bfy", str(tmp_path), "--clip"]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--copy-to-clipboard=true"]):
             with patch("sys.platform", "win32"):
                 main()
 
@@ -101,7 +101,7 @@ class TestMain:
         mock_popen.return_value = mock_proc
 
         # Run with clipboard on macOS
-        with patch("sys.argv", ["bfy", str(tmp_path), "--clip"]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--copy-to-clipboard=true"]):
             with patch("sys.platform", "darwin"):
                 main()
 
@@ -131,7 +131,7 @@ class TestMain:
         with patch.object(main_module, "format_output") as mock_format:
             mock_format.return_value = ("\ufeffTest output with BOM", 0, 1)
 
-            with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file)]):
+            with patch("sys.argv", ["bfy", str(tmp_path), "--output-filename", str(output_file)]):
                 main()
 
         # Check BOM was removed from file
@@ -150,7 +150,7 @@ class TestMain:
         output_file = tmp_path / "output.txt"
 
         # Run without directory argument
-        with patch("sys.argv", ["bfy", "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text()
@@ -183,7 +183,7 @@ class TestMain:
 
         # Use file output
         output_file = tmp_path / "output.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text()
@@ -217,7 +217,7 @@ class TestMain:
 
         # Test with docs-only context
         output_file = tmp_path / "output.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "--context", "docs-only", "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--context", "docs-only", "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text()
@@ -242,14 +242,14 @@ class TestCliSummaryMessages:
         test_cases = [
             # (switches, expected_message)
             ([], "Processed 2 files"),  # Default case
-            (["--no-content"], "(index and metadata only)"),
-            (["--no-index"], "Processed 2 files"),  # No special message for just no-index
-            (["--no-metadata"], "(index and content, no metadata)"),
-            (["--no-content", "--no-index"], "(metadata only)"),
-            (["--no-content", "--no-metadata"], "(index only)"),
-            (["--no-index", "--no-metadata"], "(content only, no metadata)"),
+            (["--output-content=false"], "(index and metadata only)"),
+            (["--output-index=false"], "Processed 2 files"),  # No special message for just no-index
+            (["--output-metadata=false"], "(index and content, no metadata)"),
+            (["--output-content=false", "--output-index=false"], "(metadata only)"),
+            (["--output-content=false", "--output-metadata=false"], "(index only)"),
+            (["--output-index=false", "--output-metadata=false"], "(content only, no metadata)"),
             (
-                ["--no-content", "--no-index", "--no-metadata"],
+                ["--output-content=false", "--output-index=false", "--output-metadata=false"],
                 "(no useful output - index, content, and metadata all disabled)",
             ),
         ]
@@ -267,7 +267,10 @@ class TestCliSummaryMessages:
         """Test that CLI shows warning when no useful output is generated."""
         self.setup_test_files(tmp_path)
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--no-content", "--no-index", "--no-metadata"]):
+        with patch(
+            "sys.argv",
+            ["bfy", str(tmp_path), "--output-content=false", "--output-index=false", "--output-metadata=false"],
+        ):
             main()
 
         captured = capsys.readouterr()
@@ -319,27 +322,27 @@ class TestCliSummaryMessages:
             mock_format.return_value = ("output", 3, 2)  # 3 substitutions
 
             with patch.object(main_module, "SCRUBADUB_AVAILABLE", True):
-                with patch("sys.argv", ["bfy", str(tmp_path), "--debug"]):
+                with patch("sys.argv", ["bfy", str(tmp_path), "--debug=true"]):
                     main()
 
         captured = capsys.readouterr()
         assert "scrubadub made 3 substitutions" in captured.err
         # With debug, shouldn't suggest using --debug
-        assert "use --debug for details" not in captured.err
+        assert "use --debug=true for details" not in captured.err
 
 
 class TestCommandLineOptions:
     """Test individual command line options work correctly."""
 
     def test_line_numbers_option(self, tmp_path):
-        """Test --no-line-numbers option."""
+        """Test --output-line-numbers option."""
         test_data_dir = tmp_path / "test_data"
         test_data_dir.mkdir()
         (test_data_dir / "test.py").write_text("line1\nline2\nline3")
 
         # Test with line numbers (default)
         output_file1 = tmp_path / "with_lines.txt"
-        with patch("sys.argv", ["bfy", str(test_data_dir), "-o", str(output_file1)]):
+        with patch("sys.argv", ["bfy", str(test_data_dir), "--output-filename", str(output_file1)]):
             main()
 
         with_lines = output_file1.read_text()
@@ -348,7 +351,10 @@ class TestCommandLineOptions:
 
         # Test without line numbers
         output_file2 = tmp_path / "without_lines.txt"
-        with patch("sys.argv", ["bfy", str(test_data_dir), "--no-line-numbers", "-o", str(output_file2)]):
+        with patch(
+            "sys.argv",
+            ["bfy", str(test_data_dir), "--output-line-numbers=false", "--output-filename", str(output_file2)],
+        ):
             main()
 
         without_lines = output_file2.read_text()
@@ -357,12 +363,12 @@ class TestCommandLineOptions:
         assert "line1\nline2\nline3" in without_lines
 
     def test_index_option(self, tmp_path):
-        """Test --no-index option."""
+        """Test --output-index option."""
         (tmp_path / "test.py").write_text("print('test')")
 
         # Test with index (default)
         output_file1 = tmp_path / "with_index.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file1)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-filename", str(output_file1)]):
             main()
 
         with_index = output_file1.read_text()
@@ -370,7 +376,7 @@ class TestCommandLineOptions:
 
         # Test without index
         output_file2 = tmp_path / "without_index.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "--no-index", "-o", str(output_file2)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-index=false", "--output-filename", str(output_file2)]):
             main()
 
         without_index = output_file2.read_text()
@@ -380,12 +386,12 @@ class TestCommandLineOptions:
         assert "# FILE CONTENTS" in without_index
 
     def test_content_option(self, tmp_path):
-        """Test --no-content option."""
+        """Test --output-content option."""
         (tmp_path / "test.py").write_text("print('secret content')")
 
         # Test with content (default)
         output_file1 = tmp_path / "with_content.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file1)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-filename", str(output_file1)]):
             main()
 
         with_content = output_file1.read_text()
@@ -394,7 +400,7 @@ class TestCommandLineOptions:
 
         # Test without content
         output_file2 = tmp_path / "without_content.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "--no-content", "-o", str(output_file2)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-content=false", "--output-filename", str(output_file2)]):
             main()
 
         without_content = output_file2.read_text()
@@ -403,7 +409,7 @@ class TestCommandLineOptions:
         assert "# FILE INDEX" in without_content  # Should still have index
 
     def test_metadata_option(self, tmp_path):
-        """Test --no-metadata option."""
+        """Test --output-metadata option."""
         # Create a clean test environment that won't include project source files
         test_dir = tmp_path / "test_project"
         test_dir.mkdir()
@@ -414,7 +420,7 @@ class TestCommandLineOptions:
 
         # Test with metadata (default)
         output_file1 = tmp_path / "with_metadata.txt"
-        with patch("sys.argv", ["bfy", str(test_dir), "-o", str(output_file1)]):
+        with patch("sys.argv", ["bfy", str(test_dir), "--output-filename", str(output_file1)]):
             main()
 
         with_metadata = output_file1.read_text()
@@ -425,7 +431,7 @@ class TestCommandLineOptions:
 
         # Test without metadata
         output_file2 = tmp_path / "without_metadata.txt"
-        with patch("sys.argv", ["bfy", str(test_dir), "--no-metadata", "-o", str(output_file2)]):
+        with patch("sys.argv", ["bfy", str(test_dir), "--output-metadata=false", "--output-filename", str(output_file2)]):
             main()
 
         without_metadata = output_file2.read_text()
@@ -441,7 +447,7 @@ class TestCommandLineOptions:
                     metadata_section_found = True
                     break
 
-        assert not metadata_section_found, "Found FILE_METADATA section when --no-metadata was specified"
+        assert not metadata_section_found, "Found FILE_METADATA section when --output-metadata=false was specified"
 
         # Should still have the actual content
         assert "print('hello world')" in without_metadata
@@ -454,29 +460,29 @@ class TestCommandLineOptions:
         (tmp_path / ".gitignore").write_text("*.log")
         (tmp_path / "test.py").write_text("print('test')")
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--debug"]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--debug=true"]):
             main()
 
         captured = capsys.readouterr()
         # Should see debug messages
         assert any("debug" in line.lower() for line in captured.err.split("\n"))
 
-    def test_noclean_option_behavior(self, tmp_path):
-        """Test --noclean option disables scrubbing."""
+    def test_enable_scrubbing_option_behavior(self, tmp_path):
+        """Test --enable-scrubbing option controls scrubbing."""
         (tmp_path / "test.py").write_text("email: test@example.com")
 
-        # Test without noclean (scrubbing enabled if available)
+        # Test with scrubbing enabled (default)
         output_file1 = tmp_path / "with_scrub.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file1)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-filename", str(output_file1)]):
             main()
 
-        # Test with noclean (scrubbing disabled)
+        # Test with scrubbing disabled
         output_file2 = tmp_path / "without_scrub.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "--noclean", "-o", str(output_file2)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--enable-scrubbing=false", "--output-filename", str(output_file2)]):
             main()
 
         # Both should contain the email since scrubadub may not be available in test environment
-        # The important thing is that --noclean doesn't break anything
+        # The important thing is that --enable-scrubbing=false doesn't break anything
         content1 = output_file1.read_text()
         content2 = output_file2.read_text()
         assert "test@example.com" not in content1

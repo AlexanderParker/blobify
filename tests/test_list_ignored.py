@@ -1,4 +1,4 @@
-"""Tests for the --list-ignored feature."""
+"""Tests for the --list-patterns=ignored feature."""
 
 from unittest.mock import patch
 
@@ -6,11 +6,11 @@ from blobify.main import list_ignored_patterns, main
 
 
 class TestListIgnoredFeature:
-    """Test cases for the --list-ignored command line option."""
+    """Test cases for the --list-patterns=ignored command line option."""
 
-    def test_list_ignored_patterns_short_flag(self, capsys):
-        """Test --list-ignored with short flag -g."""
-        with patch("sys.argv", ["bfy", "-g"]):
+    def test_list_ignored_patterns_option(self, capsys):
+        """Test --list-patterns=ignored option."""
+        with patch("sys.argv", ["bfy", "--list-patterns=ignored"]):
             main()
 
         captured = capsys.readouterr()
@@ -20,22 +20,9 @@ class TestListIgnoredFeature:
         assert "node_modules" in captured.out
         assert "__pycache__" in captured.out
 
-    def test_list_ignored_patterns_long_flag(self, capsys):
-        """Test --list-ignored with long flag."""
-        with patch("sys.argv", ["bfy", "--list-ignored"]):
-            main()
-
-        captured = capsys.readouterr()
-        assert "Built-in ignored patterns:" in captured.out
-        assert "Dot folders:" in captured.out
-        assert "Package manager directories:" in captured.out
-        assert "Python environments & cache:" in captured.out
-        assert "Build directories:" in captured.out
-        assert "Security & certificate directories:" in captured.out
-
     def test_list_ignored_patterns_categories(self, capsys):
         """Test that patterns are properly categorised."""
-        with patch("sys.argv", ["bfy", "-g"]):
+        with patch("sys.argv", ["bfy", "--list-patterns=ignored"]):
             main()
 
         captured = capsys.readouterr()
@@ -68,12 +55,12 @@ class TestListIgnoredFeature:
         assert ".ssh" in output
 
     def test_list_ignored_patterns_exits_early(self, tmp_path, capsys):
-        """Test that --list-ignored exits without processing files."""
+        """Test that --list-patterns=ignored exits without processing files."""
         # Create test files that would normally be processed
         (tmp_path / "test.py").write_text("print('should not be processed')")
 
-        # Test that the --list-ignored flag works and doesn't process files
-        with patch("sys.argv", ["bfy", str(tmp_path), "-g"]):
+        # Test that the --list-patterns=ignored flag works and doesn't process files
+        with patch("sys.argv", ["bfy", str(tmp_path), "--list-patterns=ignored"]):
             main()
 
         # Verify that the list was printed (which means the function worked)
@@ -85,8 +72,8 @@ class TestListIgnoredFeature:
         assert "print('should not be processed')" not in captured.out
 
     def test_list_ignored_patterns_with_other_flags_ignored(self, capsys):
-        """Test that other flags are ignored when --list-ignored is used."""
-        with patch("sys.argv", ["bfy", "-g", "--debug", "--clip"]):
+        """Test that other flags are ignored when --list-patterns=ignored is used."""
+        with patch("sys.argv", ["bfy", "--list-patterns=ignored", "--debug=true", "--copy-to-clipboard=true"]):
             main()
 
         captured = capsys.readouterr()
@@ -165,8 +152,8 @@ class TestListIgnoredFeature:
             assert dot_folder_patterns == sorted(dot_folder_patterns)
 
     def test_list_ignored_patterns_no_directory_needed(self, capsys):
-        """Test that --list-ignored works without specifying a directory."""
-        with patch("sys.argv", ["bfy", "-g"]):
+        """Test that --list-patterns=ignored works without specifying a directory."""
+        with patch("sys.argv", ["bfy", "--list-patterns=ignored"]):
             main()
 
         captured = capsys.readouterr()
@@ -182,7 +169,7 @@ class TestListIgnoredFeature:
         actual_patterns = get_built_in_ignored_patterns()
 
         # Run list command
-        with patch("sys.argv", ["bfy", "-g"]):
+        with patch("sys.argv", ["bfy", "--list-patterns=ignored"]):
             main()
 
         captured = capsys.readouterr()

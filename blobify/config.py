@@ -7,6 +7,24 @@ from typing import Dict, List, Optional, Tuple
 from .console import print_debug, print_error, print_warning
 
 
+def validate_boolean_value(value: str) -> bool:
+    """Validate and convert boolean string values."""
+    if value.lower() in ["true", "1", "yes", "on"]:
+        return True
+    elif value.lower() in ["false", "0", "no", "off"]:
+        return False
+    else:
+        raise ValueError(f"Invalid boolean value: '{value}'. Use 'true' or 'false'.")
+
+
+def validate_list_patterns_value(value: str) -> str:
+    """Validate list-patterns option values."""
+    allowed_values = ["none", "ignored", "contexts"]
+    if value not in allowed_values:
+        raise ValueError(f"Invalid list-patterns value: '{value}'. Use one of: {', '.join(allowed_values)}")
+    return value
+
+
 def read_blobify_config(git_root: Path, context: Optional[str] = None, debug: bool = False) -> Tuple[List[str], List[str], List[str]]:
     """
     Read .blobify configuration file from git root with context inheritance support.
@@ -121,13 +139,29 @@ def _parse_contexts_with_inheritance(blobify_file: Path, debug: bool = False) ->
             current_config = contexts[current_context]
 
             if line.startswith("@"):
-                # Default switch pattern
+                # Configuration option pattern
                 switch_line = line[1:].strip()
                 if switch_line:
-                    current_config["default_switches"].append(switch_line)
+                    # Check if this is a key=value option or legacy boolean switch
+                    if "=" in switch_line:
+                        key, value = switch_line.split("=", 1)
+                        key = key.strip()
+                        value = value.strip()
+                        switch_entry = f"{key}={value}"
+                    else:
+                        # Legacy boolean switch format - treat as key=true
+                        key = switch_line
+                        switch_entry = f"{key}=true"
+
+                    # Implement "last value wins" - remove any previous entries for this key
+                    current_config["default_switches"] = [s for s in current_config["default_switches"] if not s.startswith(f"{key}=")]
+
+                    # Add the new entry
+                    current_config["default_switches"].append(switch_entry)
+
                     if debug:
                         context_info = f" (context: {current_context})"
-                        print_debug(f".blobify line {line_num}: Default switch '{switch_line}'{context_info}")
+                        print_debug(f".blobify line {line_num}: Configuration option '{switch_entry}'{context_info}")
 
             elif line.startswith("+"):
                 # Include pattern
@@ -156,7 +190,7 @@ def _parse_contexts_with_inheritance(blobify_file: Path, debug: bool = False) ->
                 f"Final context '{ctx_name}': "
                 f"{len(config['include_patterns'])} include, "
                 f"{len(config['exclude_patterns'])} exclude, "
-                f"{len(config['default_switches'])} switches"
+                f"{len(config['default_switches'])} options"
             )
 
     return contexts
@@ -279,16 +313,16 @@ def list_available_contexts(directory: Path):
         print("[signatures]")
         print("# Context for extracting function signatures")
         print("@filter=signatures:^(def|class)\\s+")
-        print("@no-line-numbers")
+        print("@output-line-numbers=false")
         print("+*.py")
         print("")
         print("Context inheritance:")
         print("[base]")
-        print("@clip")
+        print("@copy-to-clipboard=true")
         print("+*.py")
         print("")
         print("[extended:base]")
-        print("# Inherits @clip and +*.py from base")
+        print("# Inherits @copy-to-clipboard=true and +*.py from base")
         print("+*.md")
         print("")
         print("Multiple inheritance:")
@@ -344,7 +378,7 @@ def _get_context_inheritance_info(git_root: Path) -> Dict[str, str]:
 
 def apply_default_switches(args: argparse.Namespace, default_switches: List[str], debug: bool = False) -> argparse.Namespace:
     """
-    Apply default switches from .blobify file to command line arguments.
+    Apply default configuration options from .blobify file to command line arguments.
     Command line arguments take precedence over defaults.
     """
     if not default_switches:
@@ -355,89 +389,82 @@ def apply_default_switches(args: argparse.Namespace, default_switches: List[str]
 
     for switch_line in default_switches:
         if debug:
-            print_debug(f"Processing default switch: '{switch_line}'")
+            print_debug(f"Processing default option: '{switch_line}'")
 
-        # Check if this is a key=value switch or boolean switch
+        # Parse the option
         if "=" in switch_line:
-            # Handle key=value switches like "output=filename.txt" or "filter=name:regex"
             key, value = switch_line.split("=", 1)
             key = key.strip()
             value = value.strip()
-
-            if key == "output":
-                if not args_dict.get("output"):  # Only apply if not set via command line
-                    args_dict["output"] = value
-                    if debug:
-                        print_debug(f"Applied default: --output={value}")
-            elif key == "filter":
-                # Handle filter defaults - can have multiple filters
-                if not args_dict.get("filter"):
-                    args_dict["filter"] = []
-                args_dict["filter"].append(value)
-                if debug:
-                    print_debug(f"Applied default: --filter={value}")
-            else:
-                if debug:
-                    print_warning(f"Unknown key=value switch ignored: '{key}={value}'")
         else:
-            # Handle boolean switches
-            switch = switch_line.strip()
+            # Legacy format support - treat as boolean=true
+            key = switch_line.strip()
+            value = "true"
 
-            if switch == "debug":
-                if not args_dict.get("debug", False):
-                    args_dict["debug"] = True
-                    if debug:
-                        print_debug("Applied default: --debug")
-            elif switch == "noclean":
-                if not args_dict.get("noclean", False):
-                    args_dict["noclean"] = True
-                    if debug:
-                        print_debug("Applied default: --noclean")
-            elif switch == "no-line-numbers":
-                if not args_dict.get("no_line_numbers", False):
-                    args_dict["no_line_numbers"] = True
-                    if debug:
-                        print_debug("Applied default: --no-line-numbers")
-            elif switch == "no-index":
-                if not args_dict.get("no_index", False):
-                    args_dict["no_index"] = True
-                    if debug:
-                        print_debug("Applied default: --no-index")
-            elif switch == "no-content":
-                if not args_dict.get("no_content", False):
-                    args_dict["no_content"] = True
-                    if debug:
-                        print_debug("Applied default: --no-content")
-            elif switch == "no-metadata":
-                if not args_dict.get("no_metadata", False):
-                    args_dict["no_metadata"] = True
-                    if debug:
-                        print_debug("Applied default: --no-metadata")
-            elif switch == "clip":
-                if not args_dict.get("clip", False):
-                    args_dict["clip"] = True
-                    if debug:
-                        print_debug("Applied default: --clip")
-            elif switch == "suppress-excluded":
-                if not args_dict.get("suppress_excluded", False):
-                    args_dict["suppress_excluded"] = True
-                    if debug:
-                        print_debug("Applied default: --suppress-excluded")
-            else:
-                # Handle switches with dashes converted to underscores
-                switch_variants = [switch, switch.replace("-", "_"), switch.replace("_", "-")]
+        # Convert key to argument name (handle dashes/underscores)
+        arg_name = key.replace("-", "_")
 
-                applied = False
-                for variant in switch_variants:
-                    if variant in args_dict and not args_dict.get(variant, False):
-                        args_dict[variant] = True
-                        applied = True
+        # Only apply if not already set by command line (check for default values)
+        if arg_name in args_dict:
+            current_value = args_dict[arg_name]
+
+            # Determine if this is the default value based on the argument type
+            is_default_value = False
+            if isinstance(current_value, bool):
+                # For boolean options, check against expected defaults
+                expected_defaults = {
+                    "debug": False,
+                    "enable_scrubbing": True,
+                    "output_line_numbers": True,
+                    "output_index": True,
+                    "output_content": True,
+                    "output_metadata": True,
+                    "copy_to_clipboard": False,
+                    "show_excluded": True,
+                }
+                is_default_value = current_value == expected_defaults.get(arg_name, current_value)
+            elif current_value == "none":  # list_patterns default
+                is_default_value = True
+            elif current_value is None:  # output_filename, filter, context defaults
+                is_default_value = True
+            elif isinstance(current_value, list) and not current_value:  # empty filter list
+                is_default_value = True
+
+            if is_default_value:
+                try:
+                    if key == "filter":
+                        # Handle filter options - can have multiple filters
+                        if not args_dict.get("filter"):
+                            args_dict["filter"] = []
+                        args_dict["filter"].append(value)
                         if debug:
-                            print_debug(f"Applied default: --{variant}")
-                        break
-
-                if not applied and debug:
-                    print_warning(f"Unknown default switch ignored: '{switch}'")
+                            print_debug(f"Applied default: --{key}={value}")
+                    elif key in ["output-filename", "output_filename"]:
+                        # Handle output filename
+                        args_dict["output_filename"] = value
+                        if debug:
+                            print_debug(f"Applied default: --output-filename={value}")
+                    elif key == "list-patterns" or key == "list_patterns":
+                        # Handle list-patterns option
+                        validated_value = validate_list_patterns_value(value)
+                        args_dict["list_patterns"] = validated_value
+                        if debug:
+                            print_debug(f"Applied default: --list-patterns={validated_value}")
+                    else:
+                        # Handle boolean options
+                        validated_value = validate_boolean_value(value)
+                        args_dict[arg_name] = validated_value
+                        if debug:
+                            print_debug(f"Applied default: --{key}={validated_value}")
+                except ValueError as e:
+                    if debug:
+                        print_warning(f"Invalid default option value ignored: '{key}={value}' - {e}")
+            else:
+                if debug:
+                    print_debug(f"Skipping default option '{key}={value}' - command line value takes precedence")
+        else:
+            if debug:
+                print_warning(f"Unknown default option ignored: '{key}={value}'")
 
     # Convert back to namespace
     return argparse.Namespace(**args_dict)

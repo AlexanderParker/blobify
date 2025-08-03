@@ -1,4 +1,4 @@
-"""Tests for the --suppress-excluded functionality."""
+"""Tests for the --show-excluded functionality."""
 
 from unittest.mock import patch
 
@@ -7,8 +7,8 @@ import pytest
 from blobify.main import main
 
 
-class TestSuppressExcluded:
-    """Test cases for the --suppress-excluded command line option."""
+class TestShowExcluded:
+    """Test cases for the --show-excluded command line option."""
 
     def setup_test_environment(self, tmp_path):
         """Create a test environment with git repo, gitignore, and blobify config."""
@@ -47,7 +47,7 @@ class TestSuppressExcluded:
         self.setup_test_environment(tmp_path)
         output_file = tmp_path / "output_default.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -72,12 +72,12 @@ class TestSuppressExcluded:
         assert "ERROR: Something went wrong" not in content
         assert "password=secret123" not in content
 
-    def test_suppress_excluded_removes_files_from_content_section(self, tmp_path):
-        """Test that --suppress-excluded removes excluded files from content section entirely."""
+    def test_show_excluded_false_removes_files_from_content_section(self, tmp_path):
+        """Test that --show-excluded=false removes excluded files from content section entirely."""
         self.setup_test_environment(tmp_path)
         output_file = tmp_path / "output_suppressed.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--suppress-excluded", "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--show-excluded=false", "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -105,37 +105,57 @@ class TestSuppressExcluded:
         assert "START_FILE: app.py" in content
         assert "START_FILE: README.md" in content
 
-    def test_suppress_excluded_with_no_content_flag(self, tmp_path):
-        """Test that --suppress-excluded works correctly with --no-content."""
+    def test_show_excluded_with_no_content_flag(self, tmp_path):
+        """Test that --show-excluded=false works correctly with --output-content=false."""
         self.setup_test_environment(tmp_path)
         output_file = tmp_path / "output_no_content.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--suppress-excluded", "--no-content", "-o", str(output_file)]):
+        with patch(
+            "sys.argv",
+            [
+                "bfy",
+                str(tmp_path),
+                "--show-excluded=false",
+                "--output-content=false",
+                "--output-filename",
+                str(output_file),
+            ],
+        ):
             main()
 
         content = output_file.read_text(encoding="utf-8")
 
-        # Should include all files in index (--no-content doesn't show status labels)
+        # Should include all files in index (--output-content=false doesn't show status labels)
         assert "app.py" in content
         assert "README.md" in content
-        assert "debug.log" in content  # No status label with --no-content
+        assert "debug.log" in content  # No status label with --output-content=false
         assert "secret.txt" in content
 
-        # Should not show any file content (due to --no-content)
+        # Should not show any file content (due to --output-content=false)
         assert "print('main application')" not in content
         assert "# Project Documentation" not in content
 
-        # Should not have any START_FILE markers (due to --no-content)
-        # Note: When --no-content is used but metadata is enabled (default), START_FILE markers
+        # Should not have any START_FILE markers (due to --output-content=false)
+        # Note: When --output-content=false is used but metadata is enabled (default), START_FILE markers
         # will still appear for included files to wrap the metadata sections
         assert "FILE_CONTENT:" not in content
 
-    def test_suppress_excluded_with_metadata_only(self, tmp_path):
-        """Test that --suppress-excluded works with --no-content but metadata enabled."""
+    def test_show_excluded_with_metadata_only(self, tmp_path):
+        """Test that --show-excluded=false works with --output-content=false but metadata enabled."""
         self.setup_test_environment(tmp_path)
         output_file = tmp_path / "output_metadata_only.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--suppress-excluded", "--no-content", "-o", str(output_file)]):
+        with patch(
+            "sys.argv",
+            [
+                "bfy",
+                str(tmp_path),
+                "--show-excluded=false",
+                "--output-content=false",
+                "--output-filename",
+                str(output_file),
+            ],
+        ):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -152,31 +172,15 @@ class TestSuppressExcluded:
         assert "FILE_METADATA:" in content
         assert "Size:" in content
 
-    def test_suppress_excluded_short_flag(self, tmp_path):
-        """Test that the short flag -s works correctly."""
-        self.setup_test_environment(tmp_path)
-        output_file = tmp_path / "output_short_flag.txt"
-
-        with patch("sys.argv", ["bfy", str(tmp_path), "-s", "-o", str(output_file)]):
-            main()
-
-        content = output_file.read_text(encoding="utf-8")
-
-        # Should work same as --suppress-excluded
-        assert "START_FILE: app.py" in content
-        assert "START_FILE: README.md" in content
-        assert "START_FILE: debug.log" not in content
-        assert "START_FILE: secret.txt" not in content
-
-    def test_suppress_excluded_as_default_switch_in_blobify(self, tmp_path):
-        """Test that suppress-excluded can be set as a default switch in .blobify."""
+    def test_show_excluded_as_default_switch_in_blobify(self, tmp_path):
+        """Test that show-excluded can be set as a default switch in .blobify."""
         # Create git repo
         (tmp_path / ".git").mkdir()
 
-        # Create .blobify with suppress-excluded as default
+        # Create .blobify with show-excluded=false as default
         (tmp_path / ".blobify").write_text(
             """
-@suppress-excluded
+@show-excluded=false
 +*.py
 -*.log
 """
@@ -187,7 +191,7 @@ class TestSuppressExcluded:
 
         output_file = tmp_path / "output_default_switch.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -205,16 +209,16 @@ class TestSuppressExcluded:
         # Create .gitignore
         (tmp_path / ".gitignore").write_text("*.log\n")
 
-        # Create .blobify with suppress-excluded as default
-        (tmp_path / ".blobify").write_text("@suppress-excluded\n+*.py\n")
+        # Create .blobify with show-excluded=false as default
+        (tmp_path / ".blobify").write_text("@show-excluded=false\n+*.py\n")
 
         (tmp_path / "app.py").write_text("print('app')")
         (tmp_path / "debug.log").write_text("error message")
 
         output_file = tmp_path / "output_override.txt"
 
-        # Run without any suppress flag - should use .blobify default
-        with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file)]):
+        # Run without any show-excluded flag - should use .blobify default
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -223,8 +227,8 @@ class TestSuppressExcluded:
         # Currently there's no way to override a default switch from command line
         # This is expected behavior - .blobify defaults are always applied
 
-    def test_suppress_excluded_context_integration(self, tmp_path):
-        """Test that --suppress-excluded works correctly with contexts."""
+    def test_show_excluded_context_integration(self, tmp_path):
+        """Test that --show-excluded=false works correctly with contexts."""
         # Create git repo
         (tmp_path / ".git").mkdir()
 
@@ -236,7 +240,7 @@ class TestSuppressExcluded:
 +*.md
 
 [strict]
-@suppress-excluded
+@show-excluded=false
 -**
 +*.py
 """
@@ -248,7 +252,7 @@ class TestSuppressExcluded:
 
         output_file = tmp_path / "output_context.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "strict", "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "strict", "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -262,38 +266,48 @@ class TestSuppressExcluded:
         assert "README.md [FILE CONTENTS EXCLUDED BY .blobify]" in content
         assert "config.xml [FILE CONTENTS EXCLUDED BY .blobify]" in content
 
-    def test_config_apply_default_switches_suppress_excluded(self):
-        """Test that suppress-excluded can be applied as a default switch."""
+    def test_config_apply_default_switches_show_excluded(self):
+        """Test that show-excluded can be applied as a default switch."""
         import argparse
 
         from blobify.config import apply_default_switches
 
-        args = argparse.Namespace(suppress_excluded=False)
-        switches = ["suppress-excluded"]
+        args = argparse.Namespace(show_excluded=True)
+        switches = ["show-excluded=false"]
         result = apply_default_switches(args, switches)
-        assert result.suppress_excluded is True
+        assert result.show_excluded is False
 
-    def test_config_apply_default_switches_precedence_suppress_excluded(self):
-        """Test that command line suppress-excluded takes precedence over defaults."""
+    def test_config_apply_default_switches_precedence_show_excluded(self):
+        """Test that command line show-excluded takes precedence over defaults."""
         import argparse
 
         from blobify.config import apply_default_switches
 
-        # Command line already has --suppress-excluded set
-        args = argparse.Namespace(suppress_excluded=True, no_metadata=False)
-        switches = ["suppress-excluded", "no-metadata"]  # Both in defaults
+        # Command line already has --show-excluded=false set
+        args = argparse.Namespace(show_excluded=False, output_metadata=True)
+        switches = ["show-excluded=false", "output-metadata=false"]  # Both in defaults
         result = apply_default_switches(args, switches)
 
-        assert result.suppress_excluded is True  # Should remain True from command line
-        assert result.no_metadata is True  # Should be set by default
+        assert result.show_excluded is False  # Should remain False from command line
+        assert result.output_metadata is False  # Should be set by default
 
     def test_integration_with_other_switches(self, tmp_path):
-        """Test suppress-excluded works correctly with other switches."""
+        """Test show-excluded works correctly with other switches."""
         self.setup_test_environment(tmp_path)
 
-        # Test with --no-line-numbers
+        # Test with --output-line-numbers=false
         output_file = tmp_path / "output_no_lines.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "--suppress-excluded", "--no-line-numbers", "-o", str(output_file)]):
+        with patch(
+            "sys.argv",
+            [
+                "bfy",
+                str(tmp_path),
+                "--show-excluded=false",
+                "--output-line-numbers=false",
+                "--output-filename",
+                str(output_file),
+            ],
+        ):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -307,7 +321,17 @@ class TestSuppressExcluded:
         self.setup_test_environment(tmp_path)
         output_file = tmp_path / "output_clean.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--suppress-excluded", "--no-metadata", "-o", str(output_file)]):
+        with patch(
+            "sys.argv",
+            [
+                "bfy",
+                str(tmp_path),
+                "--show-excluded=false",
+                "--output-metadata=false",
+                "--output-filename",
+                str(output_file),
+            ],
+        ):
             main()
 
         content = output_file.read_text(encoding="utf-8")

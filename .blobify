@@ -5,17 +5,17 @@
 +.blobify
 +misc\blobify-dark.svg
 LICENSE
-@clip
-@noclean
-@suppress-excluded
+@copy-to-clipboard=true
+@show-excluded=false
+@enable-scrubbing=false
 
 [docs-only]
 # Context for documentation review (use with -x docs-only or --context=docs-only)
 -**
 +*.md
-@clip
-@noclean
-@suppress-excluded
+@copy-to-clipboard=true
+@show-excluded=false
+@output-metadata=false
 
 [method-signatures:default]
 # Enhanced context for method signatures and structure analysis
@@ -25,6 +25,7 @@ LICENSE
 @filter=imports:^ *(from\s+\w+.*import.*|import\s+\w+.*)
 @filter=docstrings:^ *""".*|^ *'''.*|^ *r?""".*|^ *r?'''.*
 @filter=type-hints:.*:\s*\w+.*->.*|.*:\s*[A-Z]\w*\[.*\]|.*:\s*(str|int|bool|float|list|dict|tuple|set|Optional|Union|Any|Callable)
+@output-line-numbers=false
 
 [comprehensive-signatures:default]
 # More comprehensive signature extraction including constants and error handling
@@ -36,6 +37,7 @@ LICENSE
 @filter=constants:^ *[A-Z_][A-Z0-9_]*\s*=.*
 @filter=exceptions:^ *(raise\s+.*|except\s+.*:|try:|finally:)
 @filter=docstrings:^ *""".*|^ *'''.*
+@output-line-numbers=false
 
 [api-surface:default]
 # Extract public API surface - classes, functions, and their signatures
@@ -45,6 +47,7 @@ LICENSE
 @filter=exports:^ *__all__\s*=.*
 @filter=imports:^ *(from\s+\w+.*import.*|import\s+\w+.*)
 @filter=module-docs:^ *""".*|^ *'''.*
+@output-line-numbers=false
 
 [structure-overview:default]
 # High-level code structure for quick understanding
@@ -54,14 +57,15 @@ LICENSE
 @filter=special-methods:^ *def\s+__\w+__.*:
 @filter=imports:^ *(from\s+\w+.*import.*|import\s+\w+.*)
 @filter=constants:^ *[A-Z_][A-Z0-9_]*\s*=.*
+@output-line-numbers=false
 
 # Example that can be used to selectively build up a context from individual "mixins"
 
 [nothing]
 # Example context that returns nothing
-@suppress-excluded
+@show-excluded=false
 -**
-@no-index
+@output-index=false
 
 [test1]
 +LICENSE
@@ -71,3 +75,36 @@ LICENSE
 
 [test3:nothing,test1,test2]
 # Will only include LICENSE and README.md
+
+[clean-output:default]
+# Clean output with minimal noise
+@show-excluded=false
+@output-metadata=false
+@output-line-numbers=false
+@copy-to-clipboard=true
+
+[debug-mode:default]
+# Debug mode with verbose output
+@debug=true
+@enable-scrubbing=false
+@output-metadata=true
+
+[clipboard-ready:default]
+# Ready for clipboard with clean output
+@copy-to-clipboard=true
+@show-excluded=false
+@output-metadata=false
+
+[file-export:default]
+# Configuration for file export
+@output-filename=project-export.txt
+@show-excluded=false
+@output-metadata=true
+
+[todo-finder]
+# Find all TODOs, FIXMEs, and similar markers
+@filter=todos:(TODO|FIXME|XXX|HACK|NOTE|WARNING)
+@show-excluded=false
+@output-line-numbers=true
+@copy-to-clipboard=true
++**

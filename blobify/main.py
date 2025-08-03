@@ -16,6 +16,26 @@ from .git_utils import is_git_repository
 from .output_formatter import format_output
 
 
+def validate_boolean(value):
+    """Validate and convert boolean string values."""
+    if isinstance(value, bool):
+        return value
+    if value.lower() in ["true", "1", "yes", "on"]:
+        return True
+    elif value.lower() in ["false", "0", "no", "off"]:
+        return False
+    else:
+        raise argparse.ArgumentTypeError(f"Invalid boolean value: '{value}'. Use 'true' or 'false'.")
+
+
+def validate_list_patterns(value):
+    """Validate list-patterns option values."""
+    allowed_values = ["none", "ignored", "contexts"]
+    if value not in allowed_values:
+        raise argparse.ArgumentTypeError(f"Invalid list-patterns value: '{value}'. Use one of: {', '.join(allowed_values)}")
+    return value
+
+
 def _should_modify_stdout():
     """
     Determine if we should modify sys.stdout for Windows Unicode support.
@@ -86,7 +106,7 @@ def main():
     try:
         parser = argparse.ArgumentParser(
             description="Recursively scan directory for text files and create index. Respects .gitignore when in a git repository. "
-            "Supports .blobify configuration files for pattern-based overrides and default command-line switches. "
+            "Supports .blobify configuration files for pattern-based overrides and default command-line options. "
             "Attempts to detect and replace sensitive data using scrubadub by default."
         )
         parser.add_argument(
@@ -95,7 +115,7 @@ def main():
             default=None,
             help="Directory to scan (defaults to current directory if .blobify file exists)",
         )
-        parser.add_argument("-o", "--output", help="Output file (optional, defaults to stdout)")
+        parser.add_argument("--output-filename", help="Output file (optional, defaults to stdout)")
         parser.add_argument(
             "-x",
             "--context",
@@ -104,52 +124,52 @@ def main():
             help="Use specific context from .blobify file, or list available contexts if no name provided",
         )
         parser.add_argument(
-            "-d",
             "--debug",
-            action="store_true",
-            help="Enable debug output for gitignore and .blobify processing",
+            type=validate_boolean,
+            default=False,
+            help="Enable debug output for gitignore and .blobify processing (default: false)",
         )
         parser.add_argument(
-            "-n",
-            "--noclean",
-            action="store_true",
-            help="Disable scrubadub processing of sensitive data (emails, names, etc.)",
+            "--enable-scrubbing",
+            type=validate_boolean,
+            default=True,
+            help="Enable scrubadub processing of sensitive data (default: true)",
         )
         parser.add_argument(
-            "-l",
-            "--no-line-numbers",
-            action="store_true",
-            help="Disable line numbers in file content output",
+            "--output-line-numbers",
+            type=validate_boolean,
+            default=True,
+            help="Include line numbers in file content output (default: true)",
         )
         parser.add_argument(
-            "-i",
-            "--no-index",
-            action="store_true",
-            help="Disable file index section at start of output",
+            "--output-index",
+            type=validate_boolean,
+            default=True,
+            help="Include file index section at start of output (default: true)",
         )
         parser.add_argument(
-            "-k",
-            "--no-content",
-            action="store_true",
-            help="Exclude file contents but include metadata (size, timestamps, status)",
+            "--output-content",
+            type=validate_boolean,
+            default=True,
+            help="Include file contents in output (default: true)",
         )
         parser.add_argument(
-            "-m",
-            "--no-metadata",
-            action="store_true",
-            help="Exclude file metadata (size, timestamps, status) from output",
+            "--output-metadata",
+            type=validate_boolean,
+            default=True,
+            help="Include file metadata (size, timestamps, status) in output (default: true)",
         )
         parser.add_argument(
-            "-c",
-            "--clip",
-            action="store_true",
-            help="Copy output to clipboard",
+            "--copy-to-clipboard",
+            type=validate_boolean,
+            default=False,
+            help="Copy output to clipboard (default: false)",
         )
         parser.add_argument(
-            "-s",
-            "--suppress-excluded",
-            action="store_true",
-            help="Suppress excluded files from file contents section (keep them in index only)",
+            "--show-excluded",
+            type=validate_boolean,
+            default=True,
+            help="Show excluded files in file contents section (default: true)",
         )
         parser.add_argument(
             "-f",
@@ -158,16 +178,34 @@ def main():
             help="Content filter: name:regex pattern (can be used multiple times)",
         )
         parser.add_argument(
-            "-g",
-            "--list-ignored",
-            action="store_true",
-            help="List built-in ignored patterns and exit",
+            "--list-patterns",
+            type=validate_list_patterns,
+            default="none",
+            help="List patterns and exit: 'ignored' shows built-in patterns, 'contexts' shows available contexts (default: none)",
         )
         args = parser.parse_args()
 
-        # Handle --list-ignored option
-        if args.list_ignored:
+        # Handle --list-patterns option
+        if args.list_patterns == "ignored":
             list_ignored_patterns()
+            return
+        elif args.list_patterns == "contexts":
+            # Handle case where --list-patterns=contexts was provided
+            if args.directory is None:
+                # Try to use current directory if .blobify exists
+                current_dir = Path.cwd()
+                blobify_file = current_dir / ".blobify"
+                if blobify_file.exists():
+                    list_available_contexts(current_dir)
+                else:
+                    print("No .blobify file found in current directory.")
+                    print("Please specify a directory or run from a directory with a .blobify file.")
+            else:
+                directory = Path(args.directory)
+                if not directory.exists():
+                    print_error(f"Directory does not exist: {directory}")
+                    sys.exit(1)
+                list_available_contexts(directory)
             return
 
         # Handle --context without value (list contexts)
@@ -214,12 +252,12 @@ def main():
         git_root = is_git_repository(directory)
         if git_root:
             if args.debug:
-                print_phase("Default Switch Application")
+                print_phase("Default Option Application")
             _, _, default_switches = read_blobify_config(git_root, args.context, args.debug)
             if default_switches:
                 if args.debug:
                     context_info = f" for context '{args.context}'" if args.context else " (default context)"
-                    print_debug(f"Found {len(default_switches)} default switches in .blobify{context_info}")
+                    print_debug(f"Found {len(default_switches)} default options in .blobify{context_info}")
                 args = apply_default_switches(args, default_switches, args.debug)
 
         # Parse named filters
@@ -230,8 +268,8 @@ def main():
             if args.debug:
                 print_debug(f"Parsed {len(filters)} content filters: {', '.join(filter_names)}")
 
-        # Check scrubadub availability
-        scrub_data = not args.noclean
+        # Check scrubbing configuration
+        scrub_data = args.enable_scrubbing
         if scrub_data and not SCRUBADUB_AVAILABLE:
             if args.debug:
                 print_debug("scrubadub not installed - sensitive data will NOT be processed")
@@ -251,11 +289,11 @@ def main():
             directory,
             args.context,
             scrub_data,
-            include_line_numbers=not args.no_line_numbers,
-            include_index=not args.no_index,
-            include_content=not args.no_content,
-            include_metadata=not args.no_metadata,
-            suppress_excluded=args.suppress_excluded,
+            include_line_numbers=args.output_line_numbers,
+            include_index=args.output_index,
+            include_content=args.output_content,
+            include_metadata=args.output_metadata,
+            suppress_excluded=not args.show_excluded,
             debug=args.debug,
             blobify_patterns_info=blobify_patterns_info,
             filters=filters,
@@ -268,28 +306,28 @@ def main():
         if filters:
             summary_parts.append(f"with {len(filters)} content filters")
 
-        if args.no_content and args.no_index and args.no_metadata:
+        if not args.output_content and not args.output_index and not args.output_metadata:
             summary_parts.append("(no useful output - index, content, and metadata all disabled)")
             # Show helpful hint in CLI when there's essentially no output
             print_status(
-                "Note: All output options are disabled (--no-index --no-content --no-metadata). Use --help to see output options.",
+                "Note: All output options are disabled (--output-content=false --output-index=false --output-metadata=false). Use --help to see output options.",
                 style="yellow",
             )
-        elif args.no_content and args.no_index:
+        elif not args.output_content and not args.output_index:
             summary_parts.append("(metadata only)")
-        elif args.no_content and args.no_metadata:
+        elif not args.output_content and not args.output_metadata:
             summary_parts.append("(index only)")
-        elif args.no_content:
+        elif not args.output_content:
             summary_parts.append("(index and metadata only)")
-        elif args.no_metadata and args.no_index:
+        elif not args.output_metadata and not args.output_index:
             summary_parts.append("(content only, no metadata)")
-        elif args.no_metadata:
+        elif not args.output_metadata:
             summary_parts.append("(index and content, no metadata)")
         elif scrub_data and SCRUBADUB_AVAILABLE and total_substitutions > 0:
             if args.debug:
                 summary_parts.append(f"scrubadub made {total_substitutions} substitutions")
             else:
-                summary_parts.append(f"scrubadub made {total_substitutions} substitutions - use --debug for details")
+                summary_parts.append(f"scrubadub made {total_substitutions} substitutions - use --debug=true for details")
 
         summary_message = ", ".join(summary_parts)
         print_status(summary_message, style="bold blue")
@@ -299,10 +337,10 @@ def main():
             result = result[1:]
 
         # Handle output
-        if args.output:
-            with open(args.output, "w", encoding="utf-8") as f:
+        if args.output_filename:
+            with open(args.output_filename, "w", encoding="utf-8") as f:
                 f.write(result)
-        elif args.clip:
+        elif args.copy_to_clipboard:
             try:
                 if sys.platform == "win32":
                     # Simple file-based approach that preserves UTF-8
@@ -326,7 +364,7 @@ def main():
                 print_success("Output copied to clipboard")
 
             except Exception as e:
-                print_error(f"Clipboard failed: {e}. Use: blobify . --noclean > file.txt")
+                print_error(f"Clipboard failed: {e}. Use: blobify . --enable-scrubbing=false --output-filename=file.txt")
                 return  # Don't output to stdout if clipboard was requested
         else:
             sys.stdout.write(result)

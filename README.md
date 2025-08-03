@@ -36,19 +36,19 @@ Basic usage:
 
 ```bash
 # Package current directory to clipboard
-bfy . --clip
+bfy . --copy-to-clipboard=true
 
 # Or run without directory if .blobify exists
-bfy --clip
+bfy --copy-to-clipboard=true
 
 # List available contexts from .blobify file
 bfy -x
 
 # Extract only function signatures
-bfy . --filter "signatures:^(def|class)\s+" --clip
+bfy . --filter "signatures:^(def|class)\s+" --copy-to-clipboard=true
 
 # Use specific context
-bfy -x docs-only --clip
+bfy -x docs-only --copy-to-clipboard=true
 ```
 
 **Key features:** Respects `.gitignore`, optional sensitive data scrubbing, includes line numbers, supports custom filtering via `.blobify` configuration, content filters for extracting specific patterns, context listing for easy discovery, cross-platform clipboard support, **context inheritance** for reusable configurations.
@@ -62,18 +62,18 @@ bfy [directory] [options]
 ```
 
 - `directory` - Directory to scan (optional, defaults to current directory if .blobify file exists)
-- `-o,` `--output <file>` - Output file path (optional, defaults to stdout)
+- `--output-filename <file>` - Output file path (optional, defaults to stdout)
 - `-x,` `--context [name]` - Use specific context from .blobify file, or list available contexts if no name provided
 - `-f,` `--filter <name:regex>` - Content filter: extract only lines matching regex pattern (can be used multiple times)
-- `-d,` `--debug` - Enable debug output for gitignore and .blobify processing
-- `-n,` `--noclean` - Disable scrubadub processing of sensitive data
-- `-l,` `--no-line-numbers` - Disable line numbers in file content output
-- `-i,` `--no-index` - Disable file index section at start of output
-- `-k,` `--no-content` - Exclude file contents but include metadata (size, timestamps, status)
-- `-m,` `--no-metadata` - Exclude file metadata (size, timestamps, status) from output
-- `-s,` `--suppress-excluded` - Suppress excluded files from file contents section (keep them in index only)
-- `-c,` `--clip` - Copy output to clipboard
-- `-g,` `--list-ignored` - List built-in ignored patterns and exit
+- `--debug=true|false` - Enable debug output for gitignore and .blobify processing (default: false)
+- `--enable-scrubbing=true|false` - Enable scrubadub processing of sensitive data (default: true)
+- `--output-line-numbers=true|false` - Include line numbers in file content output (default: true)
+- `--output-index=true|false` - Include file index section at start of output (default: true)
+- `--output-content=true|false` - Include file contents in output (default: true)
+- `--output-metadata=true|false` - Include file metadata (size, timestamps, status) in output (default: true)
+- `--show-excluded=true|false` - Show excluded files in file contents section (default: true)
+- `--copy-to-clipboard=true|false` - Copy output to clipboard (default: false)
+- `--list-patterns=none|ignored|contexts` - List patterns and exit: 'ignored' shows built-in patterns, 'contexts' shows available contexts (default: none)
 
 ## Content Filters
 
@@ -81,19 +81,19 @@ Extract specific patterns from your files for focused AI analysis:
 
 ```bash
 # Function and class definitions
-bfy . --filter "signatures:^(def|class)\s+" --clip
+bfy . --filter "signatures:^(def|class)\s+" --copy-to-clipboard=true
 
 # Import statements
-bfy . --filter "imports:^(import|from)" --clip
+bfy . --filter "imports:^(import|from)" --copy-to-clipboard=true
 
 # Multiple filters (OR logic)
-bfy . --filter "funcs:^def" --filter "imports:^import" --clip
+bfy . --filter "funcs:^def" --filter "imports:^import" --copy-to-clipboard=true
 
 # API endpoints
-bfy . --filter "routes:@app\.(get|post|put|delete)" --clip
+bfy . --filter "routes:@app\.(get|post|put|delete)" --copy-to-clipboard=true
 
 # Error handling
-bfy . --filter "errors:(except|raise|Error)" --clip
+bfy . --filter "errors:(except|raise|Error)" --copy-to-clipboard=true
 ```
 
 Filters use `name:regex` format. If you omit the name, the regex becomes the name.
@@ -105,9 +105,9 @@ Create a `.blobify` file in your project directory for custom configurations. Wh
 ### Basic Configuration
 
 ```
-# Default switches
-@clip
-@suppress-excluded
+# Default configuration options
+@copy-to-clipboard=true
+@show-excluded=false
 
 # Content filters
 @filter=signatures:^(def|class)\s+
@@ -128,15 +128,15 @@ Create a `.blobify` file in your project directory for custom configurations. Wh
 [signatures]
 # Code structure analysis
 @filter=signatures:^(def|class)\s+
-@no-line-numbers
-@suppress-excluded
+@output-line-numbers=false
+@show-excluded=false
 +*.py
 +*.js
 
 [todos]
 # Find all TODOs and FIXMEs
 @filter=todos:(TODO|FIXME|XXX)
-@suppress-excluded
+@show-excluded=false
 +**
 ```
 
@@ -146,13 +146,13 @@ Create a `.blobify` file in your project directory for custom configurations. Wh
 
 ```
 # Base configuration
-@clip
-@debug
+@copy-to-clipboard=true
+@debug=true
 +*.py
 -*.pyc
 
 [backend:default]
-# Inherits @clip, @debug, +*.py, -*.pyc from default
+# Inherits @copy-to-clipboard=true, @debug=true, +*.py, -*.pyc from default
 +*.sql
 +migrations/**
 @filter=functions:^def
@@ -167,7 +167,7 @@ Create a `.blobify` file in your project directory for custom configurations. Wh
 # Multiple inheritance - combines backend + frontend
 +*.md
 +docs/**
-@suppress-excluded
+@show-excluded=false
 ```
 
 **Inheritance Rules:**
@@ -175,7 +175,7 @@ Create a `.blobify` file in your project directory for custom configurations. Wh
 - Use `[context:parent]` for single inheritance
 - Use `[context:parent1,parent2]` for multiple inheritance
 - Contexts can only inherit from contexts defined earlier in the file
-- Child contexts inherit all patterns and switches from parents, then add their own
+- Child contexts inherit all patterns and options from parents, then add their own
 - Cannot redefine the `default` context - it's automatically created
 - Inheritance order is preserved: parent1 → parent2 → child
 
@@ -184,9 +184,9 @@ Create a `.blobify` file in your project directory for custom configurations. Wh
 ```
 [nothing]
 # Example context that returns nothing - overrides default greedy behavior
-@suppress-excluded
+@show-excluded=false
 -**
-@no-index
+@output-index=false
 
 [license]
 +LICENSE
@@ -203,7 +203,7 @@ The `complete` context gets:
 
 - **Includes**: `*.py`, `*.md`, `docs/**`, `test_*.py`, `tests/**`, `**`
 - **Excludes**: `__pycache__/**`
-- **Switches**: `clip`, `debug`, `no-metadata`, `suppress-excluded`
+- **Options**: `copy-to-clipboard=true`, `debug=true`, `output-metadata=false`, `show-excluded=false`
 
 ### Context Discovery
 
@@ -226,8 +226,7 @@ bfy --context
 
 ### Configuration Syntax
 
-- `@switch` - Set default boolean option (`@debug`, `@clip`, `@no-content`, etc.)
-- `@key=value` - Set default option with value (`@output=file.txt`)
+- `@option=value` - Set default configuration option (`@debug=true`, `@copy-to-clipboard=true`, `@output-content=false`, etc.)
 - `@filter=name:regex` - Set default content filter
 - `+pattern` - Include files (overrides gitignore)
 - `-pattern` - Exclude files
@@ -236,29 +235,35 @@ bfy --context
 - `[context-name:parent1,parent2]` - Define context with multiple inheritance
 - Supports `*` and `**` wildcards
 
+**Configuration Option Values:**
+
+- Boolean options: `true`, `false`
+- Enum options: specific allowed values (e.g., `list-patterns=ignored`)
+- Last value wins: if the same option appears multiple times in a context, the final value is used
+
 ## Common Use Cases
 
 ```bash
 # Basic usage
-bfy . --clip                              # Copy project to clipboard
-bfy -x                                    # List available contexts
-bfy -x docs-only --clip                   # Use docs context
+bfy . --copy-to-clipboard=true                              # Copy project to clipboard
+bfy -x                                                      # List available contexts
+bfy -x docs-only --copy-to-clipboard=true                   # Use docs context
 
 # Context inheritance
-bfy -x backend --clip                     # Use backend context (inherits from default)
-bfy -x full --clip                        # Use full context (inherits from multiple parents)
+bfy -x backend --copy-to-clipboard=true                     # Use backend context (inherits from default)
+bfy -x full --copy-to-clipboard=true                        # Use full context (inherits from multiple parents)
 
 # Content filtering
-bfy . --filter "sigs:^def" --clip         # Extract function definitions
-bfy . --filter "todos:TODO" --clip        # Find all TODOs
+bfy . --filter "sigs:^def" --copy-to-clipboard=true         # Extract function definitions
+bfy . --filter "todos:TODO" --copy-to-clipboard=true        # Find all TODOs
 
 # Clean output
-bfy . --suppress-excluded --no-metadata --clip  # Only included files
-bfy . --no-content --clip                 # Index only
+bfy . --show-excluded=false --output-metadata=false --copy-to-clipboard=true  # Only included files
+bfy . --output-content=false --copy-to-clipboard=true       # Index only
 
 # Save to file
-bfy . -o project-summary.txt              # Save to file
-bfy . --filter "sigs:^def" -o overview.txt # Filtered overview
+bfy . --output-filename=project-summary.txt                 # Save to file
+bfy . --filter "sigs:^def" --output-filename=overview.txt   # Filtered overview
 ```
 
 ## Efficient Token Usage
@@ -267,19 +272,19 @@ For large projects, use contexts and filters to reduce AI token consumption:
 
 ```bash
 # Project overview (minimal tokens)
-bfy -x signatures --clip
+bfy -x signatures --copy-to-clipboard=true
 
 # Find specific patterns
-bfy . --filter "errors:(except|Error)" --suppress-excluded --clip
+bfy . --filter "errors:(except|Error)" --show-excluded=false --copy-to-clipboard=true
 
 # Documentation only
-bfy -x docs-only --clip
+bfy -x docs-only --copy-to-clipboard=true
 
 # Backend code only (with inheritance)
-bfy -x backend --clip
+bfy -x backend --copy-to-clipboard=true
 
 # Clean summary
-bfy . --filter "sigs:^(def|class)" --no-line-numbers --suppress-excluded --clip
+bfy . --filter "sigs:^(def|class)" --output-line-numbers=false --show-excluded=false --copy-to-clipboard=true
 ```
 
 ---

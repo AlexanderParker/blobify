@@ -172,7 +172,10 @@ const x = 42;
         self.setup_test_files(tmp_path)
         output_file = tmp_path / "output.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--filter", "functions:^(def|function)", "-o", str(output_file)]):
+        with patch(
+            "sys.argv",
+            ["bfy", str(tmp_path), "--filter", "functions:^(def|function)", "--output-filename", str(output_file)],
+        ):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -209,7 +212,7 @@ const x = 42;
                 "imports:^import",
                 "--filter",
                 "returns:return",
-                "-o",
+                "--output-filename",
                 str(output_file),
             ],
         ):
@@ -235,7 +238,7 @@ const x = 42;
         assert "const x = 42;" not in content
 
     def test_filter_with_suppress_excluded(self, tmp_path):
-        """Test filters work correctly with --suppress-excluded."""
+        """Test filters work correctly with --show-excluded=false."""
         self.setup_test_files(tmp_path)
         output_file = tmp_path / "output.txt"
 
@@ -246,8 +249,8 @@ const x = 42;
                 str(tmp_path),
                 "--filter",
                 "functions:^(def|function)",
-                "--suppress-excluded",
-                "-o",
+                "--show-excluded=false",
+                "--output-filename",
                 str(output_file),
             ],
         ):
@@ -259,23 +262,34 @@ const x = 42;
         assert "START_FILE: test.py" in content
         assert "START_FILE: app.js" in content
 
-        # Should NOT show files with no matches (due to suppress-excluded)
+        # Should NOT show files with no matches (due to show-excluded=false)
         assert "START_FILE: config.json" not in content
 
         # But should still show in index
         assert "config.json [FILE CONTENTS EXCLUDED BY FILTERS]" in content
 
     def test_filter_with_no_content_flag(self, tmp_path):
-        """Test that filters work with --no-content flag."""
+        """Test that filters work with --output-content=false flag."""
         self.setup_test_files(tmp_path)
         output_file = tmp_path / "output.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--filter", "functions:^def", "--no-content", "-o", str(output_file)]):
+        with patch(
+            "sys.argv",
+            [
+                "bfy",
+                str(tmp_path),
+                "--filter",
+                "functions:^def",
+                "--output-content=false",
+                "--output-filename",
+                str(output_file),
+            ],
+        ):
             main()
 
         content = output_file.read_text(encoding="utf-8")
 
-        # Should show filter in header even with --no-content
+        # Should show filter in header even with --output-content=false
         assert "functions: ^def" in content
 
         # Should not show any file content
@@ -317,7 +331,7 @@ const x = 42;
         self.setup_test_files(tmp_path)
         output_file = tmp_path / "output.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "filtered", "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "filtered", "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -338,7 +352,7 @@ const x = 42;
 
         output_file = tmp_path / "output.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--filter", "functions:^def", "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--filter", "functions:^def", "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -362,7 +376,7 @@ const x = 42;
 
         output_file = tmp_path / "output.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--filter", "functions:^def", "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--filter", "functions:^def", "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -380,7 +394,7 @@ const x = 42;
 
         output_file = tmp_path / "output.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--filter", "functions:^def", "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--filter", "functions:^def", "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -411,8 +425,8 @@ class TestFilterErrorHandling:
                 "invalid:[unclosed",
                 "--filter",
                 "valid:^def",
-                "--debug",
-                "-o",
+                "--debug=true",
+                "--output-filename",
                 str(output_file),
             ],
         ):
@@ -460,7 +474,7 @@ class TestFilterErrorHandling:
             return original_open(*args, **kwargs)
 
         with patch("builtins.open", side_effect=mock_open):
-            with patch("sys.argv", ["bfy", str(tmp_path), "--filter", "functions:^def", "-o", str(output_file)]):
+            with patch("sys.argv", ["bfy", str(tmp_path), "--filter", "functions:^def", "--output-filename", str(output_file)]):
                 main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -474,7 +488,7 @@ class TestFilterBlobifyIntegration:
     """Test cases for filter integration with .blobify configuration."""
 
     def test_filter_default_switch_in_blobify(self, tmp_path):
-        """Test setting filters as default switches in .blobify."""
+        """Test setting filters as default options in .blobify."""
         # Create git repo
         (tmp_path / ".git").mkdir()
 
@@ -492,7 +506,7 @@ class TestFilterBlobifyIntegration:
 
         output_file = tmp_path / "output.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -522,7 +536,7 @@ class TestFilterBlobifyIntegration:
 
         output_file = tmp_path / "output.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "--filter", "classes:^class", "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "--filter", "classes:^class", "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -548,7 +562,7 @@ class TestFilterBlobifyIntegration:
 
 [signatures]
 @filter=signatures:^(def|class)
-@no-line-numbers
+@output-line-numbers=false
 +*.py
 
 [imports]
@@ -562,7 +576,7 @@ class TestFilterBlobifyIntegration:
 
         # Test signatures context
         output_file1 = tmp_path / "signatures.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "signatures", "-o", str(output_file1)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "signatures", "--output-filename", str(output_file1)]):
             main()
 
         content1 = output_file1.read_text(encoding="utf-8")
@@ -573,7 +587,7 @@ class TestFilterBlobifyIntegration:
 
         # Test imports context
         output_file2 = tmp_path / "imports.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "imports", "-o", str(output_file2)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "imports", "--output-filename", str(output_file2)]):
             main()
 
         content2 = output_file2.read_text(encoding="utf-8")

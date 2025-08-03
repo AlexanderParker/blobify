@@ -51,7 +51,7 @@ class TestContextListing:
 # Default patterns only
 +*.py
 -*.log
-@debug
+@debug=true
 """
         )
 
@@ -341,7 +341,7 @@ class TestContextListing:
             """
 [test-ctx]
 +*.py
-@debug
+@debug=true
 """
         )
 
@@ -349,7 +349,7 @@ class TestContextListing:
         (tmp_path / "test.py").write_text("print('hello')")
         output_file = tmp_path / "output.txt"
 
-        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "test-ctx", "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "test-ctx", "--output-filename", str(output_file)]):
             main()
 
         # Should process files normally, not list contexts

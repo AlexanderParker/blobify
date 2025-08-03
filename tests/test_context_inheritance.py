@@ -17,7 +17,7 @@ class TestContextInheritance:
         blobify_file.write_text(
             """
 # Default context patterns
-@clip
+@copy-to-clipboard=true
 +*.py
 -*.log
 """
@@ -27,13 +27,13 @@ class TestContextInheritance:
         includes, excludes, switches = read_blobify_config(tmp_path)
         assert includes == ["*.py"]
         assert excludes == ["*.log"]
-        assert switches == ["clip"]
+        assert switches == ["copy-to-clipboard=true"]
 
         # Test explicitly requesting default context
         includes, excludes, switches = read_blobify_config(tmp_path, "default")
         assert includes == ["*.py"]
         assert excludes == ["*.log"]
-        assert switches == ["clip"]
+        assert switches == ["copy-to-clipboard=true"]
 
     def test_single_level_inheritance(self, tmp_path):
         """Test basic single-level inheritance."""
@@ -41,7 +41,7 @@ class TestContextInheritance:
         blobify_file.write_text(
             """
 # Default context
-@clip
+@copy-to-clipboard=true
 +*.py
 -*.log
 
@@ -56,13 +56,13 @@ class TestContextInheritance:
         includes, excludes, switches = read_blobify_config(tmp_path, "default")
         assert includes == ["*.py"]
         assert excludes == ["*.log"]
-        assert switches == ["clip"]
+        assert switches == ["copy-to-clipboard=true"]
 
         # Test extended context (should inherit from default)
         includes, excludes, switches = read_blobify_config(tmp_path, "extended")
         assert includes == ["*.py", "*.md"]  # Inherited + own
         assert excludes == ["*.log", "secret.txt"]  # Inherited + own
-        assert switches == ["clip"]  # Inherited
+        assert switches == ["copy-to-clipboard=true"]  # Inherited
 
     def test_multi_level_inheritance(self, tmp_path):
         """Test multi-level inheritance chain."""
@@ -70,15 +70,15 @@ class TestContextInheritance:
         blobify_file.write_text(
             """
 # Default context
-@clip
+@copy-to-clipboard=true
 +*.py
 
 [base:default]
-@debug
+@debug=true
 +*.js
 
 [extended:base]
-@no-metadata
+@output-metadata=false
 +*.md
 
 [final:extended]
@@ -93,7 +93,7 @@ class TestContextInheritance:
         # Should have patterns from entire inheritance chain
         assert includes == ["*.py", "*.js", "*.md", "*.txt"]
         assert excludes == ["*.log"]
-        assert switches == ["clip", "debug", "no-metadata"]
+        assert switches == ["copy-to-clipboard=true", "debug=true", "output-metadata=false"]
 
     def test_context_without_inheritance(self, tmp_path):
         """Test context that doesn't inherit from anything."""
@@ -101,13 +101,13 @@ class TestContextInheritance:
         blobify_file.write_text(
             """
 # Default context
-@clip
+@copy-to-clipboard=true
 +*.py
 
 [standalone]
 # No inheritance
 +*.md
-@debug
+@debug=true
 """
         )
 
@@ -115,7 +115,7 @@ class TestContextInheritance:
         includes, excludes, switches = read_blobify_config(tmp_path, "standalone")
         assert includes == ["*.md"]  # Only own patterns
         assert excludes == []
-        assert switches == ["debug"]  # Only own switches
+        assert switches == ["debug=true"]  # Only own switches
 
     def test_missing_parent_context(self, tmp_path):
         """Test handling when parent context doesn't exist."""
@@ -124,7 +124,7 @@ class TestContextInheritance:
             """
 [child:nonexistent]
 +*.py
-@debug
+@debug=true
 """
         )
 
@@ -140,13 +140,13 @@ class TestContextInheritance:
 # Default has exclusions first
 -*.log
 +*.py
-@clip
+@copy-to-clipboard=true
 
 [child:default]
 # Child adds more patterns
 +*.md
 -secret.txt
-@debug
+@debug=true
 """
         )
 
@@ -155,7 +155,7 @@ class TestContextInheritance:
         # Order should be: parent patterns first, then child patterns
         assert includes == ["*.py", "*.md"]
         assert excludes == ["*.log", "secret.txt"]
-        assert switches == ["clip", "debug"]
+        assert switches == ["copy-to-clipboard=true", "debug=true"]
 
     def test_context_inheritance_with_blobify_patterns_file_order(self, tmp_path):
         """Test that inherited patterns maintain the file order for pattern application."""
@@ -181,7 +181,7 @@ class TestContextInheritance:
         (tmp_path / "config.xml").write_text("<config/>")
 
         output_file = tmp_path / "output.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "docs", "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "docs", "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -255,7 +255,7 @@ class TestContextInheritance:
         captured = capsys.readouterr()
         assert "Context inheritance:" in captured.out
         assert "[extended:base]" in captured.out
-        assert "# Inherits @clip and +*.py from base" in captured.out
+        assert "# Inherits @copy-to-clipboard=true and +*.py from base" in captured.out
 
     def test_context_inheritance_with_filter_defaults(self, tmp_path):
         """Test that filter defaults are properly inherited."""
@@ -283,7 +283,7 @@ class TestContextInheritance:
         js_file.write_text("function greet() {}\nclass Component {}")
 
         output_file = tmp_path / "output.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "enhanced", "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "enhanced", "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
@@ -353,14 +353,14 @@ class TestContextInheritance:
         blobify_file.write_text(
             """
 -**
-@clip
+@copy-to-clipboard=true
 
 [code:default]
-# "code" inherits -** and @clip
+# "code" inherits -** and @copy-to-clipboard=true
 +code
 
 [all:code]
-# "all" inherits -**, @clip, and +code
+# "all" inherits -**, @copy-to-clipboard=true, and +code
 +**
 """
         )
@@ -368,9 +368,9 @@ class TestContextInheritance:
         # Test that "all" context gets the expected final configuration
         includes, excludes, switches = read_blobify_config(tmp_path, "all")
 
-        # Final "all" context should be evaluated as: -**, @clip, +code, +**
+        # Final "all" context should be evaluated as: -**, @copy-to-clipboard=true, +code, +**
         assert excludes == ["**"]
-        assert switches == ["clip"]
+        assert switches == ["copy-to-clipboard=true"]
         assert includes == ["code", "**"]
 
     def test_inheritance_with_complex_patterns(self, tmp_path):
@@ -392,7 +392,7 @@ class TestContextInheritance:
 [full:docs]
 # Add everything else
 +**
-@suppress-excluded
+@show-excluded=false
 """
         )
 
@@ -401,7 +401,7 @@ class TestContextInheritance:
         # Should have all patterns from inheritance chain
         expected_includes = ["*.py", "src/**/*.py", "*.md", "docs/**", "**"]
         expected_excludes = ["**", "docs/private/**"]
-        expected_switches = ["suppress-excluded"]
+        expected_switches = ["show-excluded=false"]
 
         assert includes == expected_includes
         assert excludes == expected_excludes
@@ -414,7 +414,7 @@ class TestContextInheritance:
             """
 [first]
 +*.py
-@clip
+@copy-to-clipboard=true
 
 [second:first]
 # Can inherit from first (defined above)
@@ -429,12 +429,12 @@ class TestContextInheritance:
         # Test that second inherits from first
         includes, excludes, switches = read_blobify_config(tmp_path, "second")
         assert includes == ["*.py", "*.md"]
-        assert switches == ["clip"]
+        assert switches == ["copy-to-clipboard=true"]
 
         # Test that third also inherits from first
         includes, excludes, switches = read_blobify_config(tmp_path, "third")
         assert includes == ["*.py", "*.txt"]
-        assert switches == ["clip"]
+        assert switches == ["copy-to-clipboard=true"]
 
     def test_cannot_redefine_default_context(self, tmp_path):
         """Test that attempting to redefine 'default' context raises an error."""
@@ -442,7 +442,7 @@ class TestContextInheritance:
         blobify_file.write_text(
             """
 # Default context
-@clip
+@copy-to-clipboard=true
 +*.py
 
 [default]
@@ -505,12 +505,12 @@ class TestContextInheritance:
         blobify_file.write_text(
             """
 [base1]
-@clip
+@copy-to-clipboard=true
 +*.py
 -*.log
 
 [base2]
-@debug
+@debug=true
 +*.md
 -*.tmp
 
@@ -524,7 +524,7 @@ class TestContextInheritance:
         # Should inherit from both parents
         assert includes == ["*.py", "*.md", "*.txt"]
         assert excludes == ["*.log", "*.tmp"]
-        assert switches == ["clip", "debug"]
+        assert switches == ["copy-to-clipboard=true", "debug=true"]
 
     def test_multiple_inheritance_complex(self, tmp_path):
         """Test complex multiple inheritance with nested inheritance."""
@@ -532,21 +532,21 @@ class TestContextInheritance:
         blobify_file.write_text(
             """
 # Base contexts
-@clip
+@copy-to-clipboard=true
 +base.py
 
 [docs:default]
 +*.md
-@no-metadata
+@output-metadata=false
 
 [code:default]
 +*.js
-@debug
+@debug=true
 
 [combined:docs,code]
 # Inherits from both docs and code (which both inherit from default)
 +*.txt
-@suppress-excluded
+@show-excluded=false
 """
         )
 
@@ -555,7 +555,13 @@ class TestContextInheritance:
         # Should inherit: base.py (from default via docs), *.md (from docs),
         # base.py again (from default via code), *.js (from code), *.txt (own)
         assert includes == ["base.py", "*.md", "base.py", "*.js", "*.txt"]
-        assert switches == ["clip", "no-metadata", "clip", "debug", "suppress-excluded"]
+        assert switches == [
+            "copy-to-clipboard=true",
+            "output-metadata=false",
+            "copy-to-clipboard=true",
+            "debug=true",
+            "show-excluded=false",
+        ]
 
     def test_multiple_inheritance_with_duplicates(self, tmp_path):
         """Test that multiple inheritance handles duplicate patterns gracefully."""
@@ -563,12 +569,12 @@ class TestContextInheritance:
         blobify_file.write_text(
             """
 [parent1]
-@clip
+@copy-to-clipboard=true
 +*.py
 -*.log
 
 [parent2]
-@clip
+@copy-to-clipboard=true
 +*.py
 -*.tmp
 
@@ -582,7 +588,7 @@ class TestContextInheritance:
         # Should have duplicates (implementation preserves order from parents)
         assert includes == ["*.py", "*.py", "*.md"]
         assert excludes == ["*.log", "*.tmp"]
-        assert switches == ["clip", "clip"]
+        assert switches == ["copy-to-clipboard=true", "copy-to-clipboard=true"]
 
     def test_multiple_inheritance_missing_one_parent(self, tmp_path):
         """Test error when one of multiple parents doesn't exist."""
@@ -620,19 +626,19 @@ class TestContextInheritance:
             """
 [first]
 +first.py
-@first-switch
+@first-switch=true
 
 [second]
 +second.py
-@second-switch
+@second-switch=true
 
 [third]
 +third.py
-@third-switch
+@third-switch=true
 
 [combined:first,second,third]
 +combined.py
-@combined-switch
+@combined-switch=true
 """
         )
 
@@ -640,7 +646,7 @@ class TestContextInheritance:
 
         # Should preserve parent order
         assert includes == ["first.py", "second.py", "third.py", "combined.py"]
-        assert switches == ["first-switch", "second-switch", "third-switch", "combined-switch"]
+        assert switches == ["first-switch=true", "second-switch=true", "third-switch=true", "combined-switch=true"]
 
     def test_multiple_inheritance_display_in_list(self, tmp_path, capsys):
         """Test that list_available_contexts shows multiple inheritance."""
@@ -723,7 +729,7 @@ class TestContextInheritance:
 
 [combined:python,docs]
 # Inherits exclusion and both file types
-@suppress-excluded
+@show-excluded=false
 """
         )
 
@@ -733,7 +739,7 @@ class TestContextInheritance:
         (tmp_path / "config.xml").write_text("<config/>")
 
         output_file = tmp_path / "output.txt"
-        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "combined", "-o", str(output_file)]):
+        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "combined", "--output-filename", str(output_file)]):
             main()
 
         content = output_file.read_text(encoding="utf-8")
