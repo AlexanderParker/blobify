@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "blobify"
-version = "1.0.5"
+version = "1.0.6"
 authors = [
     { name = "Alexander Parker", email = "pypi@parker.im" },
 ]
