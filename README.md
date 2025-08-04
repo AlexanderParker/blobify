@@ -377,6 +377,8 @@ This package is published to PyPI as `blobify`. Releases are currently managed m
 # Ensure all tests pass
 invoke all
 
+# Delete the old dist folder
+
 # Build the package
 python -m build
 
@@ -393,7 +395,6 @@ python -m twine upload dist/*
 # Finally tag the build with the new version number and push the tag to the remote.
 git tag vX.X.X
 git push origin vX.X.X
-
 
 ```
 
