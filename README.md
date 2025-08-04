@@ -365,6 +365,30 @@ invoke lint        # Check code quality
 invoke all         # Check everything
 ```
 
+### For Maintainers
+
+**Publishing to PyPI:**
+
+This package is published to PyPI as `blobify`. Releases are currently managed manually:
+
+```bash
+# Build the package
+python -m build
+
+# Test upload to TestPyPI first (recommended)
+python -m twine upload --repository testpypi dist/*
+
+# Upload to production PyPI (requires appropriate credentials)
+python -m twine upload dist/*
+```
+
+**TestPyPI Testing:**
+
+```bash
+# Install from TestPyPI to verify the package
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ blobify
+```
+
 ## License
 
 [MIT License](LICENSE) - see the project repository for details.
