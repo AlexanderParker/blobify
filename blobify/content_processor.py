@@ -126,7 +126,6 @@ def filter_content_lines(content: str, filters: dict, file_path: Path = None, de
     if not filters:
         return content
 
-    import fnmatch
     import re
 
     lines = content.split("\n")
@@ -245,7 +244,7 @@ def _matches_glob_pattern(file_path: str, file_name: str, pattern: str) -> bool:
         if len(pattern_parts) == 2:
             dir_pattern, file_pattern = pattern_parts
             # Check if file is in any directory matching the pattern
-            for i, path_dir in enumerate(path_parts[:-1]):
+            for _i, path_dir in enumerate(path_parts[:-1]):
                 if fnmatch.fnmatch(path_dir, dir_pattern):
                     if fnmatch.fnmatch(file_name, file_pattern):
                         return True
