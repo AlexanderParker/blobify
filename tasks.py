@@ -37,11 +37,18 @@ def install_dev(c):
 def run_with_formatting(cmd, capture_output=False, env=None):
     """Run subprocess with proper terminal formatting preserved."""
     import os
+    import shutil
     import subprocess
     import sys
 
     if env is None:
         env = os.environ.copy()
+
+    # Resolve full path for the command if it's just a command name
+    if cmd and not os.path.isabs(cmd[0]):
+        full_path = shutil.which(cmd[0], path=env.get("PATH"))
+        if full_path:
+            cmd = [full_path] + cmd[1:]
 
     try:
         if capture_output:
