@@ -110,12 +110,6 @@ def parse_named_filters(filter_args: list) -> tuple:
     return filters, filter_names
 
 
-def _is_malformed_csv(text: str) -> bool:
-    """Check if a string appears to be malformed CSV that should be rejected."""
-    # This function is no longer used with the simplified approach above
-    return False
-
-
 def filter_content_lines(content: str, filters: dict, file_path: Path = None, debug: bool = False) -> str:
     """
     Filter content using named regex patterns (OR logic).
@@ -147,17 +141,8 @@ def filter_content_lines(content: str, filters: dict, file_path: Path = None, de
             file_str = str(file_path).replace("\\", "/")
             file_name = file_path.name
 
-            # Use PurePosixPath for consistent cross-platform glob matching
-            from pathlib import PurePosixPath
-
-            file_posix = PurePosixPath(file_str)
-
-            # Try PurePath.match() which handles ** patterns correctly
-            matches = file_posix.match(filepattern)
-
-            # If that doesn't work, try fnmatch for simple patterns
-            if not matches:
-                matches = fnmatch.fnmatch(file_name, filepattern) or fnmatch.fnmatch(file_str, filepattern)
+            # Use comprehensive pattern matching
+            matches = _matches_glob_pattern(file_str, file_name, filepattern)
 
             if matches:
                 applicable_filters[name] = pattern
@@ -190,6 +175,82 @@ def filter_content_lines(content: str, filters: dict, file_path: Path = None, de
         print_debug(f"Content filtering: {len(lines)} lines -> {len(filtered_lines)} lines ({total_matches} total matches)")
 
     return "\n".join(filtered_lines)
+
+
+def _matches_glob_pattern(file_path: str, file_name: str, pattern: str) -> bool:
+    """
+    Check if a file path matches a glob pattern using standard library functions.
+
+    Args:
+        file_path: Full file path (with forward slashes)
+        file_name: Just the filename part
+        pattern: Glob pattern to match against
+
+    Returns:
+        True if the pattern matches, False otherwise
+    """
+    import fnmatch
+    import os
+
+    # Handle simple cases first
+    if pattern == "*":
+        return True
+
+    # Try filename match first (most common case)
+    if fnmatch.fnmatch(file_name, pattern):
+        return True
+
+    # For cross-platform compatibility, normalize both pattern and path
+    # Convert to native path separators
+    norm_pattern = os.path.normpath(pattern.replace("/", os.sep))
+    norm_path = os.path.normpath(file_path.replace("/", os.sep))
+
+    # Try full path match with normalized paths
+    if fnmatch.fnmatch(norm_path, norm_pattern):
+        return True
+
+    # Also try with forward slashes (Unix-style, which fnmatch handles well)
+    if fnmatch.fnmatch(file_path, pattern):
+        return True
+
+    # Handle ** patterns - these need special treatment
+    if "**" in pattern:
+        # **/*.ext should match any .ext file at any level including root
+        if pattern.startswith("**/"):
+            ext_pattern = pattern[3:]  # Remove **/
+            if fnmatch.fnmatch(file_name, ext_pattern):
+                return True
+
+        # dir/** should match anything in or under dir/
+        elif pattern.endswith("/**"):
+            dir_pattern = pattern[:-3]  # Remove /**
+            if file_path.startswith(dir_pattern + "/"):
+                return True
+
+        # Try pathlib for complex ** patterns
+        try:
+            from pathlib import PurePath
+
+            if PurePath(file_path).match(pattern):
+                return True
+        except (ValueError, TypeError):
+            pass
+
+    # Handle directory patterns like "migrations/*.sql"
+    if "/" in pattern:
+        pattern_parts = pattern.split("/")
+        path_parts = file_path.split("/")
+
+        # For simple dir/file patterns
+        if len(pattern_parts) == 2:
+            dir_pattern, file_pattern = pattern_parts
+            # Check if file is in any directory matching the pattern
+            for i, path_dir in enumerate(path_parts[:-1]):
+                if fnmatch.fnmatch(path_dir, dir_pattern):
+                    if fnmatch.fnmatch(file_name, file_pattern):
+                        return True
+
+    return False
 
 
 def is_text_file(file_path: Path) -> bool:
