@@ -356,12 +356,18 @@ def apply_blobify_patterns(discovery_context: Dict, directory: Path, context: Op
                 relative_path = file_path.relative_to(directory)
 
                 if op == "+":  # Include pattern
-                    # Check if this pattern matches the exact file path (no wildcards in the match)
+                    # Check if this is an exact file match by seeing if the pattern
+                    # directly matches the file path without wildcards doing the work
                     relative_path_str = str(relative_path).replace("\\", "/")
-                    is_exact_file_match = relative_path_str == pattern or (not ("*" in pattern or "?" in pattern) and not pattern.endswith("/"))
 
-                    # If it's not an exact file match, check if it's a text file
-                    if not is_exact_file_match and not is_text_file(file_path):
+                    # A pattern is considered "exact" if it contains no wildcards
+                    # AND it matches the file path exactly
+                    pattern_has_wildcards = "*" in pattern or "?" in pattern or pattern.endswith("/")
+                    is_exact_match = not pattern_has_wildcards and relative_path_str == pattern
+
+                    # For non-exact matches, still check if it's a text file
+                    # But for exact matches, bypass the text file check (security override)
+                    if not is_exact_match and not is_text_file(file_path):
                         continue
 
                     # Check if this file is already in our all_files list
@@ -398,7 +404,7 @@ def apply_blobify_patterns(discovery_context: Dict, directory: Path, context: Op
                                     "include_in_output": True,
                                 }
                             )
-                            bypass_msg = " (bypassing text file check)" if is_exact_file_match else ""
+                            bypass_msg = " (exact match - bypassing text file check)" if is_exact_match else ""
                             if debug:
                                 print_debug(f".blobify ADD: '{relative_path}' matches pattern '{pattern}'{bypass_msg}")
                         elif debug:
