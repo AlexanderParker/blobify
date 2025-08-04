@@ -8,7 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 __author__ = "Alexander Parker"
 __email__ = "pypi@parker.im"
 
@@ -364,8 +364,8 @@ def main():
         elif args.copy_to_clipboard:
             try:
                 if sys.platform == "win32":
-                    # Simple file-based approach that preserves UTF-8
-                    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
+                    # Write file with UTF-16 encoding (required for clip.exe Unicode support)
+                    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-16-le", delete=False, suffix=".txt") as f:
                         f.write(result)
                         temp_file = f.name
 
