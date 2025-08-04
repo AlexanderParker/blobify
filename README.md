@@ -369,41 +369,36 @@ invoke all         # Check everything
 
 **Publishing to PyPI:**
 
-This package is published to PyPI as `blobify`. Releases are currently managed manually:
+This package is published to PyPI as `blobify`. Releases are managed using invoke tasks:
 
 ```bash
 # On branch main - after any release-related PRs are merged in.
 # Bump version in pyproject.toml and __version__ blobify/main.py (use SemVer practices).
+
 # Ensure all tests pass:
 invoke all
 
-# Delete the old dist folder.
+# Clean any previous build artifacts:
+invoke clean-dist
 
 # Build the package:
-python -m build
-
-# Fix any build issues before continuing.
+invoke build
 
 # Test upload to TestPyPI first (recommended):
-python -m twine upload --repository testpypi dist/*
+invoke publish-test
 
 # Upload to production PyPI (requires appropriate credentials):
-python -m twine upload dist/*
-
-# If any issues after uploading then you'll need to go back to step 1 as you need a new version number for each deployment.
+invoke publish
 
 # Finally tag the build with the new version number and push the tag to the remote:
-git tag vX.X.X
-git push origin vX.X.X
-
-
+invoke tag-release
 ```
 
 **TestPyPI Testing:**
 
 ```bash
 # Install from TestPyPI to verify the package:
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ blobify
+invoke test-install
 ```
 
 ## License

@@ -179,6 +179,130 @@ def clean(c):
 
 
 @task
+def clean_dist(c):
+    """Clean distribution artifacts."""
+    dist_path = Path("dist")
+    if dist_path.exists():
+        shutil.rmtree(dist_path)
+        print(f"Removed {dist_path}")
+
+
+@task
+def build(c):
+    """Build the package."""
+    import sys
+
+    returncode = run_with_formatting(["python", "-m", "build"])
+    if returncode != 0:
+        print("Build failed")
+        sys.exit(returncode)
+    print("Package built successfully")
+
+
+@task
+def publish_test(c):
+    """Upload to TestPyPI."""
+    import sys
+
+    dist_path = Path("dist")
+    if not dist_path.exists() or not list(dist_path.glob("*")):
+        print("No distribution files found. Run 'invoke build' first.")
+        sys.exit(1)
+
+    returncode = run_with_formatting(["python", "-m", "twine", "upload", "--repository", "testpypi", "dist/*"])
+    if returncode != 0:
+        print("TestPyPI upload failed")
+        sys.exit(returncode)
+    print("Successfully uploaded to TestPyPI")
+
+
+@task
+def publish(c):
+    """Upload to production PyPI."""
+    import sys
+
+    dist_path = Path("dist")
+    if not dist_path.exists() or not list(dist_path.glob("*")):
+        print("No distribution files found. Run 'invoke build' first.")
+        sys.exit(1)
+
+    # Confirm production upload
+    response = input("Upload to production PyPI? This cannot be undone. (y/N): ")
+    if response.lower() != "y":
+        print("Upload cancelled")
+        return
+
+    returncode = run_with_formatting(["python", "-m", "twine", "upload", "dist/*"])
+    if returncode != 0:
+        print("PyPI upload failed")
+        sys.exit(returncode)
+    print("Successfully uploaded to production PyPI")
+
+
+@task
+def test_install(c):
+    """Install from TestPyPI to verify the package."""
+    import sys
+
+    returncode = run_with_formatting(
+        [
+            "pip",
+            "install",
+            "--index-url",
+            "https://test.pypi.org/simple/",
+            "--extra-index-url",
+            "https://pypi.org/simple/",
+            "blobify",
+        ]
+    )
+    if returncode != 0:
+        print("TestPyPI installation failed")
+        sys.exit(returncode)
+    print("Successfully installed from TestPyPI")
+
+
+@task
+def get_version(c):
+    """Get current version from pyproject.toml."""
+    import tomllib
+
+    with open("pyproject.toml", "rb") as f:
+        data = tomllib.load(f)
+
+    version = data["project"]["version"]
+    print(f"Current version: v{version}")
+    return version
+
+
+@task
+def tag_release(c):
+    """Tag the current release and push to remote."""
+    import sys
+
+    version = get_version(c)
+    tag = f"v{version}"
+
+    # Check if tag already exists
+    result = c.run(f"git tag -l {tag}", hide=True)
+    if result.stdout.strip():
+        print(f"Tag {tag} already exists")
+        return
+
+    # Create and push tag
+    returncode1 = run_with_formatting(["git", "tag", tag])
+    if returncode1 != 0:
+        print("Failed to create tag")
+        sys.exit(returncode1)
+
+    returncode2 = run_with_formatting(["git", "push", "origin", tag])
+    if returncode2 != 0:
+        print("Failed to push tag")
+        sys.exit(returncode2)
+
+    print(f"Successfully created and pushed tag {tag}")
+
+
+@task
 def all(c):
     """Run all checks (format, lint, test)."""
     format(c)
