@@ -349,6 +349,8 @@ SELECT * FROM users WHERE name = 'admin';
                 '"sql-dml","^(INSERT|SELECT)","migrations/*.sql"',
                 "--output-filename",
                 str(output_file),
+                "--debug",
+                "true",
             ],
         ):
             main()
@@ -418,6 +420,8 @@ SELECT * FROM users WHERE name = 'admin';
                 '"all-sql","^SELECT","*.sql"',
                 "--output-filename",
                 str(output_file),
+                "--debug",
+                "true",
             ],
         ):
             main()
