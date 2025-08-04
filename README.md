@@ -372,6 +372,10 @@ invoke all         # Check everything
 This package is published to PyPI as `blobify`. Releases are currently managed manually:
 
 ```bash
+# Bump version in pyproject.toml and __version__ blobify/main.py (use SemVer practices).
+# Ensure all tests pass
+invoke all
+
 # Build the package
 python -m build
 
@@ -381,6 +385,7 @@ python -m twine upload --repository testpypi dist/*
 # Upload to production PyPI (requires appropriate credentials)
 python -m twine upload dist/*
 ```
+
 
 **TestPyPI Testing:**
 
