@@ -199,17 +199,22 @@ def _matches_glob_pattern(file_path: str, file_name: str, pattern: str) -> bool:
     if fnmatch.fnmatch(file_name, pattern):
         return True
 
-    # For cross-platform compatibility, normalize both pattern and path
-    # Convert to native path separators
-    norm_pattern = os.path.normpath(pattern.replace("/", os.sep))
-    norm_path = os.path.normpath(file_path.replace("/", os.sep))
+    # For cross-platform compatibility, we need to test multiple variations
+    # of the path and pattern to handle different path separator conventions
 
-    # Try full path match with normalized paths
-    if fnmatch.fnmatch(norm_path, norm_pattern):
+    # Convert path separators to forward slashes for consistent comparison
+    normalized_file_path = file_path.replace("\\", "/")
+    normalized_pattern = pattern.replace("\\", "/")
+
+    # Try full path match with forward slashes (works well cross-platform)
+    if fnmatch.fnmatch(normalized_file_path, normalized_pattern):
         return True
 
-    # Also try with forward slashes (Unix-style, which fnmatch handles well)
-    if fnmatch.fnmatch(file_path, pattern):
+    # Also try with native path separators
+    native_pattern = normalized_pattern.replace("/", os.sep)
+    native_path = normalized_file_path.replace("/", os.sep)
+
+    if fnmatch.fnmatch(native_path, native_pattern):
         return True
 
     # Handle ** patterns - these need special treatment
@@ -223,30 +228,35 @@ def _matches_glob_pattern(file_path: str, file_name: str, pattern: str) -> bool:
         # dir/** should match anything in or under dir/
         elif pattern.endswith("/**"):
             dir_pattern = pattern[:-3]  # Remove /**
-            if file_path.startswith(dir_pattern + "/"):
+            if normalized_file_path.startswith(dir_pattern + "/"):
                 return True
 
         # Try pathlib for complex ** patterns
         try:
             from pathlib import PurePath
 
-            if PurePath(file_path).match(pattern):
+            if PurePath(normalized_file_path).match(normalized_pattern):
                 return True
         except (ValueError, TypeError):
             pass
 
     # Handle directory patterns like "migrations/*.sql"
-    if "/" in pattern:
-        pattern_parts = pattern.split("/")
-        path_parts = file_path.split("/")
+    if "/" in normalized_pattern:
+        pattern_parts = normalized_pattern.split("/")
+        path_parts = normalized_file_path.split("/")
 
         # For simple dir/file patterns
         if len(pattern_parts) == 2:
             dir_pattern, file_pattern = pattern_parts
-            # Check if file is in any directory matching the pattern
-            for _i, path_dir in enumerate(path_parts[:-1]):
-                if fnmatch.fnmatch(path_dir, dir_pattern):
-                    if fnmatch.fnmatch(file_name, file_pattern):
+            # Check if file is in a directory matching the pattern
+            if len(path_parts) >= 2:
+                # Check if the directory part matches and the file part matches
+                if fnmatch.fnmatch(path_parts[-2], dir_pattern) and fnmatch.fnmatch(path_parts[-1], file_pattern):
+                    return True
+
+                # Also check if any parent directory matches the pattern
+                for i in range(len(path_parts) - 1):
+                    if fnmatch.fnmatch(path_parts[i], dir_pattern) and fnmatch.fnmatch(file_name, file_pattern):
                         return True
 
     return False
