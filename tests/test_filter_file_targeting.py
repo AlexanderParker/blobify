@@ -457,8 +457,6 @@ SELECT * FROM users WHERE name = 'admin';
 
     def test_blobify_config_with_file_targeted_filters(self, tmp_path):
         """Test file-targeted filters in .blobify configuration."""
-        # Create git repo
-        (tmp_path / ".git").mkdir()
 
         self.setup_multi_language_project(tmp_path)
 
@@ -493,8 +491,6 @@ SELECT * FROM users WHERE name = 'admin';
 
     def test_command_line_override_with_file_patterns(self, tmp_path):
         """Test command line filters with file patterns override .blobify defaults."""
-        # Create git repo
-        (tmp_path / ".git").mkdir()
 
         self.setup_multi_language_project(tmp_path)
 
