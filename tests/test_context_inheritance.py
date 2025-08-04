@@ -297,22 +297,108 @@ class TestContextInheritance:
         assert "class Test:" in content
         assert "class Component" in content
 
-    def test_nonexistent_context_inheritance(self, tmp_path):
-        """Test requesting a context that doesn't exist."""
+    def test_nonexistent_context_inheritance(self, tmp_path, capsys):
+        """Test requesting a context that doesn't exist now exits with error."""
         blobify_file = tmp_path / ".blobify"
         blobify_file.write_text(
             """
-[existing]
-+*.py
-"""
+    [existing]
+    +*.py
+    """
         )
 
-        includes, excludes, switches = read_blobify_config(tmp_path, "nonexistent")
+        # Should raise SystemExit when requesting non-existent context
+        with pytest.raises(SystemExit) as exc_info:
+            read_blobify_config(tmp_path, "nonexistent")
 
-        # Should return empty configuration
-        assert includes == []
-        assert excludes == []
-        assert switches == []
+        # Should exit with code 1
+        assert exc_info.value.code == 1
+
+        # Should show helpful error message
+        captured = capsys.readouterr()
+        assert "Context 'nonexistent' not found in .blobify file" in captured.err
+        assert "Available contexts: existing" in captured.err
+
+    def test_nonexistent_context_exits_with_error(self, tmp_path, capsys):
+        """Test that requesting a non-existent context exits with error."""
+        # Create git repo
+        (tmp_path / ".git").mkdir()
+
+        # Create .blobify with some contexts
+        (tmp_path / ".blobify").write_text(
+            """
+    [existing-context]
+    +*.py
+
+    [another-context]
+    +*.md
+    """
+        )
+
+        (tmp_path / "test.py").write_text("print('test')")
+
+        # Test with non-existent context
+        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "nonexistent-context"]):
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+
+            # Should exit with code 1
+            assert exc_info.value.code == 1
+
+        captured = capsys.readouterr()
+        assert "Context 'nonexistent-context' not found in .blobify file" in captured.err
+        assert "Available contexts: another-context, existing-context" in captured.err
+        assert "Use 'bfy -x' to list all contexts with descriptions" in captured.err
+
+    def test_nonexistent_context_no_available_contexts(self, tmp_path, capsys):
+        """Test error message when no contexts exist in .blobify file."""
+        # Create git repo
+        (tmp_path / ".git").mkdir()
+
+        # Create .blobify with no contexts (only default patterns)
+        (tmp_path / ".blobify").write_text(
+            """
+    +*.py
+    -*.log
+    """
+        )
+
+        (tmp_path / "test.py").write_text("print('test')")
+
+        # Test with non-existent context
+        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "some-context"]):
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+
+            assert exc_info.value.code == 1
+
+        captured = capsys.readouterr()
+        assert "Context 'some-context' not found in .blobify file" in captured.err
+        assert "No contexts found in .blobify file" in captured.err
+
+    def test_default_context_behavior_unchanged(self, tmp_path):
+        """Test that default context behavior is unchanged when no context specified."""
+        # Create git repo
+        (tmp_path / ".git").mkdir()
+
+        # Create .blobify with patterns but no explicit contexts
+        (tmp_path / ".blobify").write_text(
+            """
+    +*.py
+    -*.log
+    """
+        )
+
+        (tmp_path / "test.py").write_text("print('test')")
+        output_file = tmp_path / "output.txt"
+
+        # Should work fine with no context specified (uses default)
+        with patch("sys.argv", ["bfy", str(tmp_path), "--output-filename", str(output_file)]):
+            main()  # Should not raise SystemExit
+
+        # Should produce normal output
+        content = output_file.read_text(encoding="utf-8")
+        assert "print('test')" in content
 
     def test_empty_inheritance_syntax(self, tmp_path):
         """Test handling of malformed inheritance syntax."""

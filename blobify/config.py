@@ -3,6 +3,7 @@
 import argparse
 import csv
 import io
+import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -34,6 +35,8 @@ def read_blobify_config(git_root: Path, context: Optional[str] = None, debug: bo
     If context is provided, uses patterns from that context section with inheritance.
 
     Context inheritance syntax: [context-name:parent-context]
+
+    Raises SystemExit if a specific context is requested but doesn't exist.
     """
     blobify_file = git_root / ".blobify"
 
@@ -52,8 +55,21 @@ def read_blobify_config(git_root: Path, context: Optional[str] = None, debug: bo
             config = contexts[target_context]
             return config["include_patterns"], config["exclude_patterns"], config["default_switches"]
         else:
-            if debug and context is not None:
-                print_warning(f"Context '{context}' not found")
+            # If a specific context was requested but doesn't exist, that's an error
+            if context is not None:
+                print_error(f"Context '{context}' not found in .blobify file")
+
+                # Show available contexts to help the user
+                available_contexts = [name for name in contexts.keys() if name != "default"]
+                if available_contexts:
+                    print_error(f"Available contexts: {', '.join(sorted(available_contexts))}")
+                    print_error("Use 'bfy -x' to list all contexts with descriptions")
+                else:
+                    print_error("No contexts found in .blobify file")
+
+                sys.exit(1)
+
+            # If no context was specified and default doesn't exist, return empty
             return [], [], []
 
     except OSError as e:
