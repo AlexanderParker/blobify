@@ -1,9 +1,9 @@
 <div align="center">
   <h1>
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="misc/blobify-light.svg">
-      <source media="(prefers-color-scheme: light)" srcset="misc/blobify-dark.svg">
-      <img alt="Blobify" src="misc/blobify-dark.svg" width="48" height="48" style="vertical-align: middle; margin-right: 12px;">
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/AlexanderParker/blobify/main/misc/blobify-light.svg">
+      <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/AlexanderParker/blobify/main/misc/blobify-dark.svg">
+      <img alt="Blobify" src="https://raw.githubusercontent.com/AlexanderParker/blobify/main/misc/blobify-dark.svg" width="48" height="48" style="vertical-align: middle; margin-right: 12px;">
     </picture>
     Blobify
   </h1>
@@ -396,7 +396,6 @@ git push origin vX.X.X
 
 
 ```
-
 
 **TestPyPI Testing:**
 
