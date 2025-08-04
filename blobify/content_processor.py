@@ -145,39 +145,9 @@ def filter_content_lines(content: str, filters: dict, file_path: Path = None, de
         for name, (pattern, filepattern) in filters.items():
             # Convert Path to string for pattern matching, always use forward slashes
             file_str = str(file_path).replace("\\", "/")
-            file_name = file_path.name
 
-            # Try different matching approaches for robustness
-            matches = False
-
-            # Direct filename match
-            if fnmatch.fnmatch(file_name, filepattern):
-                matches = True
-            # Full path match (for patterns like "src/**")
-            elif fnmatch.fnmatch(file_str, filepattern):
-                matches = True
-            # For directory patterns like "migrations/*.sql"
-            elif "/" in filepattern:
-                # Split the pattern into directory and file parts
-                pattern_parts = filepattern.split("/")
-                file_parts = file_str.split("/")
-
-                # Check if the file path contains the directory structure
-                # For example, "migrations/*.sql" should match "path/to/migrations/001.sql"
-                for i in range(len(file_parts) - len(pattern_parts) + 1):
-                    # Get a slice of the file path with the same number of parts as the pattern
-                    file_slice = "/".join(file_parts[i : i + len(pattern_parts)])
-                    if fnmatch.fnmatch(file_slice, filepattern):
-                        matches = True
-                        break
-
-            # Additional check for ** patterns that should match any depth
-            if not matches and "**" in filepattern:
-                # For patterns like **/*.jsx, check if filename matches the end pattern
-                if filepattern.startswith("**/"):
-                    end_pattern = filepattern[3:]  # Remove **/ prefix
-                    if fnmatch.fnmatch(file_name, end_pattern):
-                        matches = True
+            # Simple and robust pattern matching using fnmatch directly
+            matches = fnmatch.fnmatch(file_str, filepattern)
 
             if matches:
                 applicable_filters[name] = pattern
