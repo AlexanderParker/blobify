@@ -450,40 +450,32 @@ SELECT * FROM users WHERE name = 'admin';
         """Test that files excluded by filter patterns show correct status."""
         self.setup_multi_language_project(tmp_path)
 
-        # Debug: Check what files exist
-        all_files = [str(p.relative_to(tmp_path)) for p in tmp_path.rglob("*") if p.is_file()]
-        print(f"Debug - All files: {all_files}")
-
         output_file = tmp_path / "output.txt"
 
         with patch(
             "sys.argv",
-            [
-                "bfy",
-                str(tmp_path),
-                "--filter",
-                '"py-only","^def","*.py"',
-                "--debug=true",
-                "--output-filename",
-                str(output_file),
-            ],
+            ["bfy", str(tmp_path), "--filter", '"py-only","^def","*.py"', "--output-filename", str(output_file)],
         ):
             main()
 
         content = output_file.read_text(encoding="utf-8")
 
-        # Debug: Print what was actually generated
-        print(f"Debug - Generated content preview: {content[:1500]}...")
-
-        # Python files should have content
+        # Python files should have matching content
         assert "app.py" in content
         assert "models.py" in content
         assert "def main():" in content
+        assert "def create_user(name):" in content
 
-        # Based on the debug output, files that don't match filters show:
-        # "[Content excluded - no lines matched filters]" in the content section
-        # So check for this pattern instead
-        assert "[Content excluded - no lines matched filters]" in content
+        # Non-Python files should have empty content sections since no lines match the filter
+        # Check that these files appear but with minimal/empty content
+        assert "START_FILE: app.js" in content
+        assert "START_FILE: styles.css" in content
+
+        # The key test: JavaScript and CSS files should not contain their actual content
+        assert "function main() {" not in content
+        assert "console.log" not in content
+        assert ".header {" not in content
+        assert "background: blue" not in content
 
     def test_blobify_config_with_file_targeted_filters(self, tmp_path):
         """Test file-targeted filters in .blobify configuration."""
