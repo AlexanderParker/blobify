@@ -1,16 +1,26 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = [
+    "setuptools>=61.0",
+    "wheel",
+]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "blobify"
-version = "1.0.4"
-authors = [{ name = "Alexander Parker", email = "pypi@parker.im" }]
-maintainers = [{ name = "Alexander Parker", email = "pypi@parker.im" }]
+version = "1.0.5"
+authors = [
+    { name = "Alexander Parker", email = "pypi@parker.im" },
+]
+maintainers = [
+    { name = "Alexander Parker", email = "pypi@parker.im" },
+]
 license = "MIT"
 description = "Package your entire codebase into a single text file for AI consumption"
 requires-python = ">=3.10"
-dependencies = ["rich>=14.1.0", "scrubadub>=2.0.1"]
+dependencies = [
+    "rich>=14.1.0",
+    "scrubadub>=2.0.1",
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -82,7 +92,9 @@ Repository = "https://github.com/AlexanderParker/blobify"
 
 [tool.black]
 line-length = 180
-target-version = ["py310"]
+target-version = [
+    "py310",
+]
 include = "\\.pyi?$"
 extend-exclude = "/(\n  \\.eggs\n  | \\.git\n  | \\.hg\n  | \\.mypy_cache\n  | \\.tox\n  | \\.venv\n  | _build\n  | buck-out\n  | build\n  | dist\n)/\n"
 
@@ -98,10 +110,18 @@ line_length = 180
 [tool.pytest.ini_options]
 minversion = "8.4"
 addopts = "-ra -q --strict-markers --strict-config"
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
+testpaths = [
+    "tests",
+]
+python_files = [
+    "test_*.py",
+]
+python_classes = [
+    "Test*",
+]
+python_functions = [
+    "test_*",
+]
 junit_family = "xunit2"
 junit_suite_name = "blobify"
 markers = [
@@ -114,8 +134,14 @@ filterwarnings = [
 ]
 
 [tool.coverage.run]
-source = ["blobify"]
-omit = ["*/tests/*", "*/test_*", "setup.py"]
+source = [
+    "blobify",
+]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "setup.py",
+]
 
 [tool.coverage.report]
 exclude_lines = [
@@ -133,4 +159,7 @@ exclude_lines = [
 
 [tool.flake8]
 max-line-length = 180
-extend-ignore = ["E203", "W503"]
+extend-ignore = [
+    "E203",
+    "W503",
+]
