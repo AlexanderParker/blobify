@@ -145,6 +145,20 @@ class TestFileTargetedFiltersIntegration:
 
     def setup_multi_language_project(self, tmp_path):
         """Create a multi-language test project."""
+        # Create git repository
+        (tmp_path / ".git").mkdir(exist_ok=True)
+
+        # Create .blobify to explicitly include SQL files (since they're security extensions)
+        (tmp_path / ".blobify").write_text(
+            """
++*.py
++*.js
++*.css
++migrations/*.sql
++*.sql
+"""
+        )
+
         # Python files
         (tmp_path / "app.py").write_text(
             """def main():
@@ -438,7 +452,7 @@ SELECT * FROM users WHERE name = 'admin';
         # Non-Python files should be excluded by filters
         assert "app.js [FILE CONTENTS EXCLUDED BY FILTERS]" in content
         assert "styles.css [FILE CONTENTS EXCLUDED BY FILTERS]" in content
-        # Note: migrations/001_init.sql is in a subdirectory, so the path might show differently
+        # SQL file should be excluded by filters
         assert "[FILE CONTENTS EXCLUDED BY FILTERS]" in content and "001_init.sql" in content
 
     def test_blobify_config_with_file_targeted_filters(self, tmp_path):
@@ -446,7 +460,9 @@ SELECT * FROM users WHERE name = 'admin';
         # Create git repo
         (tmp_path / ".git").mkdir()
 
-        # Create .blobify with file-targeted filters
+        self.setup_multi_language_project(tmp_path)
+
+        # Create custom sql-focussed .blobify with file-targeted filters
         (tmp_path / ".blobify").write_text(
             """
 @filter="py-functions","^def","*.py"
@@ -458,7 +474,6 @@ SELECT * FROM users WHERE name = 'admin';
 """
         )
 
-        self.setup_multi_language_project(tmp_path)
         output_file = tmp_path / "output.txt"
 
         with patch("sys.argv", ["bfy", str(tmp_path), "--output-filename", str(output_file)]):
@@ -481,6 +496,8 @@ SELECT * FROM users WHERE name = 'admin';
         # Create git repo
         (tmp_path / ".git").mkdir()
 
+        self.setup_multi_language_project(tmp_path)
+
         # Create .blobify with default filter
         (tmp_path / ".blobify").write_text(
             """
@@ -490,7 +507,6 @@ SELECT * FROM users WHERE name = 'admin';
 """
         )
 
-        self.setup_multi_language_project(tmp_path)
         output_file = tmp_path / "output.txt"
 
         with patch(
