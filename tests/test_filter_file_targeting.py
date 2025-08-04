@@ -336,9 +336,6 @@ SELECT * FROM users WHERE name = 'admin';
         """Test filters targeting SQL in migration files."""
         self.setup_multi_language_project(tmp_path)
 
-        # Debug: Check what files were actually created
-        print(f"Debug - Files created: {[str(p.relative_to(tmp_path)) for p in tmp_path.rglob('*') if p.is_file()]}")
-
         output_file = tmp_path / "output.txt"
 
         with patch(
@@ -350,7 +347,6 @@ SELECT * FROM users WHERE name = 'admin';
                 '"sql-ddl","^(CREATE|ALTER)","migrations/*.sql"',
                 "--filter",
                 '"sql-dml","^(INSERT|SELECT)","migrations/*.sql"',
-                "--debug=true",
                 "--output-filename",
                 str(output_file),
             ],
@@ -358,9 +354,6 @@ SELECT * FROM users WHERE name = 'admin';
             main()
 
         content = output_file.read_text(encoding="utf-8")
-
-        # Debug: Print what was actually generated
-        print(f"Debug - Generated content preview: {content[:1000]}...")
 
         # Should include SQL statements from migration files
         assert "CREATE TABLE users" in content
@@ -412,9 +405,6 @@ SELECT * FROM users WHERE name = 'admin';
         # Create additional SQL file outside migrations
         (tmp_path / "query.sql").write_text("SELECT COUNT(*) FROM users;")
 
-        # Debug: Check what files exist
-        print(f"Debug - All files: {[str(p.relative_to(tmp_path)) for p in tmp_path.rglob('*') if p.is_file()]}")
-
         output_file = tmp_path / "output.txt"
 
         with patch(
@@ -426,7 +416,6 @@ SELECT * FROM users WHERE name = 'admin';
                 '"migration-sql","^(CREATE|INSERT)","migrations/*.sql"',
                 "--filter",
                 '"all-sql","^SELECT","*.sql"',
-                "--debug=true",
                 "--output-filename",
                 str(output_file),
             ],
@@ -434,9 +423,6 @@ SELECT * FROM users WHERE name = 'admin';
             main()
 
         content = output_file.read_text(encoding="utf-8")
-
-        # Debug: Print what was actually generated
-        print(f"Debug - Generated content preview: {content[:1000]}...")
 
         # Migration-specific filter should only apply to files in migrations/
         assert "CREATE TABLE users" in content  # From migrations/001_init.sql
