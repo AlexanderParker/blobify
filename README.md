@@ -403,4 +403,4 @@ invoke test-install
 
 ## License
 
-[MIT License](LICENSE) - see the project repository for details.
+[MIT License](https://github.com/AlexanderParker/blobify/blob/main/LICENSE) - see the project repository for details.
