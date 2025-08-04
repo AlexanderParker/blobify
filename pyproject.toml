@@ -60,6 +60,7 @@ dev = [
     "pytest-cov>=6.2.1",
     "pre-commit>=4.2.0",
     "unittest-xml-reporting>=3.2.0",
+    "tomli-w",
 ]
 
 [project.scripts]

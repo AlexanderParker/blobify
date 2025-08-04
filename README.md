@@ -373,7 +373,13 @@ This package is published to PyPI as `blobify`. Releases are managed using invok
 
 ```bash
 # On branch main - after any release-related PRs are merged in.
-# Bump version in pyproject.toml and __version__ blobify/main.py (use SemVer practices).
+
+# Bump version (choose one):
+invoke bump-patch     # 1.0.0 → 1.0.1
+invoke bump-minor     # 1.0.0 → 1.1.0
+invoke bump-major     # 1.0.0 → 2.0.0
+# or set specific version:
+invoke set-version 1.2.3
 
 # Ensure all tests pass:
 invoke all

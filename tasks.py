@@ -303,6 +303,131 @@ def tag_release(c):
 
 
 @task
+def bump_patch(c):
+    """Bump patch version (x.x.X)."""
+    _bump_version(c, "patch")
+
+
+@task
+def bump_minor(c):
+    """Bump minor version (x.X.0)."""
+    _bump_version(c, "minor")
+
+
+@task
+def bump_major(c):
+    """Bump major version (X.0.0)."""
+    _bump_version(c, "major")
+
+
+def _bump_version(c, bump_type):
+    """Bump version in both pyproject.toml and blobify/main.py."""
+    import re
+    import tomllib
+
+    import tomli_w
+
+    # Read current version from pyproject.toml
+    with open("pyproject.toml", "rb") as f:
+        data = tomllib.load(f)
+
+    current_version = data["project"]["version"]
+    print(f"Current version: {current_version}")
+
+    # Parse version
+    version_parts = current_version.split(".")
+    if len(version_parts) != 3:
+        print(f"Invalid version format: {current_version}")
+        return
+
+    major, minor, patch = map(int, version_parts)
+
+    # Bump version
+    if bump_type == "major":
+        major += 1
+        minor = 0
+        patch = 0
+    elif bump_type == "minor":
+        minor += 1
+        patch = 0
+    elif bump_type == "patch":
+        patch += 1
+
+    new_version = f"{major}.{minor}.{patch}"
+    print(f"New version: {new_version}")
+
+    # Update pyproject.toml
+    data["project"]["version"] = new_version
+    with open("pyproject.toml", "wb") as f:
+        tomli_w.dump(data, f)
+
+    # Update blobify/main.py
+    main_py_path = Path("blobify/main.py")
+    if main_py_path.exists():
+        content = main_py_path.read_text()
+
+        # Find and replace __version__ line
+        version_pattern = r'__version__\s*=\s*["\']([^"\']+)["\']'
+        new_content = re.sub(version_pattern, f'__version__ = "{new_version}"', content)
+
+        if new_content != content:
+            main_py_path.write_text(new_content)
+            print(f"Updated version in {main_py_path}")
+        else:
+            print(f"Warning: Could not find __version__ in {main_py_path}")
+    else:
+        print(f"Warning: {main_py_path} not found")
+
+    print(f"Version bumped from {current_version} to {new_version}")
+
+
+@task
+def set_version(c, version):
+    """Set specific version (e.g., invoke set-version 1.2.3)."""
+    import re
+    import tomllib
+
+    import tomli_w
+
+    # Validate version format
+    if not re.match(r"^\d+\.\d+\.\d+$", version):
+        print(f"Invalid version format: {version}. Use format: major.minor.patch")
+        return
+
+    # Read current version from pyproject.toml
+    with open("pyproject.toml", "rb") as f:
+        data = tomllib.load(f)
+
+    current_version = data["project"]["version"]
+    print(f"Current version: {current_version}")
+    print(f"Setting version to: {version}")
+
+    # Update pyproject.toml
+    data["project"]["version"] = version
+    with open("pyproject.toml", "wb") as f:
+        tomli_w.dump(data, f)
+
+    # Update blobify/main.py
+    main_py_path = Path("blobify/main.py")
+    if main_py_path.exists():
+        content = main_py_path.read_text()
+
+        # Find and replace __version__ line
+        version_pattern = r'__version__\s*=\s*["\']([^"\']+)["\']'
+        new_content = re.sub(version_pattern, f'__version__ = "{version}"', content)
+
+        if new_content != content:
+            main_py_path.write_text(new_content)
+            print(f"Updated version in {main_py_path}")
+        else:
+            print(f"Warning: Could not find __version__ in {main_py_path}")
+    else:
+        print(f"Warning: {main_py_path} not found")
+
+    print(f"Version updated from {current_version} to {version}")
+
+
+@task
 def all(c):
     """Run all checks (format, lint, test)."""
     format(c)
