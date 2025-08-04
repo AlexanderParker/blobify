@@ -5,7 +5,7 @@ from typing import Optional
 
 try:
     from rich.console import Console
-    from rich.text import Text
+
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False
@@ -36,7 +36,7 @@ def print_debug(message: str):
 def print_phase(phase_name: str):
     """Print phase header with distinct styling."""
     if console:
-        console.print(f"\n[bold magenta]──── {phase_name.upper()} ────[/bold magenta]")
+        console.print(f"\n[bold magenta]------ {phase_name.upper()} ------[/bold magenta]")
     else:
         print(f"\n=== {phase_name.upper()} ===", file=sys.stderr)
 
