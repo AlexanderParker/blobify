@@ -145,9 +145,19 @@ def filter_content_lines(content: str, filters: dict, file_path: Path = None, de
         for name, (pattern, filepattern) in filters.items():
             # Convert Path to string for pattern matching, always use forward slashes
             file_str = str(file_path).replace("\\", "/")
+            file_name = file_path.name
 
-            # Simple and robust pattern matching using fnmatch directly
-            matches = fnmatch.fnmatch(file_str, filepattern)
+            # Use PurePosixPath for consistent cross-platform glob matching
+            from pathlib import PurePosixPath
+
+            file_posix = PurePosixPath(file_str)
+
+            # Try PurePath.match() which handles ** patterns correctly
+            matches = file_posix.match(filepattern)
+
+            # If that doesn't work, try fnmatch for simple patterns
+            if not matches:
+                matches = fnmatch.fnmatch(file_name, filepattern) or fnmatch.fnmatch(file_str, filepattern)
 
             if matches:
                 applicable_filters[name] = pattern
