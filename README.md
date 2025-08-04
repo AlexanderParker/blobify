@@ -50,7 +50,7 @@ bfy -x docs-only --copy-to-clipboard=true
 
 **Key features:** Respects `.gitignore`, automatic sensitive data scrubbing, includes line numbers, supports custom filtering via `.blobify` configuration, content filters for extracting specific patterns with file targeting, context listing for easy discovery, cross-platform clipboard support, **context inheritance** for reusable configurations.
 
-**ΓÜá∩╕Å Important Notice:** The scrubbing feature is not guaranteed to work; it may not detect some sensitive data. Consider it a best-effort helper only. Always review output before sharing.
+**Important Notice:** The scrubbing feature is not guaranteed to work; it may not detect some sensitive data. Consider it a best-effort helper only. Always review output before sharing.
 
 ## Command Line Options
 
@@ -240,7 +240,7 @@ Create a `.blobify` file in your project directory for custom configurations. Wh
 - Contexts can only inherit from contexts defined earlier in the file
 - Child contexts inherit all patterns and options from parents, then add their own
 - Cannot redefine the `default` context - it's automatically created
-- Inheritance order is preserved: parent1 ΓåÆ parent2 ΓåÆ child
+- Inheritance order is preserved: parent1 → parent2 → child
 
 ### Context Discovery
 
@@ -374,34 +374,35 @@ This package is published to PyPI as `blobify`. Releases are currently managed m
 ```bash
 # On branch main - after any release-related PRs are merged in.
 # Bump version in pyproject.toml and __version__ blobify/main.py (use SemVer practices).
-# Ensure all tests pass
+# Ensure all tests pass:
 invoke all
 
-# Delete the old dist folder
+# Delete the old dist folder.
 
-# Build the package
+# Build the package:
 python -m build
 
 # Fix any build issues before continuing.
 
-# Test upload to TestPyPI first (recommended)
+# Test upload to TestPyPI first (recommended):
 python -m twine upload --repository testpypi dist/*
 
-# Upload to production PyPI (requires appropriate credentials)
+# Upload to production PyPI (requires appropriate credentials):
 python -m twine upload dist/*
 
 # If any issues after uploading then you'll need to go back to step 1 as you need a new version number for each deployment.
 
-# Finally tag the build with the new version number and push the tag to the remote.
+# Finally tag the build with the new version number and push the tag to the remote:
 git tag vX.X.X
 git push origin vX.X.X
+
 
 ```
 
 **TestPyPI Testing:**
 
 ```bash
-# Install from TestPyPI to verify the package
+# Install from TestPyPI to verify the package:
 pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ blobify
 ```
 
