@@ -23,7 +23,7 @@ Feed your project to Claude, ChatGPT, or other AI assistants for code analysis, 
 Install:
 
 ```bash
-pip install git+https://github.com/AlexanderParker/blobify.git
+pip install blobify
 ```
 
 Basic usage:
