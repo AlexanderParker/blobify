@@ -123,7 +123,7 @@ def check_if_dot_item_might_be_included(item_name: str, git_root: Path, context:
         return False
 
     try:
-        blobify_include_patterns, _, _ = read_blobify_config(git_root, context, False)
+        blobify_include_patterns, _, _, _ = read_blobify_config(git_root, context, False)
         if not blobify_include_patterns:
             return False
 
@@ -271,7 +271,7 @@ def apply_blobify_patterns(discovery_context: Dict, directory: Path, context: Op
     # Load .blobify configuration
     if debug:
         print_phase("Blobify Configuration")
-    blobify_include_patterns, blobify_exclude_patterns, _ = read_blobify_config(git_root, context, debug)
+    blobify_include_patterns, blobify_exclude_patterns, _, _ = read_blobify_config(git_root, context, debug)
 
     if not (blobify_include_patterns or blobify_exclude_patterns):
         return

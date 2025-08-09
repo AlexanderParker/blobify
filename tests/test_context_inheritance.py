@@ -24,13 +24,13 @@ class TestContextInheritance:
         )
 
         # Test default context (no context specified)
-        includes, excludes, switches = read_blobify_config(tmp_path)
+        includes, excludes, switches, _ = read_blobify_config(tmp_path)
         assert includes == ["*.py"]
         assert excludes == ["*.log"]
         assert switches == ["copy-to-clipboard=true"]
 
         # Test explicitly requesting default context
-        includes, excludes, switches = read_blobify_config(tmp_path, "default")
+        includes, excludes, switches, _ = read_blobify_config(tmp_path, "default")
         assert includes == ["*.py"]
         assert excludes == ["*.log"]
         assert switches == ["copy-to-clipboard=true"]
@@ -53,13 +53,13 @@ class TestContextInheritance:
         )
 
         # Test default context
-        includes, excludes, switches = read_blobify_config(tmp_path, "default")
+        includes, excludes, switches, _ = read_blobify_config(tmp_path, "default")
         assert includes == ["*.py"]
         assert excludes == ["*.log"]
         assert switches == ["copy-to-clipboard=true"]
 
         # Test extended context (should inherit from default)
-        includes, excludes, switches = read_blobify_config(tmp_path, "extended")
+        includes, excludes, switches, _ = read_blobify_config(tmp_path, "extended")
         assert includes == ["*.py", "*.md"]  # Inherited + own
         assert excludes == ["*.log", "secret.txt"]  # Inherited + own
         assert switches == ["copy-to-clipboard=true"]  # Inherited
@@ -88,7 +88,7 @@ class TestContextInheritance:
         )
 
         # Test final context should inherit from entire chain
-        includes, excludes, switches = read_blobify_config(tmp_path, "final")
+        includes, excludes, switches, _ = read_blobify_config(tmp_path, "final")
 
         # Should have patterns from entire inheritance chain
         assert includes == ["*.py", "*.js", "*.md", "*.txt"]
@@ -112,7 +112,7 @@ class TestContextInheritance:
         )
 
         # Test standalone context (should not inherit from default)
-        includes, excludes, switches = read_blobify_config(tmp_path, "standalone")
+        includes, excludes, switches, _ = read_blobify_config(tmp_path, "standalone")
         assert includes == ["*.md"]  # Only own patterns
         assert excludes == []
         assert switches == ["debug=true"]  # Only own switches
@@ -150,7 +150,7 @@ class TestContextInheritance:
 """
         )
 
-        includes, excludes, switches = read_blobify_config(tmp_path, "child")
+        includes, excludes, switches, _ = read_blobify_config(tmp_path, "child")
 
         # Order should be: parent patterns first, then child patterns
         assert includes == ["*.py", "*.md"]
@@ -423,11 +423,11 @@ class TestContextInheritance:
         assert "base" in contexts
 
         # Test that empty parent is treated as no inheritance
-        includes, excludes, switches = read_blobify_config(tmp_path, "empty")
+        includes, excludes, switches, _ = read_blobify_config(tmp_path, "empty")
         assert includes == ["*.py"]
 
         # Test that normal inheritance still works
-        includes, excludes, switches = read_blobify_config(tmp_path, "normal")
+        includes, excludes, switches, _ = read_blobify_config(tmp_path, "normal")
         assert includes == ["*.md", "*.txt"]
 
     def test_context_inheritance_integration_example(self, tmp_path):
@@ -452,7 +452,7 @@ class TestContextInheritance:
         )
 
         # Test that "all" context gets the expected final configuration
-        includes, excludes, switches = read_blobify_config(tmp_path, "all")
+        includes, excludes, switches, _ = read_blobify_config(tmp_path, "all")
 
         # Final "all" context should be evaluated as: -**, @copy-to-clipboard=true, +code, +**
         assert excludes == ["**"]
@@ -482,7 +482,7 @@ class TestContextInheritance:
 """
         )
 
-        includes, excludes, switches = read_blobify_config(tmp_path, "full")
+        includes, excludes, switches, _ = read_blobify_config(tmp_path, "full")
 
         # Should have all patterns from inheritance chain
         expected_includes = ["*.py", "src/**/*.py", "*.md", "docs/**", "**"]
@@ -513,12 +513,12 @@ class TestContextInheritance:
         )
 
         # Test that second inherits from first
-        includes, excludes, switches = read_blobify_config(tmp_path, "second")
+        includes, excludes, switches, _ = read_blobify_config(tmp_path, "second")
         assert includes == ["*.py", "*.md"]
         assert switches == ["copy-to-clipboard=true"]
 
         # Test that third also inherits from first
-        includes, excludes, switches = read_blobify_config(tmp_path, "third")
+        includes, excludes, switches, _ = read_blobify_config(tmp_path, "third")
         assert includes == ["*.py", "*.txt"]
         assert switches == ["copy-to-clipboard=true"]
 
@@ -605,7 +605,7 @@ class TestContextInheritance:
 """
         )
 
-        includes, excludes, switches = read_blobify_config(tmp_path, "combined")
+        includes, excludes, switches, _ = read_blobify_config(tmp_path, "combined")
 
         # Should inherit from both parents
         assert includes == ["*.py", "*.md", "*.txt"]
@@ -636,7 +636,7 @@ class TestContextInheritance:
 """
         )
 
-        includes, excludes, switches = read_blobify_config(tmp_path, "combined")
+        includes, excludes, switches, _ = read_blobify_config(tmp_path, "combined")
 
         # Should inherit: base.py (from default via docs), *.md (from docs),
         # base.py again (from default via code), *.js (from code), *.txt (own)
@@ -669,7 +669,7 @@ class TestContextInheritance:
 """
         )
 
-        includes, excludes, switches = read_blobify_config(tmp_path, "child")
+        includes, excludes, switches, _ = read_blobify_config(tmp_path, "child")
 
         # Should have duplicates (implementation preserves order from parents)
         assert includes == ["*.py", "*.py", "*.md"]
@@ -728,7 +728,7 @@ class TestContextInheritance:
 """
         )
 
-        includes, excludes, switches = read_blobify_config(tmp_path, "combined")
+        includes, excludes, switches, _ = read_blobify_config(tmp_path, "combined")
 
         # Should preserve parent order
         assert includes == ["first.py", "second.py", "third.py", "combined.py"]
@@ -790,10 +790,10 @@ class TestContextInheritance:
         )
 
         # Should handle empty parent lists gracefully
-        includes, excludes, switches = read_blobify_config(tmp_path, "empty")
+        includes, excludes, switches, _ = read_blobify_config(tmp_path, "empty")
         assert includes == ["*.py"]
 
-        includes, excludes, switches = read_blobify_config(tmp_path, "empty_with_commas")
+        includes, excludes, switches, _ = read_blobify_config(tmp_path, "empty_with_commas")
         assert includes == ["*.md"]
 
     def test_multiple_inheritance_integration_with_blobify(self, tmp_path):

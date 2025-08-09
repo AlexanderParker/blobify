@@ -66,6 +66,7 @@
 @copy-to-clipboard=true
 @show-excluded=false
 -**
++README.md
 +blobify/*.py
 
 [api-surface:default]

@@ -28,10 +28,10 @@ def validate_list_patterns_value(value: str) -> str:
     return value
 
 
-def read_blobify_config(git_root: Path, context: Optional[str] = None, debug: bool = False) -> Tuple[List[str], List[str], List[str]]:
+def read_blobify_config(git_root: Path, context: Optional[str] = None, debug: bool = False) -> Tuple[List[str], List[str], List[str], List[str]]:
     """
     Read .blobify configuration file from git root with context inheritance support.
-    Returns tuple of (include_patterns, exclude_patterns, default_switches).
+    Returns tuple of (include_patterns, exclude_patterns, default_switches, llm_instructions).
     If context is provided, uses patterns from that context section with inheritance.
 
     Context inheritance syntax: [context-name:parent-context]
@@ -43,7 +43,7 @@ def read_blobify_config(git_root: Path, context: Optional[str] = None, debug: bo
     if not blobify_file.exists():
         if debug:
             print_debug("No .blobify file found")
-        return [], [], []
+        return [], [], [], []
 
     try:
         contexts = _parse_contexts_with_inheritance(blobify_file, debug)
@@ -53,7 +53,12 @@ def read_blobify_config(git_root: Path, context: Optional[str] = None, debug: bo
 
         if target_context in contexts:
             config = contexts[target_context]
-            return config["include_patterns"], config["exclude_patterns"], config["default_switches"]
+            return (
+                config["include_patterns"],
+                config["exclude_patterns"],
+                config["default_switches"],
+                config["llm_instructions"],
+            )
         else:
             # If a specific context was requested but doesn't exist, that's an error
             if context is not None:
@@ -70,12 +75,12 @@ def read_blobify_config(git_root: Path, context: Optional[str] = None, debug: bo
                 sys.exit(1)
 
             # If no context was specified and default doesn't exist, return empty
-            return [], [], []
+            return [], [], [], []
 
     except OSError as e:
         if debug:
             print_error(f"Error reading .blobify file: {e}")
-        return [], [], []
+        return [], [], [], []
 
 
 def _parse_contexts_with_inheritance(blobify_file: Path, debug: bool = False) -> Dict[str, Dict]:
@@ -84,7 +89,7 @@ def _parse_contexts_with_inheritance(blobify_file: Path, debug: bool = False) ->
     Processes file sequentially, building inherited contexts as we go.
     """
     # Initialize with empty default context
-    contexts = {"default": {"include_patterns": [], "exclude_patterns": [], "default_switches": []}}
+    contexts = {"default": {"include_patterns": [], "exclude_patterns": [], "default_switches": [], "llm_instructions": []}}
 
     current_context = "default"
 
@@ -92,8 +97,23 @@ def _parse_contexts_with_inheritance(blobify_file: Path, debug: bool = False) ->
         for line_num, line in enumerate(f, 1):
             line = line.strip()
 
-            # Skip empty lines and comments
-            if not line or line.startswith("#"):
+            # Skip empty lines
+            if not line:
+                continue
+
+            # Check for LLM instruction comments (double-hash)
+            if line.startswith("##"):
+                # Extract the instruction (remove ##, strip whitespace)
+                instruction = line[2:].strip()
+                if instruction:  # Only add non-empty instructions
+                    contexts[current_context]["llm_instructions"].append(instruction)
+                    if debug:
+                        context_info = f" (context: {current_context})"
+                        print_debug(f".blobify line {line_num}: LLM instruction '{instruction}'{context_info}")
+                continue
+
+            # Skip single-hash comments
+            if line.startswith("#"):
                 continue
 
             # Check for context headers [context-name] or [context-name:parent] or [context-name:parent1,parent2]
@@ -131,13 +151,19 @@ def _parse_contexts_with_inheritance(blobify_file: Path, debug: bool = False) ->
                         raise ValueError(f"Line {line_num}: Parent context(s) not found: {missing_str}")
 
                     # Merge all parent contexts
-                    merged_config = {"include_patterns": [], "exclude_patterns": [], "default_switches": []}
+                    merged_config = {
+                        "include_patterns": [],
+                        "exclude_patterns": [],
+                        "default_switches": [],
+                        "llm_instructions": [],
+                    }
 
                     for parent_context in parent_contexts:
                         parent_config = contexts[parent_context]
                         merged_config["include_patterns"].extend(parent_config["include_patterns"])
                         merged_config["exclude_patterns"].extend(parent_config["exclude_patterns"])
                         merged_config["default_switches"].extend(parent_config["default_switches"])
+                        merged_config["llm_instructions"].extend(parent_config["llm_instructions"])
 
                     contexts[context_name] = merged_config
 
@@ -146,7 +172,12 @@ def _parse_contexts_with_inheritance(blobify_file: Path, debug: bool = False) ->
                         print_debug(f".blobify line {line_num}: Created context '{context_name}' inheriting from {parents_str}")
                 else:
                     # No parent specified, create empty context
-                    contexts[context_name] = {"include_patterns": [], "exclude_patterns": [], "default_switches": []}
+                    contexts[context_name] = {
+                        "include_patterns": [],
+                        "exclude_patterns": [],
+                        "default_switches": [],
+                        "llm_instructions": [],
+                    }
                     if debug:
                         print_debug(f".blobify line {line_num}: Created context '{context_name}' with no inheritance")
 
@@ -204,7 +235,7 @@ def _parse_contexts_with_inheritance(blobify_file: Path, debug: bool = False) ->
                         print_debug(f".blobify line {line_num}: Exclude pattern '{pattern}'{context_info}")
             else:
                 if debug:
-                    print_debug(f".blobify line {line_num}: Ignoring invalid pattern '{line}' (must start with +, -, or @)")
+                    print_debug(f".blobify line {line_num}: Ignoring invalid pattern '{line}' (must start with +, -, @, or ##)")
 
     if debug:
         for ctx_name, config in contexts.items():
@@ -212,7 +243,8 @@ def _parse_contexts_with_inheritance(blobify_file: Path, debug: bool = False) ->
                 f"Final context '{ctx_name}': "
                 f"{len(config['include_patterns'])} include, "
                 f"{len(config['exclude_patterns'])} exclude, "
-                f"{len(config['default_switches'])} options"
+                f"{len(config['default_switches'])} options, "
+                f"{len(config['llm_instructions'])} LLM instructions"
             )
 
     return contexts
@@ -233,7 +265,7 @@ def get_available_contexts(git_root: Path, debug: bool = False) -> List[str]:
         with open(blobify_file, "r", encoding="utf-8", errors="ignore") as f:
             for line_num, line in enumerate(f, 1):
                 line = line.strip()
-                # Skip empty lines and comments
+                # Skip empty lines and comments (including double-hash comments)
                 if not line or line.startswith("#"):
                     continue
 
@@ -280,11 +312,16 @@ def get_context_descriptions(git_root: Path) -> Dict[str, str]:
                     pending_comments.clear()
                     continue
 
-                # Collect comments that might describe the next context
-                if line.startswith("#"):
+                # Collect single-hash comments that might describe the next context
+                # Skip double-hash comments as they are LLM instructions
+                if line.startswith("#") and not line.startswith("##"):
                     comment_text = line[1:].strip()
                     if comment_text:  # Skip empty comments
                         pending_comments.append(comment_text)
+                    continue
+
+                # Skip double-hash comments for context descriptions
+                if line.startswith("##"):
                     continue
 
                 # Check for context headers [context-name] or [context-name:parent] or [context-name:parent1,parent2]
@@ -351,6 +388,13 @@ def list_available_contexts(directory: Path):
         print("[combined:base,docs]")
         print("# Inherits from both base and docs contexts")
         print("+*.txt")
+        print("")
+        print("LLM instructions:")
+        print("[ai-analysis]")
+        print("## This code represents a Python web application")
+        print("## Focus on security vulnerabilities and performance issues")
+        print("## Provide recommendations for improvements")
+        print("+*.py")
         return
 
     print("Available contexts:")
@@ -468,6 +512,7 @@ def apply_default_switches(args: argparse.Namespace, default_switches: List[str]
                     "output_metadata": True,
                     "copy_to_clipboard": False,
                     "show_excluded": True,
+                    "suppress_timestamps": False,
                 }
                 is_default_value = current_value == expected_defaults.get(arg_name, current_value)
             elif current_value == "none":  # list_patterns default

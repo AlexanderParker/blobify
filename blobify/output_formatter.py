@@ -21,7 +21,7 @@ def generate_header(
     suppress_timestamps: bool = False,
 ) -> str:
     """Generate the file header with metadata and configuration info."""
-    blobify_include_patterns, blobify_exclude_patterns, default_switches = blobify_patterns_info
+    blobify_include_patterns, blobify_exclude_patterns, default_switches, llm_instructions = blobify_patterns_info
 
     # Keep headers minimal - no verbose metadata
     git_info = ""
@@ -39,11 +39,17 @@ def generate_header(
                 filter_lines.append(f"# * {name}: {pattern} (files: {filepattern})")
         filter_info = "\n#\n# Content filters applied:\n" + "\n".join(filter_lines)
 
+    # Add LLM instructions if present
+    llm_info = ""
+    if llm_instructions:
+        llm_lines = []
+        for instruction in llm_instructions:
+            llm_lines.append(f"# * {instruction}")
+        llm_info = "\n#\n# Instructions for AI/LLM analysis:\n" + "\n".join(llm_lines)
+
     # Adjust format description based on options
     if not include_content and not include_index and not include_metadata:
-        format_description = (
-            """# This file contains no useful output - index, content, and metadata have all been disabled."""
-        )
+        format_description = """# This file contains no useful output - index, content, and metadata have all been disabled."""
     elif not include_content and not include_index:
         # Metadata only
         format_description = """# This file contains metadata of all text files found in the specified directory.
@@ -108,18 +114,19 @@ def generate_header(
     # Build the header intro
     if suppress_timestamps:
         header_intro = """# Blobify Text File Index
-# Source Directory: {directory}{git_info}{blobify_info}{scrubbing_info}{filter_info}
+# Source Directory: {directory}{git_info}{blobify_info}{scrubbing_info}{filter_info}{llm_info}
 """.format(
             directory=str(directory.absolute()),
             git_info=git_info,
             blobify_info=blobify_info,
             scrubbing_info=scrubbing_info,
             filter_info=filter_info,
+            llm_info=llm_info,
         )
     else:
         header_intro = """# Blobify Text File Index
 # Generated: {datetime}
-# Source Directory: {directory}{git_info}{blobify_info}{scrubbing_info}{filter_info}
+# Source Directory: {directory}{git_info}{blobify_info}{scrubbing_info}{filter_info}{llm_info}
 """.format(
             datetime=datetime.datetime.now().isoformat(),
             directory=str(directory.absolute()),
@@ -127,6 +134,7 @@ def generate_header(
             blobify_info=blobify_info,
             scrubbing_info=scrubbing_info,
             filter_info=filter_info,
+            llm_info=llm_info,
         )
 
     # Add description to header

@@ -136,7 +136,8 @@ class TestFileScanner:
     @patch("blobify.file_scanner.read_blobify_config")
     def test_apply_blobify_patterns_with_config(self, mock_read_config, tmp_path):
         """Test apply_blobify_patterns with .blobify configuration."""
-        mock_read_config.return_value = (["*.py"], ["*.log"], [])
+        # Fix: Return 4-tuple to match expected signature
+        mock_read_config.return_value = (["*.py"], ["*.log"], [], [])
 
         # Create test files
         (tmp_path / "test.py").write_text("test")

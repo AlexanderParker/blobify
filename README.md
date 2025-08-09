@@ -55,8 +55,8 @@ bfy [directory] [options]
 - `--output-metadata`=`true|false` - Include file metadata (size, timestamps, status) in output (default: true)
 - `--show-excluded`=`true|false` - Show excluded files in file contents section (default: true)
 - `--copy-to-clipboard`=`true|false` - Copy output to clipboard (default: false)
+- `--suppress-timestamps`=`true|false` - Suppress timestamps in output for reproducible builds (default: false)
 - `--list-patterns`=`none|ignored|contexts` - List patterns and exit: 'ignored' shows built-in patterns, 'contexts' shows available contexts (default: none)
-
 
 **Key features:** Respects `.gitignore`, automatic sensitive data scrubbing, includes line numbers, supports custom filtering via `.blobify` configuration, content filters for extracting specific patterns with file targeting, context listing for easy discovery, cross-platform clipboard support, **context inheritance** for reusable configurations.
 
@@ -110,12 +110,14 @@ Create a `.blobify` file in your project directory for custom configurations. Wh
 - `[context-name]` - Define named contexts
 - `[context-name:parent]` - Define context with single inheritance
 - `[context-name:parent1,parent2]` - Define context with multiple inheritance
+- `## instruction` - Add LLM/AI analysis instructions (appears in output header)
 - Supports `*` and `**` wildcards
 
 ```
 # Default configuration options
 @copy-to-clipboard=true
 @show-excluded=false
+@suppress-timestamps=true
 
 # Content filters with file targeting (CSV format)
 @filter="signatures","^(def|class)\s+","*.py"
@@ -130,15 +132,32 @@ Create a `.blobify` file in your project directory for custom configurations. Wh
 
 [docs-only]
 # Documentation review context
+## Review this documentation for clarity and completeness
+## Check for broken links and outdated information
 -**
 +*.md
 +docs/**
+
+[security-review]
+## This codebase represents a web application built with Flask
+## Focus on security vulnerabilities including SQL injection and XSS
+## Pay special attention to authentication and authorization mechanisms
++*.py
++templates/*.html
 
 [todos]
 # Find all TODOs and FIXMEs
 @filter="todos","(TODO|FIXME|XXX)"
 @show-excluded=false
 +**
+```
+
+LLM instructions (lines starting with `##`) appear in the output header as:
+
+```
+# Instructions for AI/LLM analysis:
+# * Review this documentation for clarity and completeness
+# * Check for broken links and outdated information
 ```
 
 ### Context Inheritance
@@ -149,7 +168,7 @@ Create a `.blobify` file in your project directory for custom configurations. Wh
 - Child contexts inherit all patterns and options from parents, then add their own
 - Cannot redefine the `default` context - it's automatically created
 - Inheritance order is preserved: parent1 → parent2 → child
-
+- LLM instructions are also inherited from parent contexts
 
 ```
 # Base configuration
@@ -160,6 +179,7 @@ Create a `.blobify` file in your project directory for custom configurations. Wh
 
 [backend:default]
 # Inherits @copy-to-clipboard=true, @debug=true, +*.py, -*.pyc from default
+## Analyze backend code for performance and security issues
 +*.sql
 +migrations/**
 @filter="functions","^def","*.py"
@@ -167,6 +187,7 @@ Create a `.blobify` file in your project directory for custom configurations. Wh
 
 [frontend:default]
 # Also inherits from default
+## Focus on component structure and state management
 +*.js
 +*.vue
 +*.css
@@ -174,6 +195,7 @@ Create a `.blobify` file in your project directory for custom configurations. Wh
 
 [full:backend,frontend]
 # Multiple inheritance - combines backend + frontend
+## Perform comprehensive full-stack analysis
 +*.md
 +docs/**
 @show-excluded=false

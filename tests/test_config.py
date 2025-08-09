@@ -1,4 +1,4 @@
-"""Tests for config.py module."""
+"""Tests for config.py module - Updated for 4-tuple return value."""
 
 import argparse
 import tempfile
@@ -31,10 +31,11 @@ class TestBlobifyConfig:
 
     def test_read_blobify_config_no_file(self, temp_dir):
         """Test reading config when no .blobify file exists."""
-        includes, excludes, switches = read_blobify_config(temp_dir)
+        includes, excludes, switches, llm_instructions = read_blobify_config(temp_dir)
         assert includes == []
         assert excludes == []
         assert switches == []
+        assert llm_instructions == []
 
     def test_read_blobify_config_basic_patterns(self, blobify_file):
         """Test reading basic include/exclude patterns."""
@@ -49,10 +50,11 @@ class TestBlobifyConfig:
 @output-filename=test.txt
 """
         )
-        includes, excludes, switches = read_blobify_config(blobify_file.parent)
+        includes, excludes, switches, llm_instructions = read_blobify_config(blobify_file.parent)
         assert includes == ["*.py", "docs/**"]
         assert excludes == ["*.log", "temp/"]
         assert switches == ["debug=true", "output-filename=test.txt"]
+        assert llm_instructions == []
 
     def test_read_blobify_config_legacy_boolean_switches(self, blobify_file):
         """Test reading legacy boolean switches (converted to key=true)."""
@@ -64,10 +66,11 @@ class TestBlobifyConfig:
 @copy-to-clipboard
 """
         )
-        includes, excludes, switches = read_blobify_config(blobify_file.parent)
+        includes, excludes, switches, llm_instructions = read_blobify_config(blobify_file.parent)
         assert includes == ["*.py"]
         assert excludes == []
         assert switches == ["debug=true", "copy-to-clipboard=true"]
+        assert llm_instructions == []
 
     def test_read_blobify_config_with_context(self, blobify_file):
         """Test reading config with specific context."""
@@ -83,16 +86,18 @@ class TestBlobifyConfig:
 """
         )
         # Default context
-        includes, excludes, switches = read_blobify_config(blobify_file.parent)
+        includes, excludes, switches, llm_instructions = read_blobify_config(blobify_file.parent)
         assert includes == ["default.txt"]
         assert excludes == ["default.log"]
         assert switches == []
+        assert llm_instructions == []
 
         # Specific context
-        includes, excludes, switches = read_blobify_config(blobify_file.parent, "test-context")
+        includes, excludes, switches, llm_instructions = read_blobify_config(blobify_file.parent, "test-context")
         assert includes == ["context.py"]
         assert excludes == ["context.log"]
         assert switches == ["copy-to-clipboard=true"]
+        assert llm_instructions == []
 
     def test_read_blobify_config_last_value_wins(self, blobify_file):
         """Test that last value wins for duplicate keys."""
@@ -106,10 +111,11 @@ class TestBlobifyConfig:
 +*.py
 """
         )
-        includes, excludes, switches = read_blobify_config(blobify_file.parent)
+        includes, excludes, switches, llm_instructions = read_blobify_config(blobify_file.parent)
         assert includes == ["*.py"]
         assert excludes == []
         assert switches == ["debug=true", "copy-to-clipboard=true"]
+        assert llm_instructions == []
 
     def test_read_blobify_config_csv_filters(self, blobify_file):
         """Test reading CSV format filters from .blobify file."""
@@ -120,10 +126,11 @@ class TestBlobifyConfig:
 +*.py
 """
         )
-        includes, excludes, switches = read_blobify_config(blobify_file.parent)
+        includes, excludes, switches, llm_instructions = read_blobify_config(blobify_file.parent)
         assert includes == ["*.py"]
         assert excludes == []
         assert switches == ['filter="functions","^def","*.py"', 'filter="imports","^import"']
+        assert llm_instructions == []
 
     def test_read_blobify_config_invalid_patterns(self, blobify_file):
         """Test handling of invalid patterns."""
@@ -134,17 +141,19 @@ invalid_line
 -valid.log
 """
         )
-        includes, excludes, switches = read_blobify_config(blobify_file.parent, debug=True)
+        includes, excludes, switches, llm_instructions = read_blobify_config(blobify_file.parent, debug=True)
         assert includes == ["valid.py"]
         assert excludes == ["valid.log"]
+        assert llm_instructions == []
 
     def test_read_blobify_config_file_read_error(self, temp_dir):
         """Test handling of file read errors."""
         with patch("builtins.open", side_effect=IOError("Read error")):
-            includes, excludes, switches = read_blobify_config(temp_dir, debug=True)
+            includes, excludes, switches, llm_instructions = read_blobify_config(temp_dir, debug=True)
             assert includes == []
             assert excludes == []
             assert switches == []
+            assert llm_instructions == []
 
     def test_apply_default_switches_no_switches(self):
         """Test applying empty default switches."""
@@ -226,3 +235,10 @@ invalid_line
         switches = ["list-patterns=invalid"]
         result = apply_default_switches(args, switches, debug=True)
         assert result.list_patterns == "none"  # Should remain unchanged due to invalid value
+
+    def test_apply_default_switches_suppress_timestamps(self):
+        """Test applying suppress-timestamps default switch."""
+        args = argparse.Namespace(suppress_timestamps=False)
+        switches = ["suppress-timestamps=true"]
+        result = apply_default_switches(args, switches)
+        assert result.suppress_timestamps is True

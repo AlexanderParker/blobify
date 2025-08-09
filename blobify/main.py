@@ -36,9 +36,7 @@ def validate_list_patterns(value):
     """Validate list-patterns option values."""
     allowed_values = ["none", "ignored", "contexts"]
     if value not in allowed_values:
-        raise argparse.ArgumentTypeError(
-            f"Invalid list-patterns value: '{value}'. Use one of: {', '.join(allowed_values)}"
-        )
+        raise argparse.ArgumentTypeError(f"Invalid list-patterns value: '{value}'. Use one of: {', '.join(allowed_values)}")
     return value
 
 
@@ -80,18 +78,10 @@ def list_ignored_patterns():
     # Group patterns by type for better readability
     dot_folders = [p for p in patterns if p.startswith(".")]
     package_dirs = [p for p in patterns if p in ["node_modules", "bower_components", "vendor", "packages"]]
-    python_dirs = [
-        p for p in patterns if p in ["venv", "env", ".env", ".venv", "__pycache__", ".pytest_cache", ".mypy_cache"]
-    ]
+    python_dirs = [p for p in patterns if p in ["venv", "env", ".env", ".venv", "__pycache__", ".pytest_cache", ".mypy_cache"]]
     build_dirs = [p for p in patterns if p in ["dist", "build", "target", "out", "obj", "Debug"]]
-    security_dirs = [
-        p
-        for p in patterns
-        if p in ["certs", "certificates", "keys", "private", "ssl", ".ssh", "tls", ".gpg", ".keyring", ".gnupg"]
-    ]
-    other_patterns = [
-        p for p in patterns if p not in dot_folders + package_dirs + python_dirs + build_dirs + security_dirs
-    ]
+    security_dirs = [p for p in patterns if p in ["certs", "certificates", "keys", "private", "ssl", ".ssh", "tls", ".gpg", ".keyring", ".gnupg"]]
+    other_patterns = [p for p in patterns if p not in dot_folders + package_dirs + python_dirs + build_dirs + security_dirs]
 
     categories = [
         ("Dot folders:", dot_folders),
@@ -289,7 +279,7 @@ def main():
         if git_root:
             if args.debug:
                 print_phase("Default Option Application")
-            _, _, default_switches = read_blobify_config(git_root, args.context, args.debug)
+            _, _, default_switches, _ = read_blobify_config(git_root, args.context, args.debug)
             if default_switches:
                 if args.debug:
                     context_info = f" for context '{args.context}'" if args.context else " (default context)"
@@ -316,7 +306,7 @@ def main():
         discovery_context = scan_files(directory, context=args.context, debug=args.debug)
 
         # Get blobify pattern info for header generation
-        blobify_patterns_info = ([], [], [])
+        blobify_patterns_info = ([], [], [], [])
         if git_root:
             blobify_patterns_info = read_blobify_config(git_root, args.context, False)
 
@@ -361,13 +351,13 @@ def main():
             summary_parts.append("(content only, no metadata)")
         elif not args.output_metadata:
             summary_parts.append("(index and content, no metadata)")
+        elif not args.output_index:
+            summary_parts.append("(content and metadata, no index)")
         elif scrub_data and total_substitutions > 0:
             if args.debug:
                 summary_parts.append(f"scrubadub made {total_substitutions} substitutions")
             else:
-                summary_parts.append(
-                    f"scrubadub made {total_substitutions} substitutions - use --debug=true for details"
-                )
+                summary_parts.append(f"scrubadub made {total_substitutions} substitutions - use --debug=true for details")
 
         summary_message = ", ".join(summary_parts)
         print_status(summary_message, style="bold blue")
@@ -398,17 +388,13 @@ def main():
                     proc = subprocess.Popen(["pbcopy"], stdin=subprocess.PIPE, text=True, encoding="utf-8")
                     proc.communicate(result)
                 else:  # Linux
-                    proc = subprocess.Popen(
-                        ["xclip", "-selection", "clipboard"], stdin=subprocess.PIPE, text=True, encoding="utf-8"
-                    )
+                    proc = subprocess.Popen(["xclip", "-selection", "clipboard"], stdin=subprocess.PIPE, text=True, encoding="utf-8")
                     proc.communicate(result)
 
                 print_success("Output copied to clipboard")
 
             except Exception as e:
-                print_error(
-                    f"Clipboard failed: {e}. Use: blobify . --enable-scrubbing=false --output-filename=file.txt"
-                )
+                print_error(f"Clipboard failed: {e}. Use: blobify . --enable-scrubbing=false --output-filename=file.txt")
                 return  # Don't output to stdout if clipboard was requested
         else:
             sys.stdout.write(result)

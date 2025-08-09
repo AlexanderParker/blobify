@@ -52,20 +52,23 @@ def validate_boolean_value(value: str) -> bool:
 def validate_list_patterns_value(value: str) -> str:
         raise ValueError(f"Invalid list-patterns value: '{value}'. Use one of: {', '.join(allowed_values)}")
     return value
-def read_blobify_config(git_root: Path, context: Optional[str] = None, debug: bool = False) -> Tuple[List[str], List[str], List[str]]:
-        return [], [], []
+def read_blobify_config(git_root: Path, context: Optional[str] = None, debug: bool = False) -> Tuple[List[str], List[str], List[str], List[str]]:
+        return [], [], [], []
     try:
         # Get the target context (default to "default")
-            return config["include_patterns"], config["exclude_patterns"], config["default_switches"]
+            return (
             # If a specific context was requested but doesn't exist, that's an error
                 # Show available contexts to help the user
             # If no context was specified and default doesn't exist, return empty
-            return [], [], []
+            return [], [], [], []
     except OSError as e:
-        return [], [], []
+        return [], [], [], []
 def _parse_contexts_with_inheritance(blobify_file: Path, debug: bool = False) -> Dict[str, Dict]:
     # Initialize with empty default context
-            # Skip empty lines and comments
+            # Skip empty lines
+            # Check for LLM instruction comments (double-hash)
+                # Extract the instruction (remove ##, strip whitespace)
+            # Skip single-hash comments
             # Check for context headers [context-name] or [context-name:parent] or [context-name:parent1,parent2]
                 # Error if trying to redefine default context
                     raise ValueError(f"Line {line_num}: Cannot redefine 'default' context")
@@ -90,14 +93,16 @@ def _parse_contexts_with_inheritance(blobify_file: Path, debug: bool = False) ->
 def get_available_contexts(git_root: Path, debug: bool = False) -> List[str]:
         return contexts
     try:
-                # Skip empty lines and comments
+                # Skip empty lines and comments (including double-hash comments)
                 # Check for context headers [context-name] or [context-name:parent] or [context-name:parent1,parent2]
     except OSError as e:
     return contexts
 def get_context_descriptions(git_root: Path) -> Dict[str, str]:
         return descriptions
     try:
-                # Collect comments that might describe the next context
+                # Collect single-hash comments that might describe the next context
+                # Skip double-hash comments as they are LLM instructions
+                # Skip double-hash comments for context descriptions
                 # Check for context headers [context-name] or [context-name:parent] or [context-name:parent1,parent2]
                         # Use the last meaningful comment as description
                 # Clear pending comments when we hit patterns/switches
@@ -455,7 +460,7 @@ def validate_boolean(value):
         return False
         raise argparse.ArgumentTypeError(f"Invalid boolean value: '{value}'. Use 'true' or 'false'.")
 def validate_list_patterns(value):
-        raise argparse.ArgumentTypeError(
+        raise argparse.ArgumentTypeError(f"Invalid list-patterns value: '{value}'. Use one of: {', '.join(allowed_values)}")
     return value
 def _should_modify_stdout():
         return False
@@ -510,6 +515,7 @@ from pathlib import Path
 from typing import Dict, List
     # Keep headers minimal - no verbose metadata
     # Add filter information
+    # Add LLM instructions if present
     # Adjust format description based on options
         # Metadata only
 # Format:
@@ -554,9 +560,9 @@ from typing import Dict, List
 # Files excluded by .blobify are listed in the index but marked as [EXCLUDED BY .blobify]
 # and their content is excluded with a placeholder message."""
     # Build the header intro
-# Source Directory: {directory}{git_info}{blobify_info}{scrubbing_info}{filter_info}
+# Source Directory: {directory}{git_info}{blobify_info}{scrubbing_info}{filter_info}{llm_info}
 # Generated: {datetime}
-# Source Directory: {directory}{git_info}{blobify_info}{scrubbing_info}{filter_info}
+# Source Directory: {directory}{git_info}{blobify_info}{scrubbing_info}{filter_info}{llm_info}
     # Add description to header
 #
 # This format is designed to be both human-readable and machine-parseable.
