@@ -17,6 +17,11 @@
 # * comments: ^ *#.* (files: *.py)
 # * markdown-content: .* (files: README.md)
 #
+# Instructions for AI/LLM analysis:
+# * This output contains core project configuration files including build settings, CI workflows, and licensing information
+# * This output contains Python class definitions, function signatures, decorators, return/yield statements, imports, constants, exception handling blocks, and docstrings
+# * This output contains public API interfaces including class definitions, function signatures, module documentation, export declarations, code comments from Python files, and the complete README documentation
+#
 # This file contains filtered content of all text files found in the specified directory.
 # Format:
 # 1. Content sections for each file

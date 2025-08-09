@@ -1,4 +1,5 @@
 # Default context - all content
+## This output contains core project configuration files including build settings, CI workflows, and licensing information
 +pyproject.toml
 +.pre-commit-config.yaml
 +.github\workflows\test.yml
@@ -14,6 +15,7 @@
 
 [docs-only]
 # Context for documentation review (use with -x docs-only or --context=docs-only)
+## This output contains all Markdown documentation files from the project
 -**
 +*.md
 @copy-to-clipboard=true
@@ -22,6 +24,7 @@
 
 [tests]
 # Context for tests review
+## This output contains all test files with line numbers enabled for debugging purposes
 -**
 +tests/**
 @copy-to-clipboard=true
@@ -34,6 +37,7 @@
 [method-signatures:default]
 # Enhanced context for method signatures and structure analysis
 # Extracts class definitions, method signatures, type hints, decorators, and return statements from Python files
+## This output contains Python class definitions, method signatures, decorators, return statements, imports, docstrings, and type hints
 @filter="signatures","^ *(class\s+\w+.*:|def\s+\w+.*:|@\w+.*|async\s+def\s+\w+.*:)","*.py"
 @filter="returns","^ *(return\s+.*|yield\s+.*)","*.py"
 @filter="imports","^ *(from\s+\w+.*import.*|import\s+\w+.*)","*.py"
@@ -43,6 +47,7 @@
 
 [comprehensive-signatures:default]
 # More comprehensive signature extraction including constants and error handling from Python files
+## This output contains Python class definitions, function signatures, decorators, return/yield statements, imports, constants, exception handling blocks, and docstrings
 @filter="classes","^ *class\s+\w+.*:","*.py"
 @filter="functions","^ *(def\s+\w+.*:|async\s+def\s+\w+.*:)","*.py"
 @filter="decorators","^ *@\w+.*","*.py"
@@ -57,6 +62,7 @@
 # API Reference - Public interfaces and method signatures
 # Extracts all public classes, functions, and their complete signatures
 # Includes docstrings and type hints for comprehensive API documentation
+## This output contains public API interfaces including class definitions, function signatures, module documentation, export declarations, code comments from Python files, and the complete README documentation
 @filter="public-classes","^ *class [A-Z][a-zA-Z0-9_]*[^_].*:","*.py"
 @filter="public-functions","^ *(def|async def) [a-z_][a-zA-Z0-9_]*[^_].*:","*.py"
 @filter="module-docs","^ *\"\"\".*","*.py"
@@ -72,6 +78,7 @@
 
 [api-surface:default]
 # Extract public API surface - classes, functions, and their signatures from Python files
+## This output contains the public API surface including class definitions, function signatures, async functions, export declarations, imports, and module documentation from Python files
 @filter="public-classes","^ *class\s+[A-Z]\w*.*:","*.py"
 @filter="public-functions","^ *def\s+[a-z_]\w*.*:","*.py"
 @filter="public-async","^ *async\s+def\s+[a-z_]\w*.*:","*.py"
@@ -82,6 +89,7 @@
 
 [structure-overview:default]
 # High-level code structure for quick understanding
+## This output contains high-level Python code structure including class definitions, main functions, constructors, special methods, imports, and constants
 @filter="classes","^ *class\s+\w+.*:","*.py"
 @filter="main-functions","^ *def\s+(main|__main__|run|execute|start).*:","*.py"
 @filter="init-methods","^ *def\s+__init__.*:","*.py"
@@ -94,21 +102,26 @@
 
 [nothing]
 # Example context that returns nothing
+## This output contains no files and serves as a base context for inheritance
 @show-excluded=false
 -**
 @output-index=false
 
 [test1]
+## This output contains the project license file
 +LICENSE
 
 [test2]
+## This output contains the project README documentation
 +README.md
 
 [test3:nothing,test1,test2]
 # Will only include LICENSE and README.md
+## This output contains only the LICENSE file and README documentation through context inheritance
 
 [clean-output:default]
 # Clean output with minimal noise
+## This output contains project files with minimal metadata and clean formatting suitable for sharing
 @show-excluded=false
 @output-metadata=false
 @output-line-numbers=false
@@ -116,24 +129,28 @@
 
 [debug-mode:default]
 # Debug mode with verbose output
+## This output contains project files with debug information enabled, detailed metadata, and no data scrubbing
 @debug=true
 @enable-scrubbing=false
 @output-metadata=true
 
 [clipboard-ready:default]
 # Ready for clipboard with clean output
+## This output contains project files formatted for clipboard sharing with clean presentation and no metadata
 @copy-to-clipboard=true
 @show-excluded=false
 @output-metadata=false
 
 [file-export:default]
 # Configuration for file export
+## This output contains project files exported to a specific filename with detailed metadata for archival purposes
 @output-filename=project-export.txt
 @show-excluded=false
 @output-metadata=true
 
 [todo-finder]
 # Find all TODOs, FIXMEs, and similar markers across all file types
+## This output contains all TODO, FIXME, XXX, HACK, NOTE, and WARNING comments found across all project files with line numbers
 @filter="todos","(TODO|FIXME|XXX|HACK|NOTE|WARNING)"
 @show-excluded=false
 @output-line-numbers=true
@@ -142,6 +159,7 @@
 
 [yaml-config]
 # Extract YAML configuration patterns
+## This output contains YAML configuration key definitions extracted from .yml and .yaml files
 @filter="yaml-keys","^\\s*[a-zA-Z][a-zA-Z0-9_-]*\\s*:","*.yml"
 @filter="yaml-keys","^\\s*[a-zA-Z][a-zA-Z0-9_-]*\\s*:","*.yaml"
 @show-excluded=false
@@ -151,6 +169,7 @@
 
 [python-only:default]
 # Python-specific analysis
+## This output contains Python function definitions, class definitions, and import statements from all Python files
 @filter="functions","^\\s*(def|async def)\\s+","*.py"
 @filter="classes","^\\s*class\\s+","*.py"
 @filter="imports","^\\s*(import|from)\\s+","*.py"
