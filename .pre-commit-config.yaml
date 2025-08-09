@@ -35,3 +35,11 @@ repos:
         pass_filenames: false
         always_run: true
         args: ["-v", "--tb=short"]
+      - id: api-reference
+        name: api-reference
+        entry: python
+        language: system
+        pass_filenames: false
+        always_run: true
+        args: ["-m", "invoke", "api-reference"]
+        stages: [pre-commit]
