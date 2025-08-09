@@ -150,12 +150,12 @@ def _parse_contexts_with_inheritance(blobify_file: Path, debug: bool = False) ->
                             print_error(f".blobify line {line_num}: Parent context(s) not found: {missing_str}")
                         raise ValueError(f"Line {line_num}: Parent context(s) not found: {missing_str}")
 
-                    # Merge all parent contexts
+                    # Merge all parent contexts (but NOT LLM instructions)
                     merged_config = {
                         "include_patterns": [],
                         "exclude_patterns": [],
                         "default_switches": [],
-                        "llm_instructions": [],
+                        "llm_instructions": [],  # Start with empty list - no inheritance
                     }
 
                     for parent_context in parent_contexts:
@@ -163,13 +163,13 @@ def _parse_contexts_with_inheritance(blobify_file: Path, debug: bool = False) ->
                         merged_config["include_patterns"].extend(parent_config["include_patterns"])
                         merged_config["exclude_patterns"].extend(parent_config["exclude_patterns"])
                         merged_config["default_switches"].extend(parent_config["default_switches"])
-                        merged_config["llm_instructions"].extend(parent_config["llm_instructions"])
+                        # Note: LLM instructions are NOT inherited
 
                     contexts[context_name] = merged_config
 
                     if debug:
                         parents_str = ", ".join(parent_contexts)
-                        print_debug(f".blobify line {line_num}: Created context '{context_name}' inheriting from {parents_str}")
+                        print_debug(f".blobify line {line_num}: Created context '{context_name}' inheriting from {parents_str} (LLM instructions not inherited)")
                 else:
                     # No parent specified, create empty context
                     contexts[context_name] = {

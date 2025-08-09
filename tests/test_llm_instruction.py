@@ -67,8 +67,8 @@ class TestLLMInstructions:
             "Analyze authentication mechanisms",
         ]
 
-    def test_llm_instructions_with_inheritance(self, tmp_path):
-        """Test that LLM instructions are inherited from parent contexts."""
+    def test_llm_instructions_no_inheritance(self, tmp_path):
+        """Test that LLM instructions are NOT inherited from parent contexts."""
         blobify_file = tmp_path / ".blobify"
         blobify_file.write_text(
             """
@@ -88,11 +88,11 @@ class TestLLMInstructions:
 
         includes, excludes, switches, llm_instructions = read_blobify_config(tmp_path, "extended")
 
-        # Should inherit instructions from base context
-        assert llm_instructions == ["Instruction from base context", "Additional instruction from extended"]
+        # Should NOT inherit instructions from base context - only own instructions
+        assert llm_instructions == ["Additional instruction from extended"]
 
-    def test_llm_instructions_with_multiple_inheritance(self, tmp_path):
-        """Test LLM instructions with multiple inheritance."""
+    def test_llm_instructions_no_multiple_inheritance(self, tmp_path):
+        """Test LLM instructions with multiple inheritance - should not inherit."""
         blobify_file = tmp_path / ".blobify"
         blobify_file.write_text(
             """
@@ -112,8 +112,29 @@ class TestLLMInstructions:
 
         includes, excludes, switches, llm_instructions = read_blobify_config(tmp_path, "child")
 
-        # Should inherit from both parents in order
-        assert llm_instructions == ["Instruction from parent1", "Instruction from parent2", "Instruction from child"]
+        # Should NOT inherit from either parent - only own instructions
+        assert llm_instructions == ["Instruction from child"]
+
+    def test_llm_instructions_child_context_without_own_instructions(self, tmp_path):
+        """Test child context that inherits patterns but has no own LLM instructions."""
+        blobify_file = tmp_path / ".blobify"
+        blobify_file.write_text(
+            """
+[parent]
+## Instruction from parent
++*.py
+
+[child:parent]
+# Just a regular comment, no LLM instructions
++*.js
+"""
+        )
+
+        includes, excludes, switches, llm_instructions = read_blobify_config(tmp_path, "child")
+
+        # Should inherit patterns but no LLM instructions
+        assert includes == ["*.py", "*.js"]
+        assert llm_instructions == []  # No LLM instructions at all
 
     def test_llm_instructions_empty_and_whitespace(self, tmp_path):
         """Test handling of empty and whitespace-only LLM instructions."""
@@ -248,8 +269,8 @@ class TestLLMInstructions:
         assert "# * Check for potential bugs and edge cases" in content
         assert "# * Suggest performance optimizations" in content
 
-    def test_llm_instructions_inheritance_in_output(self, tmp_path):
-        """Test that inherited LLM instructions appear correctly in output."""
+    def test_llm_instructions_no_inheritance_in_output(self, tmp_path):
+        """Test that LLM instructions do NOT inherit in output - only child context instructions appear."""
         # Create git repo
         (tmp_path / ".git").mkdir()
 
@@ -277,10 +298,44 @@ class TestLLMInstructions:
 
         content = output_file.read_text(encoding="utf-8")
 
-        # Should have both inherited and own instructions
+        # Should have ONLY the child context instructions, NOT the inherited ones
+        assert "# Instructions for AI/LLM analysis:" in content
+        assert "# * Base instruction for analysis" not in content  # Should NOT be inherited
+        assert "# * Additional specific instruction" in content  # Should be present
+
+    def test_llm_instructions_parent_context_only_in_output(self, tmp_path):
+        """Test that parent context shows only its own LLM instructions."""
+        # Create git repo
+        (tmp_path / ".git").mkdir()
+
+        # Create .blobify with inheritance
+        blobify_file = tmp_path / ".blobify"
+        blobify_file.write_text(
+            """
+[base]
+## Base instruction for analysis
++*.py
+
+[extended:base]
+## Additional specific instruction
++*.js
+"""
+        )
+
+        # Create test files
+        (tmp_path / "app.py").write_text("print('hello')")
+        (tmp_path / "script.js").write_text("console.log('world');")
+
+        output_file = tmp_path / "output.txt"
+        with patch("sys.argv", ["bfy", str(tmp_path), "-x", "base", "--output-filename", str(output_file)]):
+            main()
+
+        content = output_file.read_text(encoding="utf-8")
+
+        # Should have only the base context instructions
         assert "# Instructions for AI/LLM analysis:" in content
         assert "# * Base instruction for analysis" in content
-        assert "# * Additional specific instruction" in content
+        assert "# * Additional specific instruction" not in content  # Child instruction should not appear
 
     def test_no_llm_instructions_no_section(self, tmp_path):
         """Test that when no LLM instructions exist, no section is added to header."""

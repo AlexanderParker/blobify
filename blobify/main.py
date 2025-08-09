@@ -8,7 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-__version__ = "1.0.6"
+__version__ = "1.1.0"
 __author__ = "Alexander Parker"
 __email__ = "pypi@parker.im"
 
