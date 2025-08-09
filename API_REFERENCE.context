@@ -18,9 +18,9 @@
 # * markdown-content: .* (files: README.md)
 #
 # Instructions for AI/LLM analysis:
-# * This output contains public API interfaces including class definitions, function signatures, module documentation, export declarations, code comments from Python files, and the complete README documentation
-# * Generate comprehensive API documentation focusing on public interfaces
-# * Identify missing docstrings, inconsistent naming, and API design issues
+# * This output contains the public API surface of blobify along with the complete README documentation
+# * Blobify is a Python CLI tool that aggregates codebases into single text files for AI analysis and code review
+# * The output includes public classes, functions, module documentation, and the complete project README for API reference
 #
 # This file contains filtered content of all text files found in the specified directory.
 # Format:
