@@ -439,7 +439,7 @@ def api_reference(c):
     """Generate API reference documentation using blobify."""
     import sys
 
-    returncode = run_with_formatting(["python", "-m", "blobify", ".", "--context=api-reference", "--output-filename=API_REFERENCE.md", "--copy-to-clipboard=false"])
+    returncode = run_with_formatting(["python", "-m", "blobify", ".", "--context=api-reference", "--output-filename=API_REFERENCE.md"])
     if returncode != 0:
         print("API reference generation failed")
         sys.exit(returncode)
