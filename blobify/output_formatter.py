@@ -18,6 +18,7 @@ def generate_header(
     include_content: bool = True,
     include_metadata: bool = True,
     filters: dict = None,
+    suppress_timestamps: bool = False,
 ) -> str:
     """Generate the file header with metadata and configuration info."""
     blobify_include_patterns, blobify_exclude_patterns, default_switches = blobify_patterns_info
@@ -40,7 +41,9 @@ def generate_header(
 
     # Adjust format description based on options
     if not include_content and not include_index and not include_metadata:
-        format_description = """# This file contains no useful output - index, content, and metadata have all been disabled."""
+        format_description = (
+            """# This file contains no useful output - index, content, and metadata have all been disabled."""
+        )
     elif not include_content and not include_index:
         # Metadata only
         format_description = """# This file contains metadata of all text files found in the specified directory.
@@ -102,23 +105,42 @@ def generate_header(
 # Files excluded by .blobify are listed in the index but marked as [EXCLUDED BY .blobify]
 # and their content is excluded with a placeholder message."""
 
-    header = """# Blobify Text File Index
+    # Build the header intro
+    if suppress_timestamps:
+        header_intro = """# Blobify Text File Index
+# Source Directory: {directory}{git_info}{blobify_info}{scrubbing_info}{filter_info}
+""".format(
+            directory=str(directory.absolute()),
+            git_info=git_info,
+            blobify_info=blobify_info,
+            scrubbing_info=scrubbing_info,
+            filter_info=filter_info,
+        )
+    else:
+        header_intro = """# Blobify Text File Index
 # Generated: {datetime}
 # Source Directory: {directory}{git_info}{blobify_info}{scrubbing_info}{filter_info}
-#
+""".format(
+            datetime=datetime.datetime.now().isoformat(),
+            directory=str(directory.absolute()),
+            git_info=git_info,
+            blobify_info=blobify_info,
+            scrubbing_info=scrubbing_info,
+            filter_info=filter_info,
+        )
+
+    # Add description to header
+    header = (
+        header_intro
+        + """#
 {format_description}
 #
 # This format is designed to be both human-readable and machine-parseable.
 # Files are ordered alphabetically by relative path.
 #
 """.format(
-        datetime=datetime.datetime.now().isoformat(),
-        directory=str(directory.absolute()),
-        git_info=git_info,
-        blobify_info=blobify_info,
-        scrubbing_info=scrubbing_info,
-        filter_info=filter_info,
-        format_description=format_description,
+            format_description=format_description,
+        )
     )
 
     return header
@@ -314,6 +336,7 @@ def format_output(
     debug: bool,
     blobify_patterns_info: tuple,
     filters: dict = None,
+    suppress_timestamps: bool = False,
 ) -> tuple:
     """
     Format the complete output string.
@@ -367,6 +390,7 @@ def format_output(
         include_content,
         include_metadata,
         filters,
+        suppress_timestamps,
     )
 
     # Generate index section (if enabled)

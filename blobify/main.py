@@ -36,7 +36,9 @@ def validate_list_patterns(value):
     """Validate list-patterns option values."""
     allowed_values = ["none", "ignored", "contexts"]
     if value not in allowed_values:
-        raise argparse.ArgumentTypeError(f"Invalid list-patterns value: '{value}'. Use one of: {', '.join(allowed_values)}")
+        raise argparse.ArgumentTypeError(
+            f"Invalid list-patterns value: '{value}'. Use one of: {', '.join(allowed_values)}"
+        )
     return value
 
 
@@ -78,10 +80,18 @@ def list_ignored_patterns():
     # Group patterns by type for better readability
     dot_folders = [p for p in patterns if p.startswith(".")]
     package_dirs = [p for p in patterns if p in ["node_modules", "bower_components", "vendor", "packages"]]
-    python_dirs = [p for p in patterns if p in ["venv", "env", ".env", ".venv", "__pycache__", ".pytest_cache", ".mypy_cache"]]
+    python_dirs = [
+        p for p in patterns if p in ["venv", "env", ".env", ".venv", "__pycache__", ".pytest_cache", ".mypy_cache"]
+    ]
     build_dirs = [p for p in patterns if p in ["dist", "build", "target", "out", "obj", "Debug"]]
-    security_dirs = [p for p in patterns if p in ["certs", "certificates", "keys", "private", "ssl", ".ssh", "tls", ".gpg", ".keyring", ".gnupg"]]
-    other_patterns = [p for p in patterns if p not in dot_folders + package_dirs + python_dirs + build_dirs + security_dirs]
+    security_dirs = [
+        p
+        for p in patterns
+        if p in ["certs", "certificates", "keys", "private", "ssl", ".ssh", "tls", ".gpg", ".keyring", ".gnupg"]
+    ]
+    other_patterns = [
+        p for p in patterns if p not in dot_folders + package_dirs + python_dirs + build_dirs + security_dirs
+    ]
 
     categories = [
         ("Dot folders:", dot_folders),
@@ -197,6 +207,12 @@ def main():
             type=validate_list_patterns,
             default="none",
             help="List patterns and exit: 'ignored' shows built-in patterns, 'contexts' shows available contexts (default: none)",
+        )
+        parser.add_argument(
+            "--suppress-timestamps",
+            type=validate_boolean,
+            default=False,
+            help="Suppress timestamps in output for reproducible builds (default: false)",
         )
         args = parser.parse_args()
 
@@ -318,6 +334,7 @@ def main():
             debug=args.debug,
             blobify_patterns_info=blobify_patterns_info,
             filters=filters,
+            suppress_timestamps=args.suppress_timestamps,
         )
 
         # Show final summary
@@ -348,7 +365,9 @@ def main():
             if args.debug:
                 summary_parts.append(f"scrubadub made {total_substitutions} substitutions")
             else:
-                summary_parts.append(f"scrubadub made {total_substitutions} substitutions - use --debug=true for details")
+                summary_parts.append(
+                    f"scrubadub made {total_substitutions} substitutions - use --debug=true for details"
+                )
 
         summary_message = ", ".join(summary_parts)
         print_status(summary_message, style="bold blue")
@@ -379,13 +398,17 @@ def main():
                     proc = subprocess.Popen(["pbcopy"], stdin=subprocess.PIPE, text=True, encoding="utf-8")
                     proc.communicate(result)
                 else:  # Linux
-                    proc = subprocess.Popen(["xclip", "-selection", "clipboard"], stdin=subprocess.PIPE, text=True, encoding="utf-8")
+                    proc = subprocess.Popen(
+                        ["xclip", "-selection", "clipboard"], stdin=subprocess.PIPE, text=True, encoding="utf-8"
+                    )
                     proc.communicate(result)
 
                 print_success("Output copied to clipboard")
 
             except Exception as e:
-                print_error(f"Clipboard failed: {e}. Use: blobify . --enable-scrubbing=false --output-filename=file.txt")
+                print_error(
+                    f"Clipboard failed: {e}. Use: blobify . --enable-scrubbing=false --output-filename=file.txt"
+                )
                 return  # Don't output to stdout if clipboard was requested
         else:
             sys.stdout.write(result)

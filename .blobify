@@ -53,9 +53,6 @@
 @filter="docstrings","^ *\"\"\".*|^ *'''.*","*.py"
 @output-line-numbers=false
 
-# API Reference context for generating public interface documentation
-# Usage: bfy --context=api-reference --output-filename=API_REFERENCE.md
-# Or use: invoke api-reference
 [api-reference:comprehensive-signatures]
 # API Reference - Public interfaces and method signatures
 # Extracts all public classes, functions, and their complete signatures
@@ -64,6 +61,7 @@
 @filter="public-functions","^ *(def|async def) [a-z_][a-zA-Z0-9_]*[^_].*:","*.py"
 @filter="module-docs","^ *\"\"\".*","*.py"
 @filter="exports","^ *__all__\s*=.*","*.py"
+@filter="comments","^ *#.*","*.py"
 @output-line-numbers=false
 @copy-to-clipboard=true
 @show-excluded=false
