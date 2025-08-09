@@ -101,6 +101,8 @@ bfy . --filter '"api-routes","@app\.","*.py"' --filter '"queries","^(SELECT|INSE
 
 Create a `.blobify` file in your project directory for custom configurations. When a `.blobify` file exists in your current directory, you can run `bfy` without specifying a directory argument.
 
+**VS Code Extension:** For `.blobify` file syntax highlighting and validation, install the [Blobify Format extension](https://marketplace.visualstudio.com/items?itemName=ShentonConsulting.blobify-format) from the VS Code Marketplace.
+
 ### Basic Configuration
 
 - `@option=value` - Set default configuration option (`@debug=true`, `@copy-to-clipboard=true`, `@output-content=false`, etc.)
