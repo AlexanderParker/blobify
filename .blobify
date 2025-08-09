@@ -67,9 +67,8 @@
 @output-line-numbers=false
 @copy-to-clipboard=true
 @show-excluded=false
+-**
 +blobify/*.py
--blobify/__pycache__/**
--blobify/**/*test*.py
 
 [api-surface:default]
 # Extract public API surface - classes, functions, and their signatures from Python files
