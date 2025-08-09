@@ -62,6 +62,7 @@
 @filter="module-docs","^ *\"\"\".*","*.py"
 @filter="exports","^ *__all__\s*=.*","*.py"
 @filter="comments","^ *#.*","*.py"
+@filter="markdown-content",".*","README.md"
 @output-line-numbers=false
 @copy-to-clipboard=true
 @show-excluded=false
