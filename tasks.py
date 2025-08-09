@@ -448,13 +448,13 @@ def api_reference(c):
             "--context=api-reference",
             "--suppress-timestamps=true",
             "--copy-to-clipboard=false",
-            "--output-filename=API_REFERENCE.md",
+            "--output-filename=API_REFERENCE.context",
         ]
     )
     if returncode != 0:
         print("API reference generation failed")
         sys.exit(returncode)
-    print("API reference generated successfully as API_REFERENCE.md")
+    print("API reference generated successfully as API_REFERENCE.context")
 
 
 @task

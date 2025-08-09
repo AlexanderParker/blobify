@@ -46,4 +46,3 @@ repos:
         args: ["-m", "invoke", "api-reference"]
         stages: [pre-commit]
         files: '^blobify/.*\.py'
-
