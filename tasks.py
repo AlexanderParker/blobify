@@ -435,6 +435,18 @@ def set_version(c, version):
 
 
 @task
+def api_reference(c):
+    """Generate API reference documentation using blobify."""
+    import sys
+
+    returncode = run_with_formatting(["python", "-m", "blobify", ".", "--context=api-reference", "--output-filename=API_REFERENCE.md", "--copy-to-clipboard=false"])
+    if returncode != 0:
+        print("API reference generation failed")
+        sys.exit(returncode)
+    print("API reference generated successfully as API_REFERENCE.md")
+
+
+@task
 def all(c):
     """Run all checks (format, lint, test)."""
     format(c)

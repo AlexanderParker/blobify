@@ -53,6 +53,24 @@
 @filter="docstrings","^ *\"\"\".*|^ *'''.*","*.py"
 @output-line-numbers=false
 
+# API Reference context for generating public interface documentation
+# Usage: bfy --context=api-reference --output-filename=API_REFERENCE.md
+# Or use: invoke api-reference
+[api-reference:comprehensive-signatures]
+# API Reference - Public interfaces and method signatures
+# Extracts all public classes, functions, and their complete signatures
+# Includes docstrings and type hints for comprehensive API documentation
+@filter="public-classes","^ *class [A-Z][a-zA-Z0-9_]*[^_].*:","*.py"
+@filter="public-functions","^ *(def|async def) [a-z_][a-zA-Z0-9_]*[^_].*:","*.py"
+@filter="module-docs","^ *\"\"\".*","*.py"
+@filter="exports","^ *__all__\s*=.*","*.py"
+@output-line-numbers=false
+@copy-to-clipboard=true
+@show-excluded=false
++blobify/*.py
+-blobify/__pycache__/**
+-blobify/**/*test*.py
+
 [api-surface:default]
 # Extract public API surface - classes, functions, and their signatures from Python files
 @filter="public-classes","^ *class\s+[A-Z]\w*.*:","*.py"
