@@ -15,6 +15,7 @@
 [![License](https://img.shields.io/pypi/l/blobify)](https://github.com/AlexanderParker/blobify/blob/main/LICENSE)
 [![Tests](https://img.shields.io/github/actions/workflow/status/AlexanderParker/blobify/test.yml?branch=main&label=tests)](https://github.com/AlexanderParker/blobify/actions)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![VS Code Extension](https://img.shields.io/visual-studio-marketplace/v/ShentonConsulting.blobify-format?label=vs%20code%20extension)](https://marketplace.visualstudio.com/items?itemName=ShentonConsulting.blobify-format)
 
 Feed your project to Claude, ChatGPT, or other AI assistants for code analysis, debugging, refactoring, documentation, or feature development.
 
