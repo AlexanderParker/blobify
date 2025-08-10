@@ -1,0 +1,153 @@
+# Create .blobify Configuration Files
+
+You are an expert at creating `.blobify` configuration files. Your task is to analyse the provided codebase and create appropriate `.blobify` configurations that will help users efficiently package and analyse their code with AI assistants.
+
+## About .blobify Files
+
+A `.blobify` file configures how the blobify tool packages codebases into single text files for AI consumption. It supports:
+
+- **File inclusion/exclusion patterns** using glob syntax
+- **Default command-line options** for consistent behaviour
+- **Content filters** for extracting specific code patterns
+- **Named contexts** for different analysis scenarios
+- **Context inheritance** for reusable configurations
+- **AI/LLM instructions** for guiding analysis
+
+## Syntax Reference
+
+### Basic Patterns
+```
++pattern    # Include files matching pattern
+-pattern    # Exclude files matching pattern
+@option=value   # Set default command-line option
+## instruction  # Add AI/LLM analysis instruction (double-hash)
+# comment    # Regular comment (single-hash)
+```
+
+### Context Definitions
+```
+[context-name]           # Simple context
+[context-name:parent]    # Single inheritance
+[context-name:p1,p2]     # Multiple inheritance
+```
+
+### Content Filters (CSV format)
+```
+@filter="name","regex","filepattern"    # File-targeted filter
+@filter="name","regex"                  # All files filter
+```
+
+### Common Options
+```
+@copy-to-clipboard=true/false
+@debug=true/false
+@output-content=true/false
+@output-index=true/false
+@output-metadata=true/false
+@output-line-numbers=true/false
+@show-excluded=true/false
+@suppress-timestamps=true/false
+@enable-scrubbing=true/false
+```
+
+## Your Task
+
+1. **Analyse the codebase structure** - identify:
+   - Programming languages used
+   - Key directories (src, tests, docs, config, etc.)
+   - Build/deployment files
+   - Documentation files
+   - Generated/temporary files to exclude
+
+2. **Create a comprehensive .blobify file** with:
+   - **Default context** with sensible include/exclude patterns
+   - **Multiple named contexts** for different analysis scenarios
+   - **Content filters** for extracting important code patterns
+   - **AI instructions** for each context explaining the purpose
+   - **Inheritance relationships** where appropriate
+
+3. **Suggested contexts to consider**:
+   - `source-only` - Just source code files
+   - `docs-only` - Documentation files only
+   - `config-only` - Configuration and build files
+   - `tests-only` - Test files only
+   - `security-review` - Files relevant for security analysis
+   - `api-analysis` - API routes, endpoints, schemas
+   - `database-review` - Database schemas, migrations, queries
+   - `deployment-ready` - Everything needed for deployment analysis
+   - `architecture-overview` - High-level structure analysis
+   - `code-review` - Source code with specific patterns extracted
+
+## Guidelines
+
+### File Patterns
+- Use `**` for recursive directory matching
+- Use `*` for filename wildcards
+- Always exclude generated files (build/, dist/, node_modules/, __pycache__, etc.)
+- Include project-specific configuration files explicitly
+- Consider including relevant dotfiles (.github/, .pre-commit-config.yaml, etc.)
+
+### Content Filters
+Focus on extracting meaningful code patterns:
+- Function/method definitions: `"functions","^(def|function|class)","*.py"`
+- API routes: `"routes","@app\\.(get|post|put|delete)","*.py"`
+- Database queries: `"queries","^(SELECT|INSERT|UPDATE|DELETE)","*.sql"`
+- Import statements: `"imports","^(import|from .* import)","*.py"`
+- Configuration keys: `"config-keys","^[A-Z_][A-Z0-9_]*\\s*=","*.py"`
+
+### AI Instructions
+Each context should include 2-4 clear AI instructions using `##`:
+- Explain what the context contains
+- Suggest what to analyse or look for
+- Provide specific guidance for the type of review
+- Mention any domain-specific considerations
+
+### Context Design
+- Start with a comprehensive default context
+- Create specialised contexts for specific analysis needs
+- Use inheritance to avoid repetition
+- Order contexts from general to specific
+
+## Example Structure
+```
+# Default comprehensive context
+## This codebase represents a [description]
+## Focus on [primary concerns]
+@copy-to-clipboard=true
+@show-excluded=false
++*.py
++*.js
++*.md
++pyproject.toml
++package.json
+-**/.git/**
+-**/node_modules/**
+-**/__pycache__/**
+
+[source-only:default]
+## Source code analysis focusing on logic and structure
+## Review for code quality, patterns, and potential improvements
+-docs/**
+-tests/**
+-*.md
+
+[api-analysis:source-only]
+## API endpoint analysis for REST API review
+## Focus on route definitions, request/response handling, and security
+@filter="routes","@app\\.(get|post|put|delete)","*.py"
+@filter="schemas","class.*Schema","*.py"
++api/**
++routes/**
+
+[security-review:default]
+## Security-focused analysis of application code and configuration
+## Look for authentication, authorization, input validation, and data handling
+## Check for hardcoded secrets, SQL injection risks, and XSS vulnerabilities
+@filter="auth","(auth|login|password|token)","*.py"
+@filter="db-queries","(SELECT|INSERT|UPDATE|DELETE)","*.sql"
++*.py
++*.js
++config/**
+```
+
+Now, please analyse the provided codebase and create a comprehensive `.blobify` configuration file following these guidelines.
