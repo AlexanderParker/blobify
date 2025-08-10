@@ -61,7 +61,7 @@ Create a simple, practical `.blobify` file with these basic contexts:
 5. **Documentation context** - Documentation files only
 
 Use the inheritance pattern:
-- Create a "nothing" context that inherits from default and excludes everything (`-**`)
+- Create a "nothing" context that inherits from default [nothing: default] and excludes everything (`-**`)
 - Create specific contexts that inherit from nothing and include relevant patterns
 
 Consider common patterns for each context type:
