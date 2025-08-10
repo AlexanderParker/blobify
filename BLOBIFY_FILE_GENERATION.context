@@ -11,7 +11,7 @@ A `.blobify` file configures how the blobify tool packages codebases into single
 - **Content filters** for extracting specific code patterns
 - **Named contexts** for different analysis scenarios
 - **Context inheritance** for reusable configurations
-- **AI/LLM instructions** for guiding analysis
+- **AI/LLM instructions** for describing what contexts contain
 
 ## Syntax Reference
 
@@ -20,7 +20,7 @@ A `.blobify` file configures how the blobify tool packages codebases into single
 +pattern    # Include files matching pattern
 -pattern    # Exclude files matching pattern
 @option=value   # Set default command-line option
-## instruction  # Add AI/LLM analysis instruction (double-hash)
+## instruction  # Add AI/LLM description (double-hash)
 # comment    # Regular comment (single-hash)
 ```
 
@@ -37,100 +37,65 @@ A `.blobify` file configures how the blobify tool packages codebases into single
 @filter="name","regex"                  # All files filter
 ```
 
-### Common Options
+### Available Options
 ```
-@copy-to-clipboard=true/false
-@debug=true/false
-@output-content=true/false
-@output-index=true/false
-@output-metadata=true/false
-@output-line-numbers=true/false
-@show-excluded=true/false
-@suppress-timestamps=true/false
-@enable-scrubbing=true/false
+@copy-to-clipboard=true/false      # Copy output to clipboard
+@debug=true/false                  # Enable debug output
+@output-content=true/false         # Include file contents
+@output-index=true/false           # Include file index
+@output-metadata=true/false        # Include file metadata
+@output-line-numbers=true/false    # Add line numbers to content
+@show-excluded=true/false          # Show excluded files in index
+@suppress-timestamps=true/false    # Hide timestamps from output
+@enable-scrubbing=true/false       # Enable content scrubbing
 ```
 
 ## Your Task
 
-1. **Analyse the codebase structure** to understand:
-   - What programming languages and frameworks are used
-   - How the project is organised (directory structure, naming conventions)
-   - What types of files are present (source, tests, docs, config, build files)
-   - What the project appears to be (web app, library, CLI tool, etc.)
-   - Which files/directories should be excluded (generated, dependencies, caches)
+Create a simple, practical `.blobify` file with these basic contexts:
 
-2. **Create a comprehensive .blobify file** tailored to this specific codebase:
-   - **Default context** with appropriate include/exclude patterns for the languages/frameworks found
-   - **Multiple named contexts** for different analysis scenarios relevant to this type of project
-   - **Content filters** that extract meaningful patterns from the specific languages used
-   - **AI instructions** for each context that provide relevant guidance for this codebase
-   - **Context inheritance** to avoid repetition and maintain consistency
+1. **Default context** - Include everything in the codebase
+2. **Code context** - Source code and configuration only (no tests)
+3. **Tests context** - Test files only
+4. **CI/CD context** - Automation and deployment files (workflows, configs, scripts)
+5. **Documentation context** - Documentation files only
 
-3. **Create appropriate contexts** based on what you discover in the codebase
+Use the inheritance pattern:
+- Create a "nothing" context that inherits from default and excludes everything (`-**`)
+- Create specific contexts that inherit from nothing and include relevant patterns
 
-## Guidelines
+Consider common patterns for each context type:
+- **Code**: Main source directories, package configuration, core library files
+- **Tests**: Test directories, test runners, test configuration
+- **CI/CD**: `.github/workflows/`, CI configs, deployment scripts, automation files
+- **Documentation**: README files, docs directories, API documentation, guides
 
-### File Patterns
-- Use `**` for recursive directory matching and `*` for filename wildcards
-- Base your patterns on what you actually find in the codebase
-- Always exclude discovered generated/build directories (node_modules/, __pycache__/, target/, dist/, etc.)
-- Include project-specific configuration files that are actually present
-- Include relevant dotfiles if they exist (.github/, .gitignore, etc.)
-- Tailor extensions to the languages actually used in the project
+Remember:
+- Blobify includes everything by default and automatically excludes gitignored files
+- Use descriptive AI instructions that explain what each context contains (not what to do with it)
+- Keep patterns simple and focused
+- Set `@copy-to-clipboard=true` and `@show-excluded=false` on the default context
+- For larger codebases, consider excluding line numbers, index, and metadata to reduce output size:
+  - `@output-line-numbers=false`
+  - `@output-index=false`
+  - `@output-metadata=false`
 
-### Content Filters
-Create language and framework-appropriate filters based on the codebase. Examples by language:
+## Usage Instructions
 
-**Python:** `"functions","^(def|class)","*.py"`, `"imports","^(import|from)","*.py"`
-**JavaScript/TypeScript:** `"functions","^(function|const.*=>|class)","*.js"`, `"exports","^(export|module\\.exports)","*.js"`
-**Java:** `"methods","^\\s*(public|private|protected).*\\s+(\\w+)\\s*\\(","*.java"`, `"classes","^(public\\s+)?class\\s+","*.java"`
-**C#:** `"methods","^\\s*(public|private|protected).*\\s+(\\w+)\\s*\\(","*.cs"`, `"classes","^(public\\s+)?class\\s+","*.cs"`
-**Go:** `"functions","^func\\s+","*.go"`, `"types","^type\\s+","*.go"`
-**SQL:** `"queries","^(SELECT|INSERT|UPDATE|DELETE)","*.sql"`, `"ddl","^(CREATE|ALTER|DROP)","*.sql"`
-**Config files:** `"settings","^[A-Z_][A-Z0-9_]*\\s*[:=]","*.yml,*.yaml,*.conf"`
+After creating the `.blobify` file, users can run:
+```bash
+# Use default context (everything)
+blobify
 
-Adapt these patterns to match what you find in the actual codebase.
+# Use specific context
+blobify --context code
+blobify --context tests
+blobify --context cicd
+blobify --context docs
 
-### AI Instructions
-Write context-specific AI instructions using `##` that reflect what you learned about the codebase:
-- Describe what the codebase appears to be and what each context contains
-- Provide analysis guidance specific to the technologies and patterns you found
-- Mention domain-specific considerations relevant to this type of project
-- Suggest what to look for based on the actual code structure and purpose
-
-### Context Design
-- Create a comprehensive default context based on the project structure you discovered
-- Design specialised contexts that make sense for this specific type of project
-- Use inheritance wisely to avoid repetition while maintaining clarity
-- Name contexts descriptively based on their actual purpose for this codebase
-- Order contexts from general to specific
-
-## Example Structure
-
-Adapt this structure to the actual codebase you're analysing:
-
-```
-# Default comprehensive context
-## This codebase represents a [describe what you discovered]
-## Focus on [identify key areas based on your analysis]
-@copy-to-clipboard=true
-@show-excluded=false
-# Include patterns based on languages/frameworks found
-+[source files you identified]
-+[configuration files you discovered]
-+[documentation files present]
-# Exclude generated/build directories you found
--[build directories discovered]
--[dependency directories found]
--[cache/temp directories identified]
-
-[context-name:default]
-## [Purpose based on your analysis]
-## [Specific guidance for this type of review]
-# Modify patterns based on this context's purpose
-@filter="pattern-name","regex-for-discovered-language","file-pattern"
-+[relevant files for this context]
--[files to exclude for this context]
+# Override options
+blobify --context code --no-copy-to-clipboard
+blobify --debug --show-excluded
 ```
 
-Now, please analyse the provided codebase and create a comprehensive `.blobify` configuration file following these guidelines.
+Analyse the codebase structure and create the configuration accordingly.
