@@ -6,18 +6,17 @@ providing tools, resources, and prompts that allow AI agents to interact
 with blobify's codebase aggregation capabilities.
 """
 
-import json
+import os
 import sys
 import tempfile
-import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from mcp.server.fastmcp import Context, FastMCP
 from mcp.server.session import ServerSession
 
 # Import blobify components
-from ..config import get_available_contexts, get_context_descriptions, read_blobify_config
+from ..config import get_available_contexts, get_context_descriptions
 from ..file_scanner import get_built_in_ignored_patterns, scan_files
 from ..git_utils import is_git_repository
 from ..main import main as blobify_main
@@ -241,10 +240,7 @@ async def _run_blobify_impl(
             sys.argv = original_argv
             # Clean up temp file
             if temp_file_path:
-                try:
-                    os.unlink(temp_file_path)
-                except (OSError, PermissionError):
-                    pass  # Ignore cleanup errors
+                os.unlink(temp_file_path)
 
     except Exception as e:
         error_msg = f"Error running blobify: {str(e)}"

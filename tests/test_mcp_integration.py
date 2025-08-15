@@ -415,7 +415,7 @@ class TestMCPServerIntegration:
 
         import asyncio
 
-        result = asyncio.run(test_complex_analysis())
+        asyncio.run(test_complex_analysis())
 
         # Test contexts resource on complex configuration
         contexts_result = _get_contexts_impl(str(temp_project_dir))

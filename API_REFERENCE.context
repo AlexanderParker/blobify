@@ -39,7 +39,7 @@
 
 START_FILE: blobify\__init__.py
 FILE_CONTENT:
-__all__ = ["main", "__author__", "__email__", "__version__"]
+__all__ = ["main", "create_mcp_server", "__author__", "__email__", "__version__"]
 END_FILE: blobify\__init__.py
 
 
@@ -515,6 +515,137 @@ def main():
 END_FILE: blobify\main.py
 
 
+START_FILE: blobify\mcp_server\__init__.py
+FILE_CONTENT:
+__all__ = ["create_mcp_server"]
+END_FILE: blobify\mcp_server\__init__.py
+
+
+START_FILE: blobify\mcp_server\__main__.py
+FILE_CONTENT:
+import argparse
+import sys
+def main():
+    # Create the MCP server
+    try:
+            # Run with stdio transport (default)
+            # Run with streamable HTTP transport
+    except KeyboardInterrupt:
+    except Exception as e:
+END_FILE: blobify\mcp_server\__main__.py
+
+
+START_FILE: blobify\mcp_server\server.py
+FILE_CONTENT:
+import os
+import sys
+import tempfile
+from pathlib import Path
+from typing import Any, Dict, Optional
+from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.session import ServerSession
+# Import blobify components
+# Separate implementation functions for testing
+async def _analyse_filesystem_impl(directory: str, ctx: Optional[Context] = None) -> Dict[str, Any]:
+    try:
+            raise ValueError(f"Directory does not exist: {directory}")
+            raise ValueError(f"Path is not a directory: {directory}")
+        # Use blobify's built-in file scanner
+        # Extract information from discovery context
+        # Organize files by type/extension
+        # Build directory structure
+        return result
+    except Exception as e:
+        raise ValueError(error_msg)
+async def _update_blobify_file_impl(directory: str, content: str, ctx: Optional[Context] = None) -> str:
+    try:
+            raise ValueError(f"Directory does not exist: {directory}")
+            raise ValueError(f"Path is not a directory: {directory}")
+        # Write the content to .blobify file
+        return f"{action} .blobify file at {blobify_file}"
+    except Exception as e:
+        raise ValueError(error_msg)
+    try:
+        # Validate directory exists
+            raise ValueError(f"Directory does not exist: {directory}")
+            raise ValueError(f"Path is not a directory: {directory}")
+        # Build command line arguments
+        # Capture output by temporarily redirecting stdout
+        try:
+            # Create temporary file for output
+            # Run blobify with output file
+            # Read the output - ensure file exists and has content
+                # If file doesn't exist, blobify may have failed silently
+            return result
+        finally:
+            # Clean up temp file
+    except Exception as e:
+        raise ValueError(error_msg)
+def _get_blobify_file_impl(directory_path: str) -> str:
+    try:
+            return f"No .blobify file exists in {directory_path}"
+        return f".blobify configuration for {directory_path}:\n\n{content}"
+    except Exception as e:
+        return f"Error reading .blobify file: {str(e)}"
+def _get_default_excludes_impl() -> str:
+    try:
+        # Categorize patterns for better readability
+        # Categorize patterns
+        # Format output
+        return result
+    except Exception as e:
+        return f"Error getting default excludes: {str(e)}"
+def _get_contexts_impl(directory_path: str) -> str:
+    try:
+        # Check if it's a git repository (required for .blobify)
+            return f"No git repository found in {directory_path}. Contexts require a .blobify file in a git repository."
+        # Get available contexts
+            return f"No contexts found in .blobify file at {git_root}"
+        # Get context descriptions and inheritance info
+            # Add description if available
+        return result
+    except Exception as e:
+        return f"Error getting contexts: {str(e)}"
+def _generate_blobify_file_prompt_impl(filesystem_analysis: str, instructions: str = "") -> str:
+    return base_prompt
+def _update_blobify_file_prompt_impl(existing_config: str, filesystem_analysis: str, instructions: str) -> str:
+    return base_prompt
+def _act_on_contents_prompt_impl(blobify_output: str, instructions: str) -> str:
+    return base_prompt
+def create_mcp_server() -> FastMCP:
+    # Tools
+    @mcp.tool()
+        return await _run_blobify_impl(directory, context, enable_scrubbing, output_line_numbers, show_excluded, ctx)
+    @mcp.tool()
+    async def update_blobify_file(directory: str, content: str, ctx: Context[ServerSession, None] = None) -> str:
+        return await _update_blobify_file_impl(directory, content, ctx)
+    @mcp.tool()
+    async def analyse_filesystem(directory: str, ctx: Context[ServerSession, None] = None) -> Dict[str, Any]:
+        return await _analyse_filesystem_impl(directory, ctx)
+    # Resources
+    @mcp.resource("blobify://config/{directory_path}")
+    def get_blobify_file(directory_path: str) -> str:
+        return _get_blobify_file_impl(directory_path)
+    @mcp.resource("blobify://excludes/default")
+    def get_default_excludes() -> str:
+        return _get_default_excludes_impl()
+    @mcp.resource("blobify://contexts/{directory_path}")
+    def get_contexts(directory_path: str) -> str:
+        return _get_contexts_impl(directory_path)
+    # Prompts
+    @mcp.prompt()
+    def generate_blobify_file(filesystem_analysis: str, instructions: str = "") -> str:
+        return _generate_blobify_file_prompt_impl(filesystem_analysis, instructions)
+    @mcp.prompt()
+    def update_blobify_file_prompt(existing_config: str, filesystem_analysis: str, instructions: str) -> str:
+        return _update_blobify_file_prompt_impl(existing_config, filesystem_analysis, instructions)
+    @mcp.prompt()
+    def act_on_contents(blobify_output: str, instructions: str) -> str:
+        return _act_on_contents_prompt_impl(blobify_output, instructions)
+    return mcp
+END_FILE: blobify\mcp_server\server.py
+
+
 START_FILE: blobify\output_formatter.py
 FILE_CONTENT:
 import datetime
@@ -689,6 +820,52 @@ bfy [directory] [options]
 **Key features:** Respects `.gitignore`, automatic sensitive data scrubbing, includes line numbers, supports custom filtering via `.blobify` configuration, content filters for extracting specific patterns with file targeting, context listing for easy discovery, cross-platform clipboard support, **context inheritance** for reusable configurations.
 
 **Important Notice:** The scrubbing feature is not guaranteed to work; it may not detect some sensitive data. Consider it a best-effort helper only. Always review output before sharing.
+
+## MCP Server Support
+
+Blobify includes built-in support for the [Model Context Protocol (MCP)](https://modelcontextprotocol.io), allowing AI agents to directly interact with blobify functionality.
+
+### Running the MCP Server
+
+Start the MCP server using stdio transport (recommended for most MCP clients):
+
+```bash
+python -m blobify.mcp_server
+```
+
+For HTTP-based transports (useful for web clients or remote access):
+
+```bash
+python -m blobify.mcp_server --transport streamable-http --port 8080
+```
+
+### Available MCP Tools
+
+- **`run_blobify`** - Execute blobify on a directory with optional context and configuration options
+- **`analyse_filesystem`** - Analyze project structure to help with .blobify configuration generation
+- **`update_blobify_file`** - Create or update .blobify configuration files
+
+### Available MCP Resources
+
+- **`blobify://config/{directory}`** - Get contents of existing .blobify configuration files
+- **`blobify://excludes/default`** - Get blobify's built-in exclusion patterns
+- **`blobify://contexts/{directory}`** - List available contexts from .blobify files
+
+### Available MCP Prompts
+
+- **`generate_blobify_file`** - Generate new .blobify configurations based on filesystem analysis
+- **`update_blobify_file_prompt`** - Update existing .blobify configurations with new requirements
+- **`act_on_contents`** - Provide instructions for analyzing or acting on blobify output
+
+### Example MCP Workflow
+
+1. Use `analyse_filesystem` to understand project structure
+2. Use `generate_blobify_file` prompt to create appropriate configuration
+3. Use `update_blobify_file` to save the configuration
+4. Use `run_blobify` to generate packaged codebase
+5. Use `act_on_contents` prompt to analyze the results
+
+The MCP server provides progress reporting and detailed error messages to help AI agents effectively work with codebases.
 
 ## Content Filters
 

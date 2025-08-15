@@ -6,7 +6,6 @@ with various transport options.
 """
 
 import argparse
-import asyncio
 import sys
 
 from .server import create_mcp_server

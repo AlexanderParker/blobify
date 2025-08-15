@@ -5,7 +5,7 @@ import os
 import tempfile
 import time
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -32,14 +32,10 @@ except ImportError:
 
 def safe_temp_file_cleanup(temp_path):
     """Safely clean up temporary files on Windows."""
-    try:
-        if os.path.exists(temp_path):
-            # On Windows, ensure file isn't locked
-            time.sleep(0.1)  # Brief delay
-            os.unlink(temp_path)
-    except (OSError, PermissionError):
-        # Ignore cleanup errors in tests
-        pass
+    if os.path.exists(temp_path):
+        # On Windows, ensure file isn't locked
+        time.sleep(0.1)  # Brief delay
+        os.unlink(temp_path)
 
 
 @pytest.fixture
@@ -197,7 +193,7 @@ class TestMCPServer:
             # File is automatically closed here
             try:
                 # Mock sys.argv to capture the temp file path
-                with patch("sys.argv") as mock_argv:
+                with patch("sys.argv"):
                     # Call the implementation function
                     result = await _run_blobify_impl(str(temp_project_with_blobify), ctx=mock_ctx)
 
