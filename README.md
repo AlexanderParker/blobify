@@ -63,6 +63,52 @@ bfy [directory] [options]
 
 **Important Notice:** The scrubbing feature is not guaranteed to work; it may not detect some sensitive data. Consider it a best-effort helper only. Always review output before sharing.
 
+## MCP Server Support
+
+Blobify includes built-in support for the [Model Context Protocol (MCP)](https://modelcontextprotocol.io), allowing AI agents to directly interact with blobify functionality.
+
+### Running the MCP Server
+
+Start the MCP server using stdio transport (recommended for most MCP clients):
+
+```bash
+python -m blobify.mcp_server
+```
+
+For HTTP-based transports (useful for web clients or remote access):
+
+```bash
+python -m blobify.mcp_server --transport streamable-http --port 8080
+```
+
+### Available MCP Tools
+
+- **`run_blobify`** - Execute blobify on a directory with optional context and configuration options
+- **`analyse_filesystem`** - Analyze project structure to help with .blobify configuration generation
+- **`update_blobify_file`** - Create or update .blobify configuration files
+
+### Available MCP Resources
+
+- **`blobify://config/{directory}`** - Get contents of existing .blobify configuration files
+- **`blobify://excludes/default`** - Get blobify's built-in exclusion patterns
+- **`blobify://contexts/{directory}`** - List available contexts from .blobify files
+
+### Available MCP Prompts
+
+- **`generate_blobify_file`** - Generate new .blobify configurations based on filesystem analysis
+- **`update_blobify_file_prompt`** - Update existing .blobify configurations with new requirements
+- **`act_on_contents`** - Provide instructions for analyzing or acting on blobify output
+
+### Example MCP Workflow
+
+1. Use `analyse_filesystem` to understand project structure
+2. Use `generate_blobify_file` prompt to create appropriate configuration
+3. Use `update_blobify_file` to save the configuration
+4. Use `run_blobify` to generate packaged codebase
+5. Use `act_on_contents` prompt to analyze the results
+
+The MCP server provides progress reporting and detailed error messages to help AI agents effectively work with codebases.
+
 ## Content Filters
 
 You can add multiple filters to extract specific patterns from files.
