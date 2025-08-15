@@ -14,9 +14,7 @@ from .server import create_mcp_server
 
 def main():
     """Main entry point for the MCP server."""
-    parser = argparse.ArgumentParser(
-        description="Blobify MCP Server - Provides Model Context Protocol interface for blobify"
-    )
+    parser = argparse.ArgumentParser(description="Blobify MCP Server - Provides Model Context Protocol interface for blobify")
     parser.add_argument(
         "--transport",
         choices=["stdio", "streamable-http"],

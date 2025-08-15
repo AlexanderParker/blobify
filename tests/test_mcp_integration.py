@@ -9,11 +9,11 @@ import pytest
 from blobify.mcp_server import create_mcp_server
 from blobify.mcp_server.server import (
     _analyse_filesystem_impl,
-    _update_blobify_file_impl,
-    _run_blobify_impl,
     _get_blobify_file_impl,
-    _get_default_excludes_impl,
     _get_contexts_impl,
+    _get_default_excludes_impl,
+    _run_blobify_impl,
+    _update_blobify_file_impl,
 )
 
 
@@ -306,9 +306,7 @@ class TestMCPServerIntegration:
         # Step 2: Generate .blobify configuration (simulate with prompt)
         from blobify.mcp_server.server import _generate_blobify_file_prompt_impl
 
-        prompt_result = _generate_blobify_file_prompt_impl(
-            json.dumps(analysis_result), "Create a Python project configuration"
-        )
+        prompt_result = _generate_blobify_file_prompt_impl(json.dumps(analysis_result), "Create a Python project configuration")
         assert isinstance(prompt_result, str)
 
         # Step 3: Create .blobify file

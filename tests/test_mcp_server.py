@@ -13,16 +13,16 @@ import pytest
 pytest_plugins = []
 try:
     from blobify.mcp_server.server import (
-        create_mcp_server,
-        _analyse_filesystem_impl,
-        _update_blobify_file_impl,
-        _run_blobify_impl,
-        _get_blobify_file_impl,
-        _get_default_excludes_impl,
-        _get_contexts_impl,
-        _generate_blobify_file_prompt_impl,
-        _update_blobify_file_prompt_impl,
         _act_on_contents_prompt_impl,
+        _analyse_filesystem_impl,
+        _generate_blobify_file_prompt_impl,
+        _get_blobify_file_impl,
+        _get_contexts_impl,
+        _get_default_excludes_impl,
+        _run_blobify_impl,
+        _update_blobify_file_impl,
+        _update_blobify_file_prompt_impl,
+        create_mcp_server,
     )
 
     MCP_AVAILABLE = True
@@ -253,9 +253,7 @@ class TestMCPServer:
     def test_generate_blobify_file_prompt_implementation(self):
         """Test the generate_blobify_file_prompt implementation function."""
         # Test data
-        filesystem_analysis = json.dumps(
-            {"directory": "/test/project", "file_types": {".py": 5, ".md": 2}, "statistics": {"total_files": 7}}
-        )
+        filesystem_analysis = json.dumps({"directory": "/test/project", "file_types": {".py": 5, ".md": 2}, "statistics": {"total_files": 7}})
         instructions = "Focus on Python files only"
 
         # Call the implementation function directly
